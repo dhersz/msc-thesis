@@ -1,20 +1,31 @@
 library(dplyr)
 library(sf)
 
-calculate_accessibility <- function(res = 7) {
+generate_accessibility_results <- function(travel_time_threshold = 90, monetary_cost_threshold = 7.5, res = 7) {
   
   itineraries_details <- readr::read_rds(stringr::str_c("./data/itineraries_details_res_", res, ".rds"))
   
   routes_info <- generate_routes_info()
   fare_schema <- generate_fare_schema()
   
-  itineraries_details <- itineraries_details %>% 
+  costs <- itineraries_details %>% 
     mutate(
-      leg_cost_BU = calculate_fare(., routes_info, fare_schema, BU = TRUE),
-      leg_cost_no_BU = calculate_fare(., routes_info, fare_schema, BU = FALSE)
+      leg_cost_with_BU = calculate_fare(., routes_info, fare_schema, BU = TRUE),
+      leg_cost_without_BU = calculate_fare(., routes_info, fare_schema, BU = FALSE),
+      travel_time = as.numeric(lubridate::as.duration(itinerary_end_time - itinerary_start_time), "minutes")
+    ) %>% 
+    group_by(orig_id, dest_id, it_id) %>% 
+    summarise(
+      travel_time = mean(travel_time),
+      cost_with_BU = sum(leg_cost_with_BU),
+      cost_without_BU = sum(leg_cost_without_BU)
     )
   
-  itineraries_details
+  accessibility_with_bu <- calculate_accessibility(costs, travel_time_threshold, monetary_cost_threshold, BU = TRUE, res) %>% 
+    readr::write_rds(stringr::str_c("./data/accessibility_with_bu_tt_", travel_time_threshold, "_mc_", monetary_cost_threshold, "_res_", res, ".rds"))
+  
+  accessibility_without_bu <- calculate_accessibility(costs, travel_time_threshold, monetary_cost_threshold, BU = FALSE, res) %>% 
+    readr::write_rds(stringr::str_c("./data/accessibility_without_bu_tt_", travel_time_threshold, "_mc_", monetary_cost_threshold, "_res_", res, ".rds"))
   
 }
 
@@ -335,5 +346,36 @@ calculate_fare <- function(itineraries_details, routes_info, fare_schema, BU = T
   }
 
   leg_cost
+  
+}
+
+calculate_accessibility <- function(costs_df, travel_time_threshold, monetary_cost_threshold, BU = TRUE, res = 7) {
+  
+  grid_data <- readr::read_rds(stringr::str_c("./data/rio_h3_grid_res_", res, "_with_data.rds")) %>% 
+    st_drop_geometry() %>% 
+    tibble::as_tibble()
+  
+  costs_df <- costs_df %>% mutate(monetary_cost = ifelse(BU, cost_with_BU, cost_without_BU))
+  
+  accessibility_to_itself <- grid_data %>% select(id, inside_opportunities = opportunities)
+  
+  accessibility_to_others <- costs_df %>% 
+    left_join(grid_data, by = c("dest_id" = "id")) %>% 
+    filter(travel_time <= travel_time_threshold, monetary_cost <= monetary_cost_threshold) %>% 
+    group_by(orig_id, dest_id) %>% 
+    slice(1) %>% 
+    group_by(orig_id) %>% 
+    summarise(reachable_opportunities = sum(opportunities)) %>% 
+    ungroup() %>% 
+    select(id = orig_id, reachable_opportunities)
+  
+  accessibility <- accessibility_to_itself %>% 
+    left_join(accessibility_to_others, by = "id") %>% 
+    group_by(id) %>% 
+    mutate(accessibility = sum(inside_opportunities, reachable_opportunities, na.rm = TRUE)) %>% 
+    ungroup() %>% 
+    select(id, accessibility)
+  
+  accessibility
   
 }
