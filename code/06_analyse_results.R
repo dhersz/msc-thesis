@@ -1,0 +1,128 @@
+library(dplyr)
+library(sf)
+library(tmap)
+library(ggplot2)
+
+analyse_results <- function(travel_time_threshold = 90, monetary_cost_threshold = 7.5, res = 7) {
+  
+  accessibility_with_bu <- readr::read_rds(stringr::str_c("./results/accessibility_with_bu_tt_", travel_time_threshold, "_mc_", monetary_cost_threshold * 10, "_res_", res, ".rds"))
+  accessibility_without_bu <- readr::read_rds(stringr::str_c("./results/accessibility_without_bu_tt_", travel_time_threshold, "_mc_", monetary_cost_threshold * 10, "_res_", res, ".rds"))
+  
+  # create a sf object which holds the accessibility difference due to the implementation of BU
+  
+  accessibility_difference <- accessibility_without_bu %>% 
+    rename(without = accessibility) %>% 
+    left_join(st_drop_geometry(accessibility_with_bu), by = "id") %>% 
+    rename(with = accessibility) %>% 
+    mutate(accessibility = with - without) %>% 
+    select(id, accessibility)
+  
+  # maps for quick visualisation: before, after and difference --------------
+
+  # find the percentage of the total opportunities that the max accessibility is, round to the immediately
+  # heigher 10% and use it as the upper limit of the legend - function taken from https://stackoverflow.com/questions/35807523/r-decimal-ceiling
+  # use this max to create the breaks used in the legend of the maps
+  
+  max_accessibility <- max(accessibility_with_bu$accessibility)
+  total_opportunities <- sum(grid_data$opportunities)
+  
+  percentage_of_total <- (max_accessibility/total_opportunities) %>% 
+    purrr::map_dbl(function(x, digits = 1) round(x + 5*10^(-digits-1), digits))
+  
+  # set breaks and labels
+  
+  n <- 5
+  breaks <- seq(0, percentage_of_total * total_opportunities, length.out = n)
+  labels <- seq(0, percentage_of_total, length.out = n) * 100
+  labels[n] <- stringr::str_c(labels[n], "%")
+  labels[c(2, 4)] <- ""
+  
+  # create individual maps and place them sideways in the same visualisation
+  # maybe it's better to do this with facets!
+  
+  map_with_bu <- map_accessibility(accessibility_with_bu, breaks = breaks, labels = labels, title = "Accessibility with BU")
+  map_without_bu <- map_accessibility(accessibility_without_bu, breaks = breaks, labels = labels, title = "Accessibility without BU")
+  
+  comparative_map <- tmap_arrange(map_without_bu, map_with_bu, ncol = 2)
+  
+  # save comparative_map here
+  
+  # create a map showing the increase in accessibility
+  # still very bad
+  
+  map_difference <- map_accessibility(accessibility_difference, breaks = breaks, labels = labels, title = "Accessibility difference")
+  
+  # save map_difference
+
+  # boxplot for income quantile analysis ------------------------------------
+
+  grid_data <- readr::read_rds(stringr::str_c("./data/rio_h3_grid_res_", res, "_with_data.rds")) %>% 
+    st_drop_geometry() %>% 
+    tibble::as_tibble() %>% 
+    select(-opportunities)
+  
+  boxplot_with_bu <- quantile_boxplot(accessibility_with_bu, grid_data, title = "Accessibility with BU")
+  boxplot_without_bu <- quantile_boxplot(accessibility_without_bu, grid_data, title = "Accessibility without BU")
+  
+}
+
+map_accessibility <- function(accessibility, breaks, labels, title) {
+  
+  rio_border <- accessibility %>% st_union()
+  
+  tm_shape(accessibility) +
+    tm_fill(col = "accessibility",
+            title = "  Accessibility",
+            breaks = breaks,
+            labels = labels, 
+            style = "cont",
+            palette = "viridis",
+            legend.is.portrait = FALSE) +
+  tm_shape(rio_border) +
+    tm_borders(col = "gray20") +
+  tm_layout(title = title,
+            title.position = c("center", "top"),
+            inner.margins = c(0.225, 0.02, 0.2, 0.02),
+            legend.position = c("right", "bottom"))
+  
+}
+
+quantile_boxplot <- function(accessibility, grid_data, title) {
+  
+  accessibility_distribution <- accessibility %>% 
+    st_drop_geometry() %>% 
+    left_join(grid_data, by = "id") %>% 
+    mutate(
+      avg_income = total_income / population,
+      population = round(population)
+    ) %>% 
+    arrange(avg_income) %>% 
+    tidyr::uncount(population)
+  
+  qntls <- quantile(accessibility_distribution$avg_income, probs = seq(0, 1, 0.1))
+  
+  accessibility_distribution <- accessibility_distribution %>% 
+    mutate(
+      income_quantile = cut(avg_income, qntls, labels = stringr::str_c("Q", 1:10), include.lowest = TRUE)
+    )
+  
+  # palma ratio is the accessibility sum of the richest 10% over the accessibility sum of the poorest 40%
+  
+  richest_10 <- accessibility_distribution %>% 
+    filter(income_quantile == "Q10") %>% 
+    summarise(accessibility_sum = sum(accessibility))
+  
+  poorest_40 <- accessibility_distribution %>% 
+    filter(income_quantile %in% c("Q1", "Q2", "Q3", "Q4")) %>% 
+    summarise(accessibility_sum = sum(accessibility))
+  
+  palma_ratio = richest_10$accessibility_sum / poorest_40$accessibility_sum
+  
+  ggplot(accessibility_distribution) +
+    geom_boxplot(aes(income_quantile, accessibility)) +
+    ggtitle(label = title, subtitle = stringr::str_c("Palma ratio: ", round(palma_ratio, digits = 4))) +
+    xlab("Income decile") +
+    ylab("Accessibility") +
+    theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
+  
+}
