@@ -8,6 +8,14 @@ analyse_results <- function(travel_time_threshold = 90, monetary_cost_threshold 
   accessibility_with_bu <- readr::read_rds(stringr::str_c("./results/accessibility_with_bu_tt_", travel_time_threshold, "_mc_", monetary_cost_threshold * 10, "_res_", res, ".rds"))
   accessibility_without_bu <- readr::read_rds(stringr::str_c("./results/accessibility_without_bu_tt_", travel_time_threshold, "_mc_", monetary_cost_threshold * 10, "_res_", res, ".rds"))
   
+  grid_data <- readr::read_rds(stringr::str_c("./data/rio_h3_grid_res_", res, "_with_data.rds")) %>% 
+    st_drop_geometry() %>% 
+    tibble::as_tibble() %>% 
+    select(-opportunities)
+  
+  access_dist_with_bu <- accessibility_distribution(accessibility_with_bu, grid_data, n = 10)
+  access_dist_without_bu <- accessibility_distribution(accessibility_without_bu, grid_data, n = 10)
+  
   # create a sf object which holds the accessibility difference due to the implementation of BU
   
   accessibility_difference <- accessibility_without_bu %>% 
@@ -28,8 +36,6 @@ analyse_results <- function(travel_time_threshold = 90, monetary_cost_threshold 
   
   percentage_of_total <- (max_accessibility/total_opportunities) %>% 
     purrr::map_dbl(function(x, digits = 1) round(x + 5*10^(-digits-1), digits))
-  
-  # set breaks and labels
   
   n <- 5
   breaks <- seq(0, percentage_of_total * total_opportunities, length.out = n)
@@ -55,14 +61,13 @@ analyse_results <- function(travel_time_threshold = 90, monetary_cost_threshold 
   # save map_difference
 
   # boxplot for income quantile analysis ------------------------------------
-
-  grid_data <- readr::read_rds(stringr::str_c("./data/rio_h3_grid_res_", res, "_with_data.rds")) %>% 
-    st_drop_geometry() %>% 
-    tibble::as_tibble() %>% 
-    select(-opportunities)
   
-  boxplot_with_bu <- quantile_boxplot(accessibility_with_bu, grid_data, title = "Accessibility with BU")
-  boxplot_without_bu <- quantile_boxplot(accessibility_without_bu, grid_data, title = "Accessibility without BU")
+  boxplot_with_bu <- quantile_boxplot(access_dist_with_bu, title = "Accessibility with BU")
+  boxplot_without_bu <- quantile_boxplot(access_dist_without_bu, title = "Accessibility without BU")
+
+  # theil index -------------------------------------------------------------
+
+  
   
 }
 
@@ -87,42 +92,75 @@ map_accessibility <- function(accessibility, breaks, labels, title) {
   
 }
 
-quantile_boxplot <- function(accessibility, grid_data, title) {
+accessibility_distribution <- function(accessibility, grid_data, n = 10) {
   
-  accessibility_distribution <- accessibility %>% 
+  # join income and population data to the accessibility dataframe, arrange by income and expand each row n times
+  # where n equals the population with the given income
+  
+  distribution <- accessibility %>% 
     st_drop_geometry() %>% 
     left_join(grid_data, by = "id") %>% 
     mutate(
       avg_income = total_income / population,
       population = round(population)
     ) %>% 
+    select(-total_income, -id) %>% 
     arrange(avg_income) %>% 
     tidyr::uncount(population)
   
-  qntls <- quantile(accessibility_distribution$avg_income, probs = seq(0, 1, 0.1))
+  # classify each person based on the income quantil he or she is located at
   
-  accessibility_distribution <- accessibility_distribution %>% 
+  qntls <- quantile(distribution$avg_income, probs = seq(0, 1, 1/n))
+  
+  distribution <- distribution %>% 
     mutate(
-      income_quantile = cut(avg_income, qntls, labels = stringr::str_c("Q", 1:10), include.lowest = TRUE)
+      income_quantile = cut(avg_income, qntls, labels = stringr::str_c("Q", 1:n), include.lowest = TRUE)
     )
+  
+  distribution
+  
+}
+
+quantile_boxplot <- function(access_dist, title) {
   
   # palma ratio is the accessibility sum of the richest 10% over the accessibility sum of the poorest 40%
   
-  richest_10 <- accessibility_distribution %>% 
+  richest_10 <- access_dist %>% 
     filter(income_quantile == "Q10") %>% 
     summarise(accessibility_sum = sum(accessibility))
   
-  poorest_40 <- accessibility_distribution %>% 
+  poorest_40 <- access_dist %>% 
     filter(income_quantile %in% c("Q1", "Q2", "Q3", "Q4")) %>% 
     summarise(accessibility_sum = sum(accessibility))
   
   palma_ratio = richest_10$accessibility_sum / poorest_40$accessibility_sum
   
-  ggplot(accessibility_distribution) +
+  ggplot(access_dist) +
     geom_boxplot(aes(income_quantile, accessibility)) +
     ggtitle(label = title, subtitle = stringr::str_c("Palma ratio: ", round(palma_ratio, digits = 4))) +
     xlab("Income decile") +
     ylab("Accessibility") +
     theme(plot.title = element_text(hjust = 0.5), plot.subtitle = element_text(hjust = 0.5))
+  
+}
+
+theil_analysis <- function(access_dist) {
+  
+  
+  
+}
+
+theil_index <- function(access_dist) {
+  
+  accessibility_total <- sum(access_dist$accessibility)
+  
+  access_dist <- access_dist %>% 
+    mutate(
+      theil_share = (accessibility / accessibility_total) * log((accessibility / accessibility_total) / (1 / nrow(access_dist)))
+    )
+  
+  index <- sum(access_dist$theil_share)
+  
+  index
   
 }

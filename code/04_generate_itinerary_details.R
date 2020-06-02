@@ -12,11 +12,15 @@ generate_itinerary_details <- function(res = 7) {
     numItineraries = "3"
   )
   
-  itineraries_list <- get_transit_itineraries(parameters, res)
+  itineraries_list <- get_transit_itineraries3(parameters, res)
+  
+  readr::write_rds(itineraries_list, "./data/temp_itineraries_list.rds")
   
   desired_leg_details <- c("startTime","endTime", "distance", "mode", "routeId", "route")
   
   itineraries_details <- extract_itinerary_details(itineraries_list, desired_leg_details)
+  
+  file.remove("./data/temp_itineraries_list.rds")
   
   readr::write_rds(itineraries_details, stringr::str_c("./data/itineraries_details_res_", res, ".rds"))
   
@@ -33,8 +37,7 @@ get_transit_itineraries <- function(parameters, res = 7) {
     tibble::as_tibble() %>% 
     tibble::rowid_to_column("id") %>% 
     mutate(lat_lon = stringr::str_c(Y, ",", X)) %>% 
-    select(-X, -Y) %>% 
-    head(10)
+    select(-X, -Y)
   
   # opentripplanner::otp_setup(otp = "./otp/otp.jar", dir = "./otp", memory = 2048, router = "rio")
   
@@ -197,8 +200,7 @@ get_transit_itineraries2 <- function(parameters, res = 7) {
     tibble::as_tibble() %>% 
     tibble::rowid_to_column("id") %>% 
     mutate(lat_lon = stringr::str_c(Y, ",", X)) %>% 
-    select(-X, -Y) %>% 
-    head(10)
+    select(-X, -Y)
   
   # opentripplanner::otp_setup(otp = "./otp/otp.jar", dir = "./otp", memory = 2048, router = "rio")
   
@@ -234,8 +236,7 @@ get_transit_itineraries3 <- function(parameters, res = 7) {
     tibble::as_tibble() %>% 
     tibble::rowid_to_column("id") %>% 
     mutate(lat_lon = stringr::str_c(Y, ",", X)) %>% 
-    select(-X, -Y) %>% 
-    head(10)
+    select(-X, -Y)
   
   # opentripplanner::otp_setup(otp = "./otp/otp.jar", dir = "./otp", memory = 2048, router = "rio")
   
@@ -281,11 +282,11 @@ make_request3 <- function(od_points, parameters) {
   }
   
   requests <- crul::Async$new(urls = urls)
-  
-  response_list <- requests$get() %>% 
-    lapply(function(z) z$parse("UTF-8")) %>% 
+
+  response_list <- requests$get() %>%
+    lapply(function(z) z$parse("UTF-8")) %>%
     lapply(function(z) jsonlite::fromJSON(z))
-  
+
   for (i in seq_along(response_list)) {
     response_list[[i]]$identification <- identification[[i]]
   }
