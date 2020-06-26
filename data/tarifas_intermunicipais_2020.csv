@@ -1,0 +1,572 @@
+route_id,fare_id,route_short_name,route_long_name,actual_price
+18904773,50188654,2195C,Guapimirim - Castelo,19.45
+19023642,19828295,3404I,Piabetá - Penha,10.05
+19107590,41526222,2740D,Charitas - Leme,11.4
+41170440,19828286,2469C,Santa Cruz da Serra - Central,12.8
+19004493,34676965,1906B,Paracambi - Passeio,29.8
+39807059,24309028,4110D,São Gonçalo - Passeio,14.7
+31990706,34663979,3413M,Venda das Pedras - Alcântara,4.3
+40414007,24309023,2565D,Santa Rosa - Passeio,22.1
+18917002,24309028,2535D,Alcântara - Estácio (via Dr. March),14.7
+36745133,34578029,1133B,Central - Nova Iguaçu,13.05
+19059650,24309030,2424D,Alcântara - Campo Grande (via Água Branca),18.4
+18893228,34663979,1401M,Luiz Caçador - Niterói (via Porto Velho),5.15
+19042136,19828274,1512B,Vilar dos Teles - Castelo,16.6
+19091975,50188644,1471C,Saracuruna - Passeio,20.3
+19030057,34576963,4469C,Santa Cruz da Serra - Passeio,12.8
+18945047,30174539,1955B,Nova Iguaçu - Castelo (via Plínio Casado),21.6
+19037557,33119700,1941D,Nova Iguaçu - Niterói (via PPCS/Via Dutra),21.4
+19063530,30174568,2100D,Niterói - Castelo,9.5
+26541174,34663189,1487L,Duque de Caxias - Usina,15.25
+30753273,50188644,3461C,Piabetá - Central (via Imbariê),20.3
+18881967,39695499,1484M,Alcântara - Niterói,8.95
+44529483,30174554,2462C,Piabetá - Passeio (via Praça da Cruz Vermelha),14.65
+19023301,34663189,1404I,Duque de Caxias - Piabetá (via Maracanã),7.85
+19001131,19828275,1926D,Venda das Pedras - Candelária (via PPCS),26.65
+18886264,24309030,1721D,Alcântara - Candelária,20.5
+19062607,24309028,2533D,Alcântara - Méier (via PPCS),15.55
+33940298,24309041,7721D,Santa Izabel - Candelária,20.5
+19029571,24309056,2470C,Taquara - Praça Mauá,12.8
+39746682,39695499,1400M,Bairro das Palmeiras - Niterói (via Nova Cidade),4.3
+49905536,34684081,6146D,Itaipuaçu Rua 128- Castelo,33.5
+29134995,30175956,1910D,Itaipu - Castelo,31.55
+29210019,30174568,1102C,Duque de Caxias - Praça Mauá (via 25 de Agosto),8.6
+48047877,34676965,1522B,Parque São Vicente - Central,12.5
+39772244,36682931,2417C,Vilar dos Teles - Praça XV,11.4
+49746445,49741401,1901T,Conceição de Jacareí - Duque de Caxias,28.65
+19054872,24309028,2520D,Jardim Alcântara - Estácio (via Dr. March),14.7
+31232840,30174554,2462C,Piabetá - Praça Mauá (via Imbariê),14.65
+31990460,49741401,1900T,Conceição de Jacareí - Duque de Caxias (via Campo Grande/BR-101),28.65
+29321814,24309028,2545D,Alcântara - Castelo (via Dr. March),14.05
+31990160,36752091,1900D,Charitas - Galeão (via Terminal Rodoviário Novo Rio),16.4
+31991500,49668474,1945I,Nova Iguaçu - Niterói (via Magé),40.1
+36736421,39695499,3400M,Bairro das Palmeiras - Niterói (via BR-101),4.3
+44557556,30174579,2146D,Maricá - Castelo,33.5
+25615572,34576963,2486C,Xerém - Passeio (via Central do Brasil),12.8
+39733933,39695499,3409M,Alcântara - Trindade (via BR-101),4.3
+19035683,33119700,1940D,Nova Iguaçu - Niterói (via São João/PPCS),21.4
+28991056,30174539,1956B,Cabuçu - Castelo,21.6
+30679782,50188644,3471C,Saracuruna - Central,20.3
+19043410,19828274,1140B,Éden - Castelo,16.6
+18888033,24309041,3721D,Alcântara - Botafogo,20.5
+29310598,50188644,1461C,Piabetá - Passeio (via Imbariê),20.3
+18945903,30174539,1960B,Nova Iguaçu - Castelo (via Plínio Casado/Vila Nova),21.6
+49737372,49741401,1900T,Conceição de Jacareí - Duque de Caxias (via Campo Grande/BR-101),28.65
+36737076,39695499,5400M,Niterói - Nova Cidade,4.3
+18897732,19828275,1750D,Charitas - Gávea (via Túnel Santa Bárbara),30.65
+18899550,24309023,2905D,Charitas - Castelo,22.75
+33955013,34688257,2590R,Ponta Negra - Castelo (via Boqueirão),33.5
+19004960,34676965,1907B,Japeri - Passeio,29.85
+18954470,34578029,1703D,Santa Rosa - Vila Isabel (via PPCS),11.75
+19021893,34663189,1406I,Duque de Caxias - Piabetá (via Estrada do Bongaba),7.85
+29241137,34576979,2125C,Magé - Castelo,19.45
+31992301,34663189,2561L,Duque de Caxias - Freguesia (via Linha Amarela),9
+39744424,39695499,3402M,Jardim São Lourenço - Niterói (via BR-101),4.3
+48093200,37884612,1518B,Heliópolis - Central (via Andrade Araújo),12.5
+49877813,41178257,6144R,Niterói - Itaipuaçu Rua 128,16.85
+49725318,34688257,1902S,Conceição de Jacareí - Campo Grande,22.3
+18939145,34676965,2950C,Duque de Caxias - Castelo (via 25 de Agosto),19.05
+39811059,24309028,4545D,Alcântara - Castelo (via Dr. March),14.05
+18894819,19828275,1760D,Charitas - Aeroporto Internacional (via Cidade Universitária),14.05
+31992044,49684033,4144R,Itaipuaçu - Niterói,16.85
+18920650,34664230,2102C,Duque de Caxias - Praça Mauá,9.5
+19104305,24309023,1730D,Charitas - Castelo (via Fonseca),15.15
+44481826,34684081,4146D,Itaipuaçu - Castelo,33.5
+30424298,30175956,1440B,Queimados - Praça Mauá,16.2
+49763545,34576963,2904T,Duque de Caxias - Campo Grande,13.35
+33169758,34671222,4945I,Niterói - Magé (via Alameda São Boaventura),19.05
+18999125,34671711,1413M,Venda das Pedras - Niterói,17.75
+18892364,34663979,1402M,Jardim São Lourenço - Niterói (via Porto Velho),5.15
+19098967,34663189,4561L,Duque de Caxias - Freguesia,9
+36734026,39715192,9721D,Botafogo - Santa Izabel,20.5
+19057865,24309030,2425D,Alcântara - Campo Grande (via Vila Militar),18.4
+18896278,36682931,1775D,Charitas - Gávea (via  Lapa/Praia de Botafogo),20.4
+19087913,34743660,1559B,Parque São Vicente - Passeio,11.7
+41111838,34665294,4490B,Miguel Couto - Central (via Luís Lemos),12.25
+19013509,34676965,2490B,Miguel Couto - Praça Mauá (via Luís Lemos),33.1
+18939037,30174568,1111C,Duque de Caxias - Central (via Linha Vermelha/Av. Brasil),7.4
+19107191,30174579,1920D,Pendotiba - Castelo,31.55
+31951981,19828274,1905D,Charitas - Castelo (via Ingá/Aeroporto Santos Dumont),15.15
+31941920,19828275,2750D,Charitas - Gávea (via Túnel Santa Bárbara),20.4
+19066419,41178257,2144R,Maricá - Niterói,16.85
+31035961,24309041,5721D,Apolo III - Passeio,20.5
+49749742,19828278,1903S,Conceição de Jacareí - Itaguaí,13.85
+29227776,19828274,1950C,Duque de Caxias - Praça Mauá (via Vigário Geral),12.8
+18938801,34676965,2111C,Duque de Caxias - Castelo (via Vigário Geral),19.05
+30764978,34743660,3559B,Parque São Vicente - Central,11.7
+31247810,30174574,1951B,Mangaratiba - Castelo,34.15
+31990983,34664230,1931D,São Gonçalo - Duque de Caxias (via R. Benjamin Constant/Dr. March),15.85
+18910365,34577054,525I,Belford Roxo - Santa Rita,4.05
+19001896,34663189,487L,Duque de Caxias - Saens Peña,7.1
+28750075,34576963,448C,Piabetá - Central (via Penha),9.15
+18924618,34577054,430I,Nilópolis - Queimados,4.05
+19010903,34577054,702B,Austin - Mercado São Sebastião,4.05
+18891938,34663979,402M,Niterói - Jardim São Lourenço (via Porto Velho),4.3
+19092255,34576979,466C,São Francisco do Croará - Central,12.25
+18957444,34576963,449B,Queimados - Benfica (via Shopping Nova América),9.15
+49754686,39685070,119T,Duque de Caxias - Itaguaí (via Bangu/Campo Grande),9.15
+18948398,24309007,712L,Santa Sofia - Coelho Neto,4.65
+19065555,34663434,543R,Niterói - Várzea das Moças (via Santa Anita),5.55
+18902085,30174568,423C,Gramacho - Central (via Itatiaia),6.3
+18890470,34663189,405I,Duque Caxias - Piabetá,7.1
+18928692,34577054,729L,Parque São Vicente - Méier,4.05
+18879772,34663434,482M,Niterói - Santa Luzia,5.55
+18984630,34577054,840I,Austin -  Nossa Senhora do Rosário,4.05
+19070164,34576979,146D,Maricá - Candelária,12.25
+18901513,34704666,427C,Vilar dos Teles - Central,7.25
+19086995,34577054,160I,Nova Iguaçu - Belford Roxo (via Manhoso),4.05
+19080522,34663434,549M,Niterói - Santa Isabel (via Tribobó),5.55
+19175269,34579293,744P,Campo Grande - Ponte Coberta,7.55
+18879484,34663434,480M,Niterói - Apolo III (via Marambaia),5.55
+35752180,34664230,144C,São Gonçalo - Duque de Caxias,9.65
+18909614,34577054,707I,Olinda - Heliópolis,4.05
+48102057,39733806,526B,Itaipu - Central,8.65
+33301907,34577054,434L,Nova Iguaçu - Sulacap,4.05
+19033058,34576963,473C,Bossa Nova - Central,9.15
+19175492,34716972,709P,Cacaria - Vila Geni,8.55
+19085428,34577054,541I,Nova Iguaçu - Pavuna (via Via Light),4.05
+18950063,34576979,113D,Itaguaí - Niterói,12.25
+19002332,34663189,489L,Duque de Caxias - Praça Saens Peña (via Praça das Nações),7.1
+18927003,34577054,736L,Jardim Botânico - Cascadura,4.05
+18918922,30174568,432C,Parque das Missões - Central,6.3
+36997989,39748193,451I,Nova Iguaçu - Parque São José (via Estrada Boa Esperança),4.05
+19085558,34577054,553I,Bairro Santa Maria - Pavuna,4.05
+19108502,34577054,600M,Itaboraí - Tanguá (via Posse),4.05
+19018352,34704666,521B,Coelho da Rocha - Central,7.6
+19042566,34704666,511B,Parque Araruama - Central,7.6
+18991111,34663979,516M,Niterói - Mutuapira (via Dr. March),4.3
+19103712,34577054,462I,Nova Iguaçu - Rua da Serra,4.05
+19069762,34663434,537R,Niterói - Itaipu (via Tribobó),5.55
+19007920,34578029,492B,Vila de Cava - Central,8.65
+19044114,34577054,601I,Nova Iguaçu - Belford Roxo (via Antônio José Bittencourt),4.05
+19075946,24309007,548P,Campo Grande - Nilópolis,4.65
+19109578,34577054,210I,Nova Iguaçu - Belford Roxo (via SASE),4.05
+48086720,39733806,518B,Heliópolis - Central (via Andrade Araújo),8.65
+18956462,34579293,440B,Queimados - Central,10.35
+49712788,34577054,430P,Chaperó - Santa Cruz,4.05
+19029098,34576963,470C,Taquara - Central (via Parada Angélica),9.15
+18983875,34577054,608I,Nova Iguaçu - Nossa Senhora do Rosário,4.05
+19003561,34577054,485L,Duque de Caxias - Pilares,4.05
+18989668,34576963,479B,Mesquita - Central (via Edson Passos),8.65
+18974037,34665294,450T,Nova Iguaçu - Itacuruçá (via Av. Brasil),12.25
+18981692,34664230,121Q,Niterói - Magé (via Itambi),9.65
+19005868,34664230,105P,Nova Iguaçu - Paracambi,9.65
+19022868,34576963,444L,Piabetá - Penha,9.15
+18926215,34577054,106I,Nilópolis - São João de Meriti (via Éden),4.05
+19110005,34577054,660I,Nova Iguaçu - Vila Emil (Direta),4.05
+19011699,34578029,490B,Miguel Couto - Central (via Luís Lemos),8.65
+18919371,30174568,101C,Duque de Caxias - Central (via Vigário Geral),6.3
+33580425,34704666,739L,Cacuia - Vilar dos Teles,7.6
+19077580,24309007,544P,Nilópolis - Seropédica,4.65
+49714328,34577054,428P,Campo Grande - Itaguaí (via Campinho),4.05
+18958702,34577054,520I,Queimados - Cabuçu,4.05
+19104892,24309008,400T,Belford Roxo - Barra da Tijuca,8.65
+33492655,50188652,576I,Duque de Caxias - Posto Fiscal,19.4
+18937927,34577054,438I,Duque de Caxias - Jardim Botânico,4.05
+19065245,34663434,536R,Niterói - Várzea das Moças (via Maria Paula),5.55
+19031019,34576963,565C,Capivari - Central (via Figueira),9.15
+19050921,34577054,220I,Nova Iguaçu - Mesquita (via Av. Brasil),4.05
+19063189,34663979,532M,Niterói - Alcântara (via Dr. March),4.3
+35741195,34577054,728M,Alcântara - Itambi,4.3
+18980330,30174568,123Q,Itaboraí - Magé,6.3
+50380281,34663434,116T,Itaguaí - Mangaratiba (via BR-101),5.55
+19061761,34579293,533D,Alcântara - Méier (via PPCS),10.35
+19077149,24309007,704P,Lagoinha - Campo Grande,4.65
+19078183,24309007,547P,Jardim Paraíso - Sepetiba,4.65
+18934360,34577054,446I,Duque de Caxias - Parque São Vicente,4.05
+18916553,34664230,535D,Alcântara - Estácio (via Dr. March),9.65
+35749367,39695499,518M,Mutuá - Niterói,4.3
+18880396,34663434,572M,Niterói - Jardim Catarina (via Laranjal),5.55
+35845521,34778459,724D,Marambaia - Candelária,9.8
+18903045,34577054,414I,Duque de Caxias - Jardim Metrópole,4.05
+18939570,34577054,439I,Nilópolis - Mesquita,4.05
+19019307,39748193,502I,Duque de Caxias - Vale do Ipê,4.05
+19100897,34577054,748L,Morro Agudo - Pavuna,4.05
+30631397,34576963,468C,Piabetá - Central (via Imbariê),9.15
+19074457,34577054,541L,Nova Iguaçu - Cascadura,4.05
+18913279,34577054,585I,Nova Iguaçu - Jaceruba,4.05
+19035431,34664230,141C,Duque de Caxias - Niterói (via PPCS),9.65
+19072691,34577054,543L,Nova Iguaçu - Méier,4.05
+35800905,34663434,489M,Niterói - Apolo III (via BR-101),5.55
+19041991,34704666,512B,Vilar dos Teles - Central,7.6
+19015701,34576979,425T,Barra da Tijuca - Queimados,12.25
+19053643,34663979,528M,Niterói - Galo Branco (via Barro Vermelho),4.3
+18922960,34577054,429I,Duque de Caxias - Queimados (via Austin),4.05
+36737982,39676686,810I,Barreira - Magé,5.55
+19005429,34576979,193C,Paracambi - Central,12.25
+19101314,34577054,751L,Morro Agudo - Pavuna (via Cosmorama),4.05
+35763819,34663979,530M,Colubandê - Niterói,4.3
+19103625,34577054,461I,Nova Iguaçu - Fábrica de Pólvora,4.05
+28750492,34576963,558C,Pilar - Central (via Vigário Geral),9.15
+19093528,34576963,461C,Raiz da Serra - Central,9.15
+19075049,34577054,540L,Nova Iguaçu - Ricardo de Albuquerque (via Mariópolis),4.05
+18894422,34578029,760D,Charitas - Galeão (via Cidade Universitária),8.65
+36551904,34663979,423M,Niterói - Portão do Rosa,4.3
+18997246,34576963,414M,Morada do Sol - Niterói,9.15
+18925368,34577054,120I,Nova Iguaçu - Belford Roxo,4.05
+18952694,24309007,737P,Campo Grande - Campo Lindo,4.65
+36740381,30174568,113C,Cidade Universitária - Duque de Caxias,6.3
+19110414,30174571,411P,Barra Mansa - Clube Umuarama,4.7
+19094099,34576963,463C,Piabetá - Central (via Imbariê),9.15
+19017736,34577054,135I,Duque de Caxias - São João de Meriti (via Vigário Geral),4.05
+36741533,39715192,192C,Central - Japeri,10.35
+18951481,34578029,434S,Paracambi - Vila Geni,8.65
+19025762,30174568,513I,Duque de Caxias - Nova Campinas,6.3
+36995260,34663189,567L,Duque de Caxias - Freguesia,7.1
+18946179,30175968,441B,Santa Sofia - Central,9.65
+19088656,34576963,556C,Jardim do Ipê - Central (via Washington Luiz),9.15
+19025346,30174568,511I,Duque de Caxias - Parque Paulista,6.3
+33487560,34664230,465C,Andorinhas - Duque de Caxias,9.65
+18918640,34577054,431C,Duque de Caxias - Marcílio Dias (via Mercado São Sebastião),4.05
+49705195,24309007,451T,Duque de Caxias - Campo Grande (via Éden),7.1
+18938642,30174568,111C,Duque de Caxias - Central (via Vigário Geral),6.3
+18905937,34576979,474C,Vilar Santo Aleixo - Central,12.25
+19017023,24309007,134I,Nova Iguaçu - Duque de Caxias (via Vigário Geral),4.65
+18939723,34577054,431I,Nilópolis - Nova Iguaçu,4.05
+48070184,39733806,519B,Areia Branca - Central,8.65
+50339470,34579293,603I,Nova Iguaçu - Niterói (via Magé),12.25
+18951871,34578029,739P,Campo Grande - Santa Sofia,4.65
+18912476,34577054,205I,Nova Iguaçu - Belford Roxo (via Piam),4.05
+18912983,34577054,621I,Nova Iguaçu - Nova Aurora (via Av. Glória),4.05
+47567746,39733806,522B,Parque São Vicente - Central,8.65
+19102154,34577054,562I,Austin - Pavuna,4.05
+36996258,34577054,575P,Itaguaí - Padre Miguel,4.05
+38442247,34577054,431L,Praça Santinha - Deodoro,4.05
+18910237,34577054,775I,Miguel Couto - Nova Aurora,4.05
+19054174,34663979,538M,Praça do Rocha - Niterói,4.3
+19056036,34576979,425D,Alcântara - Campo Grande (via Vila Militar),12.25
+18957033,34579293,452B,Vila Camorim - Central,10.35
+19042251,34704666,140B,São João de Meriti - Central,7.6
+18881123,34663979,484M,Niterói - Pacheco (via Tribobó),4.3
+12350529,30174568,556I,Duque de Caxias - Bom Retiro,6.3
+48078764,39733806,520B,São Francisco - Central,8.65
+19102735,34577054,786L,Morro Agudo - Anchieta,4.05
+18925533,34577054,107I,Nilópolis - São João de Meriti (via Nova Cidade),4.05
+18925762,34577054,437I,Nilópolis - Vilar dos Teles (via Nova Cidade),4.05
+19019763,39748193,500I,Duque de Caxias - Bairro Vona (via Parque Fluminense),4.05
+18933119,34704666,474B,Coelho da Rocha - Central,7.6
+19091860,34576963,489C,Campos Elíseos - Central,9.15
+18944385,34578029,114B,Nova Iguaçu - Central (via Vila Nova),8.65
+19036644,34579293,143C,Niterói - Nova Iguaçu (via PPCS/S. J. Meriti),10.35
+18911767,34577054,800L,Nova Aurora - Madureira (via Barros Filho),4.05
+18988735,34576963,651B,Mesquita - Central (via Via Light),8.65
+50381727,24309007,454U,Itaguaí - Itacuruçá,4.65
+19044965,34577054,663I,Nova Iguaçu - Jacutinga,4.05
+29265547,34576963,124B,Nilópolis - Central (via Parada de Lucas),9.15
+34776172,30174568,507I,Duque de Caxias - Sacuruna (via Jardim Primavera),6.3
+36737694,34663434,805I,Magé - Paraíso,5.55
+19019935,39748193,499I,Duque de Caxias - Parque São José,4.05
+19040890,34704666,514B,Éden - Central,7.6
+18895165,34578029,775D,Charitas - Gávea (via Lapa),8.65
+19024029,34663189,510I,Duque de Caxias - Raiz da Serra,7.1
+18983650,34577054,607I,Nova Iguaçu - Bairro Paraíso,4.05
+18893617,34663979,400M,Niterói - Bairro das Palmeiras (via Nova Cidade),4.3
+48052715,39733806,523B,Sargento Roncali - Central (via Parque São Vicente),8.65
+18944734,34578029,115B,Nova Iguaçu - Central (via Vila Nova),8.65
+19104109,34663189,730D,Charitas - Candelária (via Fonseca),7.1
+18891450,34663979,408M,Niterói - Alcântara (via Porto Velho),4.3
+19064008,34663434,590M,Niterói - Amendoeira (via Tribobó),5.55
+18982577,39680015,640I,Queimados - Engenheiro Pedreira (via Belmonte),4.05
+19070891,34576979,578D,Ponta Negra - Candelária (via Manoel Ribeiro),12.25
+19103253,34577054,749L,Morro Agudo - Pavuna (via Via Light),4.05
+18883630,34664230,721D,Alcântara - Botafogo,9.65
+19091289,34576963,472C,Ana Clara - Central,9.15
+19052621,34663979,526M,Niterói - Bairro Antonina (via Porto da Pedra),4.3
+39750184,34578029,740D,Charitas - Leme,8.65
+18910604,34577054,780I,São Francisco - Mesquita,4.05
+19014637,34578029,489B,Jardim Esplanada - Central,8.65
+18992466,34576963,124M,Niterói - Itaboraí (Visconde de Itaboraí),9.15
+19081895,34663434,553M,Niterói - Santa Isabel (via Bairro Legião),5.55
+19077423,24309007,746P,Pqe. S. Francisco de Paula - Campo Grande (via Prados Verdes),4.65
+19021207,34663189,406I,Duque de Caxias - Piabetá (via Estrada do Bongaba),7.1
+18982727,34577054,645I,Queimados - Engenheiro Pedreira (via Dutra),4.05
+19065865,34578029,144R,Maricá - Niterói (via Tribobó),8.65
+18938143,34577054,110I,Duque de Caxias - São João de Meriti (via Jardim Metrópole),4.05
+18877896,34663434,431M,Niterói - Monjolos,5.55
+18943309,34578029,134B,Nova Iguaçu - Vila Isabel (via Shopping Iguatemi),8.65
+18901283,30174568,426C,Vila São José - Central,6.3
+18996742,34663189,413M,Venda das Pedras - Niterói (via BR-101),7.1
+18879294,30174566,703M,Alcântara - São José,4.3
+19033258,34577054,704N,Raiz da Serra - Praia do Anil,4.05
+19085865,34577054,552I,Bairro Santa Maria - Pavuna (via Gogó da Ema),4.05
+18898222,34578029,751D,Charitas - Gávea (via Túnel Santa Bárbara),8.65
+35741781,34663434,491M,Niterói - Santa Luzia,5.55
+19051022,34577054,225I,Nova Iguaçu - Mesquita (via Av. São Paulo),4.05
+18981146,34664230,458M,Niterói - Andorinhas,9.65
+34454706,30174568,558I,Duque de Caxias - Parque Eldorado,6.3
+19068200,34578029,145R,Niterói - Maricá (via São José de Imbassaí),8.65
+18941457,34578029,119B,Nova Iguaçu - Central (via Plínio Casado),8.65
+18998397,34663434,416M,Niterói - Manilha (via Novo Horizonte/Planalto Marambaia),5.55
+19009086,34578029,491B,Austin - Central (via Tio Luiz),8.65
+18883018,34579293,718D,Alcântara - Madureira (via PPCS),10.35
+18941816,34578029,122B,Comendador Soares - Central (via Barros Júnior),8.65
+19075796,34577054,432L,Nilópolis - Bangu,4.05
+19019567,39748193,501I,Duque de Caxias - Praça Bom Pastor,4.05
+19082353,34579293,540D,Santa Isabel - Estácio,9.65
+18985143,34577054,570I,Queimados - Engenheiro Pedreira (via Santa Amélia),4.05
+19020273,39748193,727I,Parque Araruama - Gramacho,4.05
+18891131,39695499,409M,Niterói - Alcântara (via Trindade),4.3
+18934890,34577054,115I,Duque de Caixas - Nova Iguaçu,4.05
+18964713,34576963,120T,Duque de Caxias - Itaguaí (via Nova Iguaçu),4.65
+18938510,34577054,109I,Duque de Caxias - São João de Meriti (via Vilar dos Teles),4.05
+19067759,34684038,579D,Itaipuaçu (Recanto) - Candelária,12.25
+18999941,34663434,417M,Niterói - Manilha (via BR - 101),5.55
+19103835,34663189,725D,Fonseca - São Cristóvão,7.1
+19068579,34578029,534R,Niterói - Ponta Negra (via Manoel Ribeiro),8.65
+19068919,34663979,540R,Niterói - Jóquei Club (via Tribobó/Oásis),4.3
+19096239,34663189,561L,Duque de Caxias - Freguesia (via Jacarepaguá),7.1
+18983222,34577054,155I,Nova Iguaçu - Queimados (via Dutra),4.05
+18985070,34577054,560I,Queimados - Jaceruba,4.05
+18880133,34663434,483M,Jardim Catarina - Niterói (via Tribobó),5.55
+18933459,34578029,472B,Coelho Branco - Central,8.65
+18907036,34663434,800I,Magé - Caneca Fina,5.55
+19031368,19828278,478C,Santa Cruz da Serra - Central,9.15
+18900866,30174568,424C,Vila São Luiz - Central (via Beira Mar),6.3
+19103431,34577054,460I,Nova Iguaçu - Delamare,4.05
+18920214,30174568,108C,Duque de Caxias - Estácio,6.3
+18942944,34578029,118B,Nova Iguaçu - Central,8.65
+19041743,34704666,513B,Vila Tiradentes - Central (via Vila Rosali),7.6
+18979773,34663434,122Q,Alcântara - Magé (via Itambi),5.55
+22538602,39733814,415T,Barra da Tijuca - Duque de Caxias,7.1
+35762255,39695499,404M,Niterói - Trindade (via BR-101),4.3
+18956820,34579293,451B,Engenheiro Pedreira - Central,10.35
+33573674,39715192,726D,Santa Luzia - Candelária,10.35
+18930552,34577054,433I,Pavuna - Nilópolis (via Edem),4.05
+18917500,34664230,545D,Alcântara - Candelária (via Dr. March),9.65
+18982093,34664230,126Q,Niterói - Vale das Pedrinhas,9.65
+19074238,34577054,542L,Nilópolis - Cascadura,4.05
+18909388,39680015,422I,Geneciano - Pavuna (via Itaipu),4.05
+18936530,34577054,724I,Pavuna - Vale do Ipê,4.05
+19020348,39748193,726I,Sarapuí - Estrada das Pedrinhas,4.05
+18892839,34663979,401M,Niterói - Luiz Caçador (via Porto Velho),4.3
+19001619,34664230,566D,Manilha - Candelária (via PPCS),9.65
+18952873,34577054,665I,Nova Iguaçu - Vila Emil (via Cosmorama),4.05
+18882448,34579293,723D,Penha - Santa Isabel (via PPCS),10.35
+18904348,34576979,196C,Guapimirim - Central,12.25
+18934695,34577054,454I,Duque de Caxias - Jardim do Ipê,4.05
+19087397,34576963,559B,Parque São Vicente - Central,9.15
+19101766,34577054,563I,Morro Agudo - Grande Rio,4.05
+29180666,34578029,771D,Pendotiba - Candelária,8.65
+18939951,34577054,180I,Nova Iguaçu - Japeri,4.05
+19092723,34576979,467C,Ipiranga - Central,12.25
+18881655,34663434,487M,Guaxindiba - Niterói,5.55
+19099228,34577054,560L,Duque de Caxias - Méier (via NorteShopping),4.05
+18899901,34578029,741D,Charitas - Leme,8.65
+19012969,34578029,498B,Caiçaras - Central,8.65
+49761231,24309026,564T,Duque de Caxias - Campo Grande (via Parada de Lucas),7.1
+18932078,34577054,450I,Nova Iguaçu - Parque São José,4.05
+19064537,34663434,535R,Niterói - Várzea das Moças (via Tribobó),5.55
+18937463,34577054,496I,Pavuna - Santa Tereza,4.05
+19051830,34663979,523M,Niterói -  Praia das Pedrinhas,4.3
+18904187,34576979,195C,Guapimirim - Central,12.25
+18930789,34577054,104I,Pavuna - Nilópolis (via Tomazinho),4.05
+18902355,30174568,422C,Jardim Gramacho - Central (via Beira Mar),6.3
+18925104,34577054,428I,Comendador Soares - Cabral,4.05
+18878283,34663979,701M,Alcântara -  Itaboraí (via Bernardino),4.3
+19066803,34684035,585R,Niterói - Itaipuaçu,8.65
+18897242,34578029,750D,Charitas - Gávea (via Túnel Santa Bárbara),8.65
+19071848,34577054,551L,Nova Iguaçu - Penha,4.05
+19097378,34663189,562L,Duque de Caxias - Freguesia (via Rocha Miranda),7.1
+35752446,34663979,531M,Jardim Alcântara - Niterói,4.3
+18938929,30174568,112C,Duque de Caxias - Central (via Linha Vermelha/Av. Brasil),6.3
+19084823,34577054,561I,Santa Rita - Pavuna (via Ponto Chic),4.05
+18950680,24309007,442L,Itaguaí - Coelho Neto,4.65
+25602519,34576963,486C,Xerém - Central,9.15
+18985308,34577054,750I,Engenheiro Pedreira - Jaceruba,4.05
+18929389,34663979,445I,Nova Iguaçu - Xerém,4.3
+18940487,34578029,442B,Cabuçu - Central,8.65
+18982789,24309007,175I,Queimados - Belford Roxo (via Dutra),4.65
+18985351,34576963,129B,Nilópolis - Central (via Vila Norma),9.15
+37106316,34576963,473C,Central - Saracuruna,9.15
+19067148,24309007,544R,Maricá - Rio do Ouro (via Flamengo),4.65
+34780818,34577054,765I,Piabetá - Xerém (via Nova Campinas/Imbariê),4.05
+18912742,34577054,620I,Nova Iguaçu - Nova Aurora (via Itaipu),4.05
+18907357,34705120,820I,Magé - Saco,4.05
+19086543,34577054,714I,Ponto Chic - Barro Vermelho,4.05
+19069141,34663979,541R,Niterói - Jóquei Club (via Arsenal),4.3
+18901905,41109087,416C,Parque São José - Central (via Gramacho),8.65
+19109784,34577054,654I,Nova Iguaçu - Praça Tocantins,4.05
+19076687,24309007,743P,Campo Grande - Jardim Paraíso,4.65
+18998862,34577054,757M,Alcântara - Venda das Pedras,4.3
+18878993,34663979,700M,Alcântara - Curuzu,4.3
+18926627,34577054,720L,Madureira - Jardim Novo Rio,4.05
+19075446,34577054,737L,Belford Roxo - Deodoro,4.05
+18931187,34577054,435I,Nova Iguaçu - Sargento Roncali,4.05
+19012070,34578029,497B,Miguel Couto - Central (via Ambaí),8.65
+19110366,38510823,410P,Bairro Nove de Abril - Barra Mansa,4.6
+36749493,34663189,514I,Duque de Caxias - Raiz da Serra,7.1
+19014066,34578029,502B,Miguel Couto - Estácio (via Luís Lemos),8.65
+18902544,30174568,420C,Gramacho - Central (via General Rondon),6.3
+18937068,34577054,722I,Pavuna - Sargento Roncali (via Vila Pauline),4.05
+18984195,34577054,170I,Nova Iguaçu - Queimados (via Inconfidência),4.05
+18905248,34576979,464C,Andorinhas - Central,12.25
+36741821,39680015,432I,Nova Iguaçu - Santo Expedito,4.05
+18906408,34576979,125C,Magé - Central,12.25
+18930944,34577054,103I,Nilópolis - Shopping Grande Rio (via Portugal Pequeno),4.05
+19055913,34663979,446M,Niterói - Engenho Pequeno (via Mentor Couto),4.3
+18948820,34664230,112B,Itaguaí - Central,9.65
+18910943,34577054,535I,Nova Iguaçu - Babi,4.05
+18913895,34664230,426A,São Gonçalo - Estácio (via Porto Velho),9.65
+19064230,34576979,590R,Ponta Negra - Candelária (via Boqueirão),12.25
+19026788,30174568,508I,Duque de Caxias - Saracuruna (via BR-493),6.3
+36749781,39680015,602I,Belford Roxo - Nova Iguaçu,4.05
+19008844,34578029,503B,Vila de Cava - Central,8.65
+22541859,34578029,410T,Barra da Tijuca - São João de Meriti,8.65
+18908173,39680015,421I,Geneciano - Pavuna,4.05
+18928295,34577054,713L,Cosmorama - Cascadura,4.05
+19055670,34663979,445M,Niterói - Engenho Pequeno (via Neves),4.3
+33560576,34579293,722D,Monjolos - Candelária,10.35
+19054473,34664230,520D,Jardim Alcântara - Estácio (via Dr. March),9.65
+18955810,34577054,630I,Nova Iguaçu - Xavante,4.05
+18877440,34663434,430M,Niterói - São José,5.55
+18984907,34577054,705I,Miguel Couto - Edson Passos (via Dutra/Av. Carlos Marques Rollo),4.05
+18985544,34578029,133B,Nova Iguaçu - Central,8.65
+18954154,39733814,750D,Santa Rosa - Estácio,7.1
+28749861,34704666,417C,Central - Vilar dos Teles (via Covanca/Nilo Peçanha),7.6
+19073449,34577054,544L,Nova Iguaçu - Méier (via Norte Shopping),4.05
+18889453,34663189,407I,Duque Caxias - Raiz da Serra (via Imbariê),7.1
+36748340,39748193,600C,Central - Bairro Vona,4.05
+19017948,24309007,131I,Nova Iguaçu - Duque de Caxias (via Via Light),4.65
+18908583,34577054,423I,Tinguá - Pavuna,4.05
+19087198,34577054,190I,Nova Iguaçu - Belford Roxo (via Prata),4.05
+18944111,34577054,703B,Comendador Soares - Mercado São Sebastião,4.05
+19058753,34576979,424D,Alcântara - Campo Grande (via Água Branca),12.25
+35762887,39695499,701R,Itaipuaçu - Rio do Ouro,4.3
+19086205,34577054,550I,Belford Roxo - Ponto Chic,4.05
+50382850,34663434,455U,Itaguaí - Muriqui,5.55
+19030609,34576963,571C,Nova Campina - Central (via Parque Paulista/Santa Cruz da Serra),9.15
+18947861,34578029,446B,Lagoinha - Central,8.65
+18914746,34664230,428A,São Gonçalo - Vila Isabel (via UERJ),9.65
+41102804,34576963,426M,Niterói - Itambi (via BR-101),9.15
+36750069,39680015,141I,Duque de Caxias - São João de Meriti (via Rua 13),4.05
+19004256,34577054,494L,Duque de Caxias - Pilares (via Cidade Alta),4.05
+19018594,30174568,415C,Jardim Leal - Central (via Gramacho),6.3
+19098148,34577054,563L,Duque de Caxias - Rocha Miranda,4.05
+19003896,34577054,492L,Duque de Caxias - Engenho da Rainha,4.05
+29061511,30174568,100D,Niterói - Candelária,6.3
+18906616,34576979,127C,Magé - Central,12.25
+12348648,30174568,555I,Duque de Caxias - Campos Elíseos,6.3
+19051313,34577054,660I,Nova Iguaçu - Edson Passos,4.05
+35765398,24309007,546R,Maricá - Rio do Ouro (via Av. Ver. Francisco S. da Costa),4.65
+18995412,34663434,481M,Niterói - Apolo III (via Jardim Fluminense),5.55
+18888350,34579293,708D,Tribobó - Madureira (via Fonseca),10.35
+19064829,34663979,571R,Niterói - Engenho do Roçado (via Ipiíba),4.3
+19020104,39748193,418I,Duque de Caxias - Parque Suécia,4.05
+19061526,34663979,143M,Niterói - São Gonçalo (via Dr. March),4.3
+18907712,34577054,428L,Bonsucesso - Nova Aurora,4.05
+18914294,34664230,427A,São Gonçalo - Vila Isabel (via BR-101),9.65
+19018166,34577054,138I,Duque de Caxias - Nilópolis (via Jardim América),4.05
+19052192,34663979,524M,Niterói - Pontal,4.3
+19000063,34663979,403M,Niterói - Trindade (via Porto Velho),4.3
+18957963,34579293,443B,Queimados - Central,10.35
+18982977,24309007,606I,Queimados - Vilar dos Teles,4.65
+19024788,30174568,512I,Duque de Caxias - Parada Angélica,6.3
+19090419,39680015,557I,Duque de Caxias - Pilar (via Fundação Cristo Redentor),4.05
+19050810,34577054,670I,Nova Iguaçu - Edson Passos (via Gordura),4.05
+18927415,34577054,738L,Jardim Botânico - Cascadura (via Vilar dos Teles),4.05
+18984465,34577054,605I,Austin - Queimados (via Guimarães),4.05
+18985097,34577054,565I,Queimados - Engenheiro Pedreira,4.05
+35765716,34663434,492M,Jardim Catarina - Niterói (via BR-101),5.55
+36741245,39715192,453B,Central - Engenheiro Pedreira,10.35
+18918421,30174568,102C,Duque de Caxias - Central (via 25 de Agosto),6.3
+18940114,34578029,113B,Nova Iguaçu - Central (via Plínio Casado),8.65
+18901043,34578029,418C,Jardim Redentor - Central (via Jardim Metrópole),8.65
+18951141,24309007,738P,Campo Grande - Ilha da Madeira,4.65
+19003117,34663189,488L,Duque de Caxias - Usina,7.1
+18986310,34577054,479I,Nova Iguaçu - Parada de Lucas,4.05
+19074747,34577054,546L,Nova Iguaçu - Praça Seca,4.05
+18891755,34663189,702M,São Cristóvão - Barreto (via PPCS),7.1
+19019103,39748193,449I,Duque de Caxias - Amapá,4.05
+18946684,34578029,444B,Cabuçu - Central (via Km 32),8.65
+35766291,34664230,142C,Duque de Caxias - Niterói,9.65
+49732949,39680015,570P,Itaguaí - Marechal Hermes,4.05
+19015039,34578029,488B,Boa Esperança - Central,8.65
+50299308,39695499,703M,Alcântara - Manilha (via Estrada do Sapê),4.3
+19050644,34577054,665I,Nova Iguaçu - Edson Passos (via Emílio Guadagny),4.05
+19051530,34663979,443M,Niterói - Boa Vista,4.3
+18936109,34577054,734L,Cascadura - Vila Norma (via Vila Tiradentes),4.05
+18983319,34577054,165I,Nova Iguaçu - Queimados (via Mariléia e Guimarães),4.05
+35764081,39695499,519M,Fazenda dos Mineiros - Niterói (via BR-101),4.3
+18911275,34577054,530I,Nova Iguaçu - Geneciano,4.05
+19042941,34704666,516B,Venda Velha - Central,7.6
+18994633,34576963,424M,Niterói - Itambi,9.15
+18907406,34577054,825I,Magé - Parada Ideal,4.05
+19007013,34578029,493B,Ponto Chic - Central,8.65
+19045227,39680015,770I,Borba Gato - Bayer do Brasil,4.05
+18954731,39733814,709D,Charitas - Candelária (via Icaraí),7.1
+19106522,34578029,770D,Itaipu - Candelária,8.65
+18902238,30174568,421C,Doutor Laureano - Central (via Itatiaia),6.3
+19010229,34578029,499B,Cabuçu - Central (via Estrada da Palhada),8.65
+19027468,34664230,506I,Duque de Caxias - Ipiranga (via Estrada Nova),9.65
+18990702,34663979,517M,Niterói - Fazenda dos Mineiros (via Porto Velho),4.3
+19022144,34663189,404I,Duque de Caxias - Piabetá (via Maracanã),7.1
+19089139,30174568,554I,Duque de Caxias - Mantiquira,6.3
+18953893,39733806,703D,Santa Rosa - Vila Isabel (via PPCS),8.65
+18881411,34663979,486M,Parque Eldorado - Niterói (via Fazenda Colubandê),4.3
+25534087,34664230,110D,São Gonçalo - Passeio,9.65
+19069500,34663979,542R,Niterói - Anaia,4.3
+18953741,34577054,657I,Nova Iguaçu - Jacutinga (via Delfina Borges),4.05
+36740957,39680015,206I,Belford Roxo - Nova Iguaçu,4.05
+18962384,24309007,454U,Itaguaí - Itacuruçá,4.65
+30721306,34576963,478B,Mesquita - Central (via Chatuba),9.15
+49709550,34577054,426P,Itaguaí - Cesarão,4.05
+18918703,30174568,103C,Duque de Caxias - Central (via 25 de Agosto),6.3
+19091096,34576963,477C,Jardim Primavera - Central,9.15
+19027962,34664230,505I,Duque de Caxias - Ipiranga (via Suruí),9.65
+19095272,34576963,462C,Piabetá - Central (via  Bongaba),9.15
+36740669,24309007,713B,Cabuçu - Coelho Neto,4.65
+18919655,30174568,104C,Duque de Caxias - Central (via Vigário Geral),6.3
+19017214,24309007,137I,Nova Iguaçu - Duque de Caxias (via Dutra),4.65
+35755409,39695499,422M,Niterói - Portão do Rosa,4.3
+18913386,34664230,423A,São Gonçalo - Vila Isabel (via PPCS),9.65
+18964617,34663434,455U,Itaguaí - Muriqui,5.55
+19032724,34576963,566C,Praça Santo Antônio - Central,9.15
+18880791,34663434,488M,Niterói - Boa Vista do Laranjal (via Tribobó),5.55
+18907203,33919069,815I,Magé - Vale das Pedrinhas,4.05
+39053020,34577054,547L,Nilópolis - Ricardo de Albuquerque (via Mariópolis),4.05
+19052855,34663979,536M,Niterói - São Gonçalo (via Boa Vista) (Circular),4.3
+18991436,34663979,515M,Mutuá - Niterói (via Porto Velho),4.3
+19099925,39680015,564L,Duque de Caxias - Méier (via Vicente de Carvalho),4.05
+18998008,39680015,587M,Venda das Pedras - São Gonçalo,4.3
+18991748,34663979,567M,Niterói - Av. Central (via Porto Velho),4.3
+19053894,34663979,529M,Niterói - Ceasa (via Barro Vermelho),4.3
+18952045,34578029,545P,Campo Grande - Paracambi,8.65
+18935508,34577054,116I,Duque de Caxias - Nova Iguaçu (via Vila Pauline),4.05
+19017509,34577054,140I,Nova Iguaçu - Pavuna,4.05
+19044491,34577054,661I,Nova Iguaçu - Vila Emil (via Santo Elias),4.05
+19013695,34578029,501B,Miguel Couto - Central (via Luís Lemos),8.65
+19033738,34579293,511Q,Niterói - Imbariê (via Magé/Piabetá),10.35
+19060547,34663434,527M,Niterói - Amendoeira (via Dr. March),5.55
+18980870,34663979,125Q,São Gonçalo - Aldeia da Prata,4.3
+19020530,39748193,447I,Duque de Caxias - Vale das Mangueiras (via Parque Amorim),4.05
+19080083,34663434,550M,Niterói - São Pedro,5.55
+19043809,34577054,600I,Nova Iguaçu - Belford Roxo (via BNH),4.05
+18909902,34577054,420I,Nova Aurora - Pavuna,4.05
+19090622,34576963,471C,Saracuruna - Central,9.15
+18984530,34577054,610I,Austin - Queimados (via Inconfidência),4.05
+33230673,24309007,742P,Campo Grande - Cabuçu,4.65
+18958643,34577054,515I,Queimados - Campo Alegre,4.05
+19016860,15793644,495L,Duque de Caxias - Penha,4.05
+18953587,34577054,656I,Nova Iguaçu - Jacutinga (via Pindorama),4.05
+35750102,34577054,758M,Morada do Sol - Tribobó,4.3
+19013323,34578029,496B,Miguel Couto - Central (via Luís Lemos),8.65
+18900716,30174568,425C,Vila São Luiz - Central (via Washington Luiz),6.3
+19045506,34577054,142I,Duque de Caxias - São João de Meriti (via Venda Velha),4.05
+49731391,34577054,458S,Campo Grande - Itaguaí (via Palmares),4.05
+18927859,34577054,715L,Jardim Redentor - Cascadura,4.05
+18926426,34577054,108I,Duque de Caxias - São Joao de Meriti (via Matadouro),4.05
+22551000,34576963,420T,Barra da Tijuca - Nilópolis,9.15
+19009617,34578029,494B,Austin - Central (via Cacuia),8.65
+48094738,39733806,524B,Nova Aurora - Central (via Heliópolis),8.65
+19105346,34576979,425T,Barra da Tijuca - Queimados,12.25
+19088249,34576963,557C,Pilar - Central (via Washington Luiz),9.15
+19006917,34664230,107P,Nova Iguaçu - Paracambi,9.65
+18887497,34664230,521D,Alcântara - Candelária,9.65
+19026256,30174568,509I,Duque de Caxias - Cangulo (via BR-493),6.3
+18937715,34577054,497I,Pavuna - Bom Pastor (via Coelho Branco),4.05
+18911975,34577054,200I,Nova Iguaçu - Belford Roxo (via Areia Branca),4.05
+18932618,34577054,136I,Duque de Caxias - Nova Iguaçu (via Vilar dos Teles),4.05
+19079035,24309007,705P,Edson Passos - Bangu (via Campo Grande),4.65
+18912230,34577054,201I,Nova Iguaçu - Belford Roxo (via Engenho Pequeno),4.05
+39659009,34663434,116T,Itaguaí - Mangaratiba (via BR-101),5.55
+18984784,34577054,845I,Eurico Miranda - Largo dos Peixes,4.05

@@ -1,7 +1,7 @@
 library(dplyr)
 library(sf)
 
-generate_accessibility_results <- function(travel_time_threshold = 90, monetary_cost_threshold = 7.5, res = 7) {
+generate_accessibility_results <- function(res = 7) {
   
   itineraries_details <- readr::read_rds(stringr::str_c("./data/itineraries_details_res_", res, ".rds"))
   
@@ -13,21 +13,36 @@ generate_accessibility_results <- function(travel_time_threshold = 90, monetary_
       leg_cost_with_BU = calculate_fare(., routes_info, fare_schema, BU = TRUE),
       leg_cost_without_BU = calculate_fare(., routes_info, fare_schema, BU = FALSE),
       travel_time = as.numeric(lubridate::as.duration(itinerary_end_time - itinerary_start_time), "minutes")
-    ) %>% 
-    group_by(orig_id, dest_id, it_id) %>% 
+    ) %>%
+    group_by(orig_id, dest_id, it_id) %>%
     summarise(
       travel_time = mean(travel_time),
       cost_with_BU = sum(leg_cost_with_BU),
       cost_without_BU = sum(leg_cost_without_BU)
-    )
+    ) %>%
+    ungroup()
+
+  minimum_wage <- 1045
+  minimum_wage_percentages <- c(0.20, 0.25, 0.30, 0.35, 0.40, 10)
+  
+  travel_time_thresholds <- c(30, 60, 90, 120)
+  monetary_cost_thresholds <- minimum_wage_percentages * minimum_wage / (22 * 2)
   
   if (!file.exists("./results")) dir.create("./results")
   
-  accessibility_with_bu <- calculate_accessibility(costs, travel_time_threshold, monetary_cost_threshold, BU = TRUE, res) %>% 
-    readr::write_rds(stringr::str_c("./results/accessibility_with_bu_tt_", travel_time_threshold, "_mc_", monetary_cost_threshold * 10, "_res_", res, ".rds"))
-  
-  accessibility_without_bu <- calculate_accessibility(costs, travel_time_threshold, monetary_cost_threshold, BU = FALSE, res) %>% 
-    readr::write_rds(stringr::str_c("./results/accessibility_without_bu_tt_", travel_time_threshold, "_mc_", monetary_cost_threshold * 10, "_res_", res, ".rds"))
+  for (i in 1:length(travel_time_thresholds)) {
+    
+    for (j in 1:length(monetary_cost_thresholds)) {
+      
+      accessibility_with_bu <- calculate_accessibility(costs, travel_time_thresholds[i], monetary_cost_thresholds[j], BU = TRUE, res) %>% 
+        readr::write_rds(stringr::str_c("./results/with_bu_tt_", travel_time_thresholds[i], "_mc_", minimum_wage_percentages[j] * 100, "_res_", res, ".rds"))
+      
+      accessibility_without_bu <- calculate_accessibility(costs, travel_time_thresholds[i], monetary_cost_thresholds[j], BU = FALSE, res) %>% 
+        readr::write_rds(stringr::str_c("./results/without_bu_tt_", travel_time_thresholds[i], "_mc_", minimum_wage_percentages[j] * 100, "_res_", res, ".rds"))
+      
+    }
+    
+  }
   
 }
 
@@ -36,7 +51,12 @@ generate_routes_info <- function() {
   fetranspor_info <- raw_routes_info("fetranspor")
   supervia_info <- raw_routes_info("supervia")
   
+  # the buses below have a specific fare integration with the subway
+  
   integration_metro_bus <- c(513, 603, 608, 605, 609, 209, 611, 614, 616, 913, 876)
+  
+  # create a type column to be used when calculating the fares
+  # update the price column (and price_bu, since some modes have distinct prices with BU) to match the 2020 fares
   
   routes_info <- bind_rows(fetranspor_info, supervia_info) %>% 
     mutate(
@@ -52,22 +72,12 @@ generate_routes_info <- function() {
       type = ifelse(stringr::str_detect(route_short_name, "^\\d{4}[B-Z]$"), "frescao_intermunicipal", type),
       type = ifelse(fare_id == 13794408, "barca", type),
       type = ifelse(type == "", "outros", type),
-      
-      # temp only (I hope)
-      # adjusting prices to make sure their logic matches with what is actually true
-      
+    ) %>% 
+    update_fares() %>% 
+    mutate(
       price = ifelse(route_id == 19209271 | route_id == 19132687, 10, price), # two random intermunicipal bus lines with no fare
-      price = ifelse(route_id == 19016860, 3.85, price), # 495L
-      price = ifelse(route_id == 12862118, 3.6, price), # 603
-      price = ifelse(route_id == 18928473, 4, price), # 716L
-      price = ifelse(fare_id == 34127393, 3.6, price), # brt prices = municipal_bus prices
-      price = ifelse(fare_id == 52433953, 3.5, price), # vlt prices lower than bus
-      price = ifelse(fare_id == 125, 4.2, price), # train price higher than subway
-      
-      # these types of routes below have special prices when using the BU
-      
-      price_bu = ifelse(type == "barca", 6, price),
-      price_bu = ifelse(type == "onibus_intermunicipal" & price > 7.4, 7.4, price)
+      price_bu = ifelse(type == "barca", 6.3, price),
+      price_bu = ifelse(type == "onibus_intermunicipal" & price > 8.55, 8.55, price_bu)
     ) %>% 
     bind_rows(tibble::tibble(route_id = 0, fare_id = 0, route_short_name = "caminhada", route_long_name = "caminhada", price = 0, type = "caminhada", price_bu = 0))
   
@@ -101,8 +111,9 @@ raw_routes_info <- function(holder) {
     left_join(fare_attributes_treatment(fare_attributes), by = "fare_id") %>% 
     left_join(shapes_treatment(shapes, 4674), by = "shape_id") %>% 
     st_as_sf() %>% 
-    st_transform(5880) %>% 
-    filter(st_intersects(., rio, sparse = FALSE)) %>% 
+    # st_transform(5880) %>% 
+    # st_buffer(1000) %>% 
+    # filter(st_intersects(., rio, sparse = FALSE)) %>% 
     st_drop_geometry() %>% 
     distinct(route_id, fare_id, route_short_name, route_long_name, price)
   
@@ -176,6 +187,37 @@ shapes_treatment <- function(shapes, crs = 4674) {
   
 }
 
+update_fares <- function(routes_info) {
+  
+  # both gtfs' fares are outdated. this function updates them according to the 2020 fares
+  # intermunicipal buses' fares were updated individually and compiled into a csv (values in http://www.detro.rj.gov.br/uploads/2020/AnexoPortariaDETRO-PRES.1513.pdf)
+  # 'outros' category was left as is since it would require to research into many cities' different databases/laws and they barely affect the final result 
+  
+  intermunicipal_fares <- readr::read_csv("./data/tarifas_intermunicipais_2020.csv") %>% 
+    select(-c(fare_id, route_short_name, route_long_name)) %>% 
+    rename(intermunicipal_fare = actual_price)
+  
+  # intermunicipal buses costing less than 4.05 (municipal buses' fare) were also updated to 4.05, even if
+  # not in the pdf linked previously, because no intermunicipal bus costs less than a municipal bus 
+  
+  routes_info <- routes_info %>% 
+    left_join(intermunicipal_fares, by ="route_id") %>% 
+    mutate(
+      actual_price = ifelse(type == "barca", 6.50, NA),
+      actual_price = ifelse(type %in% c("brt", "onibus_metro", "onibus_municipal"), 4.05, actual_price),
+      actual_price = ifelse(type == "metro", 4.60, actual_price),
+      actual_price = ifelse(type == "trem", 4.70, actual_price),
+      actual_price = ifelse(type == "vlt", 3.80, actual_price),
+      actual_price = ifelse(type %in% c("onibus_intermunicipal", "frescao_intermunicipal"), intermunicipal_fare, actual_price),
+      actual_price = ifelse(type == "onibus_intermunicipal" & price < 4.05 & is.na(actual_price), 4.05, actual_price),
+      actual_price = ifelse(is.na(actual_price), price, actual_price),
+      price = actual_price
+    ) %>% 
+    select(-intermunicipal_fare, -actual_price)
+  
+  routes_info
+}
+
 generate_fare_schema <- function() {
   
   # fares and fare schema can be consulted at https://www.cartaoriocard.com.br/rcc/institucional/tarifas
@@ -185,35 +227,35 @@ generate_fare_schema <- function() {
   
   fare_schema <- tibble::tribble(
     ~leg_1,                  ~leg_2,                  ~fare, ~need_bu,
-    "brt",                   "brt",                   3.6,   FALSE,
-    "metro",                 "metro",                 4.1,   FALSE,
-    "trem",                  "trem",                  4.2,   FALSE,
-    "onibus_municipal",      "onibus_municipal",      3.6,   TRUE,
-    "onibus_municipal",      "brt",                   3.6,   TRUE,
-    "brt",                   "onibus_municipal",      3.6,   TRUE,
-    "onibus_municipal",      "vlt",                   3.6,   TRUE,
-    "vlt",                   "onibus_municipal",      3.6,   TRUE,
-    "onibus_municipal",      "onibus_metro",          3.6,   TRUE,
-    "onibus_metro",          "onibus_municipal",      3.6,   TRUE,
-    "vlt",                   "vlt",                   3.5,   TRUE,
+    "brt",                   "brt",                   4.05,  FALSE,
+    "metro",                 "metro",                 4.60,  FALSE,
+    "trem",                  "trem",                  4.70,  FALSE,
+    "onibus_municipal",      "onibus_municipal",      4.05,  TRUE,
+    "onibus_municipal",      "brt",                   4.05,  TRUE,
+    "brt",                   "onibus_municipal",      4.05,  TRUE,
+    "onibus_municipal",      "vlt",                   4.05,  TRUE,
+    "vlt",                   "onibus_municipal",      4.05,  TRUE,
+    "onibus_municipal",      "onibus_metro",          4.05,  TRUE,
+    "onibus_metro",          "onibus_municipal",      4.05,  TRUE,
+    "vlt",                   "vlt",                   3.80,  TRUE,
     "onibus_metro",          "metro",                 6.05,  TRUE,
     "metro",                 "onibus_metro",          6.05,  TRUE,
-    "onibus_intermunicipal", "onibus_municipal",      7.4,   TRUE,
-    "onibus_municipal",      "onibus_intermunicipal", 7.4,   TRUE,
-    "onibus_intermunicipal", "barca",                 7.4,   TRUE,
-    "barca",                 "onibus_intermunicipal", 7.4,   TRUE,
-    "brt",                   "metro",                 6.8,   TRUE,
-    "metro",                 "brt",                   6.8,   TRUE,
-    "trem",                  "metro",                 7.4,   TRUE,
-    "metro",                 "trem",                  7.4,   TRUE,
-    "vlt",                   "onibus_intermunicipal", 7.4,   TRUE,
-    "onibus_intermunicipal", "vlt",                   7.4,   TRUE,
-    "vlt",                   "barca",                 7.4,   TRUE,
-    "barca",                 "vlt",                   7.4,   TRUE,
-    "onibus_intermunicipal", "metro",                 7.4,   TRUE,
-    "metro",                 "onibus_intermunicipal", 7.4,   TRUE,
-    "onibus_intermunicipal", "trem",                  7.4,   TRUE,
-    "trem",                  "onibus_intermunicipal", 7.4,   TRUE)
+    "onibus_intermunicipal", "onibus_municipal",      8.55,  TRUE,
+    "onibus_municipal",      "onibus_intermunicipal", 8.55,  TRUE,
+    "onibus_intermunicipal", "barca",                 8.55,  TRUE,
+    "barca",                 "onibus_intermunicipal", 8.55,  TRUE,
+    "brt",                   "metro",                 6.80,  TRUE,
+    "metro",                 "brt",                   6.80,  TRUE,
+    "trem",                  "metro",                 8.55,  TRUE,
+    "metro",                 "trem",                  8.55,  TRUE,
+    "vlt",                   "onibus_intermunicipal", 8.55,  TRUE,
+    "onibus_intermunicipal", "vlt",                   8.55,  TRUE,
+    "vlt",                   "barca",                 8.55,  TRUE,
+    "barca",                 "vlt",                   8.55,  TRUE,
+    "onibus_intermunicipal", "metro",                 8.55,  TRUE,
+    "metro",                 "onibus_intermunicipal", 8.55,  TRUE,
+    "onibus_intermunicipal", "trem",                  8.55,  TRUE,
+    "trem",                  "onibus_intermunicipal", 8.55,  TRUE)
   
   fare_schema <- fare_schema %>% mutate(int_id = stringr::str_c(leg_1, "&", leg_2))
   
@@ -308,18 +350,31 @@ calculate_fare <- function(itineraries_details, routes_info, fare_schema, BU = T
     
     else {
       
-      # if a integration exists, it can fall within 3 categories:
+      # if a integration exists, it can fall within 4 categories:
       # * the integration doesn't require BU, so the current leg price is 0 (equivalent to the first
       # expression since int_fare[leg_id] and legs$price[i] are the same)
       # * an integration has happenned before already, in which case the full leg price is charged
-      # * an integration has not occurred, in which case the excess of the integration fare compared to
-      # the last motorised leg price is charged
+      # * an integration has not occurred and the sum of the fares of the two modes is higher than the
+      # integration fare, in which case the excess of the integration fare compared to the last motorised
+      # leg price is charged
+      # * an integration has not occurred and the sum of the fares that compose it is lower than the
+      # integration fare (some intermunicipal buses cost less than 4.50, for instance, so the sum of their
+      # fares and the municipal buses fares fall below 8.55, the integration cost), in which case the
+      # mode fare is charged and the integration is not actually accounted
 
       if (!int_need_bu[leg_id]) leg_cost[i] <- int_fare[leg_id] - legs$price[i]
+      
       else if (has_integrated) leg_cost[i] <- legs$price[i]
+      
       else {
-        leg_cost[i] <- int_fare[leg_id] - price_last_moto
-        has_integrated <- TRUE
+        
+        if (price_last_moto + legs$price[i] > int_fare[leg_id]) {
+          leg_cost[i] <- int_fare[leg_id] - price_last_moto
+          has_integrated <- TRUE
+        }
+        
+        else leg_cost[i] <- legs$price[i]
+        
       }
 
     }
@@ -331,7 +386,7 @@ calculate_fare <- function(itineraries_details, routes_info, fare_schema, BU = T
     # e.g. suppose we have brt-> brt -> metro.
     # the correct leg cost is be (brt_price) -> 0 -> (metro_brt_integration - brt_price)
     # if the variables were updated we'd have (brt_price) -> 0 -> (metro_brt_integration)
-
+    
     if (legs$type[i] != "caminhada" && (is.na(int_fare[leg_id]) || int_need_bu[leg_id])){
       last_moto <- legs$type[i]
       price_last_moto <- leg_cost[i]
@@ -355,7 +410,8 @@ calculate_accessibility <- function(costs_df, travel_time_threshold, monetary_co
   
   grid_data <- readr::read_rds(stringr::str_c("./data/rio_h3_grid_res_", res, "_with_data.rds"))
   
-  costs_df <- costs_df %>% mutate(monetary_cost = ifelse(BU, cost_with_BU, cost_without_BU))
+  n <- nrow(costs_df)
+  costs_df <- costs_df %>% mutate(monetary_cost = ifelse(rep(BU, n), cost_with_BU, cost_without_BU))
   
   accessibility_to_itself <- grid_data %>% select(id, inside_opportunities = opportunities)
   
@@ -363,9 +419,9 @@ calculate_accessibility <- function(costs_df, travel_time_threshold, monetary_co
   
   accessibility_to_others <- costs_df %>% 
     left_join(grid_data, by = c("dest_id" = "id")) %>% 
-    filter(travel_time <= travel_time_threshold, monetary_cost <= monetary_cost_threshold) %>% 
+    filter(travel_time <= travel_time_threshold, monetary_cost <= monetary_cost_threshold) %>%
     group_by(orig_id, dest_id) %>% 
-    slice(1) %>% 
+    slice(1) %>%
     group_by(orig_id) %>% 
     summarise(reachable_opportunities = sum(opportunities)) %>% 
     ungroup() %>% 
@@ -381,3 +437,4 @@ calculate_accessibility <- function(costs_df, travel_time_threshold, monetary_co
   accessibility
   
 }
+

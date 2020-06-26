@@ -5,22 +5,21 @@ generate_itinerary_details <- function(res = 7) {
   
   parameters <- list(
     mode = "TRANSIT,WALK",
-    date = "01-01-2020",
+    date = "01-08-2020",
     time = "08:00am",
     arriveBy = "FALSE",
     maxWalkDistance = "2000",
-    numItineraries = "3"
+    numItineraries = "10"
   )
   
   itineraries_list <- get_transit_itineraries3(parameters, res)
-  
   readr::write_rds(itineraries_list, "./data/temp_itineraries_list.rds")
   
   desired_leg_details <- c("startTime","endTime", "distance", "mode", "routeId", "route")
   
   itineraries_details <- extract_itinerary_details(itineraries_list, desired_leg_details)
   
-  file.remove("./data/temp_itineraries_list.rds")
+  # file.remove("./data/temp_itineraries_list.rds")
   
   readr::write_rds(itineraries_details, stringr::str_c("./data/itineraries_details_res_", res, ".rds"))
   
@@ -81,13 +80,13 @@ make_request <- function(x, od_points, parameters) {
   
 }
 
-extract_itinerary_details <- function(itineraries_list, leg_details) {
+extract_itinerary_details <- function(itineraries_list, leg_details, ta_tudo_errado = FALSE) {
   
   n <- length(itineraries_list)
   
   future::plan(future::multiprocess, workers = future::availableCores() - 1)
   
-  furrr::future_map_dfr(itineraries_list, itinerary_details_to_df, leg_details) %>% 
+  furrr::future_map_dfr(itineraries_list, itinerary_details_to_df, leg_details, ta_tudo_errado) %>% 
     select(
       all_of(names(.)[! names(.) %in% c("leg_id", leg_details)]),
       all_of(c("leg_id", leg_details))
@@ -101,10 +100,18 @@ extract_itinerary_details <- function(itineraries_list, leg_details) {
   
 }
 
-itinerary_details_to_df <- function(itineraries_list, leg_details) {
+itinerary_details_to_df <- function(itineraries_list, leg_details, ta_tudo_errado = FALSE) {
   
-  orig_id <- itineraries_list$identification$orig_id
-  dest_id <- itineraries_list$identification$dest_id
+  if (ta_tudo_errado) {
+    id_latlon <- readr::read_rds("./data/id_latlon.rds")
+    id_ids <- setNames(id_latlon$id, id_latlon$lat_lon)
+    orig_id <- id_ids[itineraries_list$requestParameters$fromPlace]
+    dest_id <- id_ids[itineraries_list$requestParameters$toPlace]
+  }
+  else {
+    orig_id <- itineraries_list$identification$orig_id
+    dest_id <- itineraries_list$identification$dest_id
+  }
   
   if (!is.null(itineraries_list$error)) {
     
@@ -232,15 +239,13 @@ get_transit_itineraries3 <- function(parameters, res = 7) {
     st_transform(5880) %>% 
     st_centroid() %>% 
     st_transform(4674) %>% 
-    st_coordinates() %>% 
-    tibble::as_tibble() %>% 
-    tibble::rowid_to_column("id") %>% 
+    bind_cols(tibble::as_tibble(st_coordinates(.))) %>% 
     mutate(lat_lon = stringr::str_c(Y, ",", X)) %>% 
-    select(-X, -Y)
+    select(id, lat_lon) %>% 
+    st_drop_geometry() %>% 
+    tibble::as_tibble()
   
   # opentripplanner::otp_setup(otp = "./otp/otp.jar", dir = "./otp", memory = 2048, router = "rio")
-  
-  n <- nrow(rio_centroids_coordinates)
   
   responses <- make_request3(rio_centroids_coordinates, parameters)
   
@@ -272,7 +277,7 @@ make_request3 <- function(od_points, parameters) {
       
       urls[[c]] <- request_url
       
-      identification[[c]]$origin_id <- od_points[i, ]$id
+      identification[[c]]$orig_id <- od_points[i, ]$id
       identification[[c]]$dest_id <- od_points[j, ]$id
       
       c <- c + 1
