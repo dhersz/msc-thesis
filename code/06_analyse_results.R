@@ -3,7 +3,7 @@ library(sf)
 library(tmap)
 library(ggplot2)
 
-analyse_results <- function(travel_time = 60, n_quantiles = 10, res = 7, lang = "pt", minimum_wage = 1045) {
+analyse_results <- function(n_quantiles = 10, res = 7, lang = "pt") {
   
   # classify each hexagon according to its residents' avg income per capita quantile
   # not sure why, but the values returned by wtd.quantile() seem to have some kind of issue with their rounding
@@ -31,13 +31,18 @@ analyse_results <- function(travel_time = 60, n_quantiles = 10, res = 7, lang = 
   # create visualisations comparing accessibility at different monetary costs thresholds and without a
   # monetary cost threshold
   
-  travel_time <- travel_time
+  travel_time <- c(30, 60, 90, 120)
   percentage_minimum_wage <- c(20, 30, 40, 1000)
   
-  text_labels <- labels_different_costs(travel_time, percentage_minimum_wage, lang)
-  maps_different_costs(grid_data, travel_time, percentage_minimum_wage, text_labels, res)
-  boxplot_different_costs(grid_data, travel_time, percentage_minimum_wage, res = res)
-  theil_different_costs(grid_data, travel_time, percentage_minimum_wage, res = res)
+  for (i in seq_along(travel_time)) {
+    
+    text_labels <- labels_different_costs(travel_time[i], percentage_minimum_wage, lang)
+    
+    maps_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
+    boxplot_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
+    theil_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
+    
+  }
   
   # second analysis: effect of BU fare policy
   # create visualisations comparing accessibility at a specific combination of time travel and cost thresholds
@@ -58,9 +63,28 @@ labels_different_costs <- function(travel_time, percentage_minimum_wage, lang) {
   if (lang == "pt") {
   
     text_labels <- list(
+      "lang" = lang,
       "maps" = list(
         "facets_title" = stringr::str_c("Custo monetário ", ifelse(percentage_minimum_wage <= 100, stringr::str_c("<= ", percentage_minimum_wage, "% do salário mínimo"), "não considerado")),
         "legend_title" = "  Empregos acessíveis (% do total)"
+      ),
+      "boxplot" = list(
+        "facets_title" = stringr::str_c("Custo monetário ", ifelse(percentage_minimum_wage <= 100, stringr::str_c("<= ", percentage_minimum_wage, "% do salário mínimo"), "não considerado")),
+        "palma_ratio" = "Razão de Palma: ",
+        "y_axis" = "Empregos acessíveis (% do total)",
+        "x_axis" = "Decil de renda"
+      ),
+      "theil_stacked" = list(
+        "bar_labels" = ifelse(percentage_minimum_wage <= 100, stringr::str_c(percentage_minimum_wage, "% do sal. mín."), "Não considerado"),
+        "y_axis" = "Índice de Theil",
+        "x_axis" = "Valor limite de custo",
+        "component" = "Componente",
+        "components_names" = c("Entregrupos", "Intragrupos")
+      ),
+      "between_group" = list(
+        "facets_title" = stringr::str_c("Custo monetário ", ifelse(percentage_minimum_wage <= 100, stringr::str_c("<= ", percentage_minimum_wage, "% do salário mínimo"), "não considerado")),
+        "y_axis" = "Participação",
+        "x_axis" = "Decil de renda"
       )
     )
     
@@ -119,7 +143,7 @@ maps_different_costs <- function(grid_data, travel_time, percentage_minimum_wage
   maps_combined <- tmap_arrange(accessibility_maps, nrow = 2)
   
   tmap_save(maps_combined,
-             stringr::str_c("./analysis/maps_different_costs_tt_", travel_time, "_res_", res, ".png"),
+             stringr::str_c("./analysis/", text_labels$lang, "/maps_different_costs_tt_", travel_time, "_res_", res, ".png"),
              width = 2100,
              height = 1650)
   
@@ -213,11 +237,18 @@ map_accessibility <- function(accessibility, grid_data, rj_state, breaks, labels
   
 }
 
-boxplot_different_costs <- function(grid_data, travel_time, percentage_minimum_wage, res) {
+boxplot_different_costs <- function(grid_data, travel_time, percentage_minimum_wage, text_labels, res) {
   
-  # read and prepare data 
+  accessibility_data <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(stringr::str_c("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
   
-  accessibility_data <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(stringr::str_c("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds"))) %>%
+  # calculate values to be used later when setting the plot's breaks and labels
+  
+  max_accessibility <- max(purrr::map_dbl(accessibility_data, function(i) max(i$accessibility)))
+  total_opportunities <- sum(grid_data$opportunities)
+  
+  # prepare the dataset to be used in the plots
+  
+  accessibility_data <- accessibility_data %>% 
     purrr::map(st_drop_geometry) %>% 
     purrr::map(function(i) left_join(i, grid_data, by = "id")) %>% 
     purrr::map(function(i) filter(i, population > 0))
@@ -236,12 +267,10 @@ boxplot_different_costs <- function(grid_data, travel_time, percentage_minimum_w
   
   # convert names to factors so the facets are adequately ordered 
   
-  n <- length(percentage_minimum_wage)
-  
   accessibility_data$percentage_minimum_wage <- factor(
     accessibility_data$percentage_minimum_wage,
     levels = percentage_minimum_wage,
-    labels = c(stringr::str_c("Cost <= ", percentage_minimum_wage[1:(n-1)], "% of minimum wage"), "No cost considered")
+    labels = text_labels$boxplot$facets_title
   )
   
   # create a dataframe with the palma ratios to plot them as annotations
@@ -249,10 +278,10 @@ boxplot_different_costs <- function(grid_data, travel_time, percentage_minimum_w
   palma_data <- tibble::tibble(
     percentage_minimum_wage = factor(percentage_minimum_wage,
                                      levels = percentage_minimum_wage,
-                                     labels = c(stringr::str_c("Cost <= ", percentage_minimum_wage[1:(n-1)], "% of minimum wage"), "No cost considered")),
+                                     labels = text_labels$boxplot$facets_title),
     x = 0.625,
     y = max(accessibility_data$accessibility),
-    label = stringr::str_c("Palma ratio: ", format(round(ratios, digits = 4), nsmall = 4))
+    label = stringr::str_c(text_labels$boxplot$palma_ratio, format(round(ratios, digits = 4), nsmall = 4))
   )
   
   # plot settings
@@ -260,15 +289,26 @@ boxplot_different_costs <- function(grid_data, travel_time, percentage_minimum_w
   ggplot(accessibility_data, aes(income_quantile, accessibility)) +
     geom_boxplot(aes(weight = population)) +
     facet_wrap(~ percentage_minimum_wage, ncol = 2) +
-    labs(title = stringr::str_c(travel_time, "-min transit job accessibility distribution"), x = "Income quantile", y = "Accessibility") +
-    geom_text(data = palma_data, aes(x, y, label = label, hjust = "left")) +
-    theme(strip.text.x = element_text(size = 12))
+    labs(x = text_labels$boxplot$x_axis, y = text_labels$boxplot$y_axis) +
+    geom_text(data = palma_data, aes(x, y, label = label, hjust = "left"), size = 4.5) +
+    scale_y_continuous(
+      limits = c(0, max_accessibility),
+      breaks = seq(0, max_accessibility, max_accessibility/3),
+      labels = scales::percent_format(accuracy = 0.1, scale = 100 / total_opportunities)
+    ) +
+    theme(
+      strip.text.x = element_text(size = 13),
+      axis.title.x = element_text(size = 12),
+      axis.text.x = element_text(size = 11),
+      axis.title.y = element_text(size = 12),
+      axis.text.y = element_text(size = 11)
+    )
   
   # save plot
   
-  ggsave(stringr::str_c("./analysis/boxplot_different_costs_tt_", travel_time, "_res_", res, ".png"),
-         width = 7,
-         height = 8,
+  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/boxplot_different_costs_tt_", travel_time, "_res_", res, ".png"),
+         width = 9,
+         height = 7,
          units = "in")
   
 }
@@ -277,19 +317,19 @@ palma_ratio <- function(accessibility_data) {
   
   richest_10 <- accessibility_data %>% 
     filter(income_quantile == "Q10") %>% 
-    summarise(total_accessibility = sum(accessibility * population))
+    summarise(avg_accessibility = sum(accessibility * population) / sum(population))
   
   poorest_40 <- accessibility_data %>% 
     filter(income_quantile %in% c("Q1", "Q2", "Q3", "Q4")) %>% 
-    summarise(total_accessibility = sum(accessibility * population))
+    summarise(avg_accessibility = sum(accessibility * population) / sum(population))
   
-  palma_ratio <- richest_10$total_accessibility / poorest_40$total_accessibility
+  palma_ratio <- richest_10$avg_accessibility / poorest_40$avg_accessibility
   
   palma_ratio
   
 }
 
-theil_different_costs <- function(grid_data, travel_time, percentage_minimum_wage, res) {
+theil_different_costs <- function(grid_data, travel_time, percentage_minimum_wage, text_labels, res) {
   
   # read and prepare data
   
@@ -306,23 +346,13 @@ theil_different_costs <- function(grid_data, travel_time, percentage_minimum_wag
     purrr::set_names(as.character(percentage_minimum_wage)) %>%
     bind_rows(.id = "percentage_minimum_wage")
   
-  # convert names to factors so the facets are adequately ordered 
-  
-  n <- length(percentage_minimum_wage)
-  
-  theil_data$percentage_minimum_wage <- factor(
-    theil_data$percentage_minimum_wage,
-    levels = percentage_minimum_wage,
-    labels = c(stringr::str_c(percentage_minimum_wage[1:(n-1)], "% of min. wage"), "No cost considered")
-  )
-  
   # first plot: stacked bar chart
   
-  theil_components_stacked(theil_data, travel_time, res)
+  theil_components_stacked(theil_data, travel_time, percentage_minimum_wage, text_labels, res)
   
   # second plot: between-group component share per decile
   
-  theil_between_group_share(theil_data, travel_time, res)
+  theil_between_group_share(theil_data, travel_time, percentage_minimum_wage, text_labels, res)
   
 }
 
@@ -377,10 +407,6 @@ theil_info <- function(accessibility_data) {
   
   info <- bind_rows(within_group, between_group)
   
-  # convert component column to factors so the plots later generated are adequately ordered
-  
-  info$component <- factor(info$component, levels = c("between", "within"), labels = c("Between-group", "Within-group"))
-  
   info
   
 }
@@ -399,7 +425,7 @@ theil_index <- function(accessibility_data) {
   
 }
 
-theil_components_stacked <- function(theil_data, travel_time, res) {
+theil_components_stacked <- function(theil_data, travel_time, percentage_minimum_wage, text_labels, res) {
   
   # create a dataframe with aggregated component data
   # create a label_y column to place annotations within each stack
@@ -410,6 +436,18 @@ theil_components_stacked <- function(theil_data, travel_time, res) {
     arrange(percentage_minimum_wage, desc(component)) %>% 
     mutate(label_y = cumsum(share) - share/2) %>% 
     ungroup()
+  
+  # convert component info to factors to adequately stack the bars
+  
+  theil_stacked$component <- factor(theil_stacked$component, levels = c("between", "within"), labels = text_labels$theil_stacked$components_names)
+  
+  # convert minimum wage percentages to factors to adequately order the bars
+
+  theil_stacked$percentage_minimum_wage <- factor(
+    theil_stacked$percentage_minimum_wage,
+    levels = percentage_minimum_wage,
+    labels = text_labels$theil_stacked$bar_labels
+  )
   
   # find max total theil to resize the plot's graphic area in order to fit the annotation on top of bars
   
@@ -426,41 +464,62 @@ theil_components_stacked <- function(theil_data, travel_time, res) {
   
   ggplot(theil_stacked) +
     geom_col(aes(percentage_minimum_wage, share, fill = component)) + 
-    geom_text(aes(percentage_minimum_wage, label_y, label = round(share, digits = 4)), color = "white") +
-    stat_summary(fun = sum, aes(percentage_minimum_wage, share, label = round(..y.., digits = 4), group = percentage_minimum_wage), geom = "text", vjust = -0.5) +
-    labs(title = "60-min transit job accessibility Theil index", x = "Cost threshold", y = "Theil index", fill = "Component") +
+    geom_text(aes(percentage_minimum_wage, label_y, label = format(round(share, digits = 4)), nsmall = 4), color = "white") +
+    stat_summary(fun = sum, aes(percentage_minimum_wage, share, label = format(round(..y.., digits = 4), nsmall = 4), group = percentage_minimum_wage), geom = "text", vjust = -0.5) +
+    labs(x = text_labels$theil_stacked$x_axis, y = text_labels$theil_stacked$y_axis, fill = text_labels$theil_stacked$component) +
     coord_cartesian(ylim = c(0, y_upper_limit)) +
-    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+    theme(
+      axis.title.x = element_text(size = 12),
+      axis.text.x = element_text(size = 11, angle = 22.5, hjust = 1),
+      axis.title.y = element_text(size = 12),
+      axis.text.y = element_text(size = 11),
+      legend.title = element_text(size = 12),
+      legend.text = element_text(size = 11),
+    )
   
   # save plot
   
-  ggsave(stringr::str_c("./analysis/theil_components_stacked_tt_", travel_time, "_res_", res, "_test.png"),
+  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/theil_components_stacked_tt_", travel_time, "_res_", res, ".png"),
          width = 7,
-         height = 4,
+         height = 3,
          units = "in")
   
 }
 
-theil_between_group_share <- function(theil_data, travel_time, res) {
+theil_between_group_share <- function(theil_data, travel_time, percentage_minimum_wage, text_labels, res) {
+  
+  # convert minimum wage percentages to factors to adequately order the facets
+  
+  theil_data$percentage_minimum_wage <- factor(
+    theil_data$percentage_minimum_wage,
+    levels = percentage_minimum_wage,
+    labels = text_labels$between_group$facets_title
+  )
   
   # filter between-group data only
   
   theil_between <- theil_data %>% 
-    filter(component == "Between-group")
+    filter(component == "between")
   
   # plot settings
   
   ggplot(theil_between, aes(income_quantile, share)) +
     geom_col() +
     facet_wrap(~ percentage_minimum_wage, ncol = 2) + 
-    labs(title = "60-min transit job accessibility Theil index between-group component\nshare per cost threshold and income quantile", x = "Income quantile", y = "Share") +
-    theme(strip.text.x = element_text(size = 12))
+    labs(x = text_labels$between_group$x_axis, y = text_labels$between_group$y_axis) +
+    theme(
+      strip.text.x = element_text(size = 13),
+      axis.title.x = element_text(size = 12),
+      axis.text.x = element_text(size = 11),
+      axis.title.y = element_text(size = 12),
+      axis.text.y = element_text(size = 11)
+    )
   
   # save plot
   
-  ggsave(stringr::str_c("./analysis/between_group_share_tt_", travel_time, "_res_", res, "_test.png"),
-         width = 7,
-         height = 8,
+  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/between_group_share_tt_", travel_time, "_res_", res, ".png"),
+         width = 9,
+         height = 4,
          units = "in")
   
 }
