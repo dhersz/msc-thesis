@@ -68,6 +68,10 @@ labels_different_costs <- function(travel_time, percentage_minimum_wage, lang) {
         "facets_title" = stringr::str_c("Custo monetário ", ifelse(percentage_minimum_wage <= 100, stringr::str_c("<= ", percentage_minimum_wage, "% do salário mínimo"), "não considerado")),
         "legend_title" = "  Empregos acessíveis (% do total)"
       ),
+      "reduction_maps" = list(
+        "facets_title" = stringr::str_c("Custo monetário ", ifelse(percentage_minimum_wage <= 100, stringr::str_c("<= ", percentage_minimum_wage, "% do salário mínimo"), "não considerado")),
+        "legend_title" = "Redução (% da acess.\nsem limite de dinheiro)"
+      ),
       "boxplot" = list(
         "facets_title" = stringr::str_c("Custo monetário ", ifelse(percentage_minimum_wage <= 100, stringr::str_c("<= ", percentage_minimum_wage, "% do salário mínimo"), "não considerado")),
         "palma_ratio" = "Razão de Palma: ",
@@ -146,6 +150,73 @@ maps_different_costs <- function(grid_data, travel_time, percentage_minimum_wage
              stringr::str_c("./analysis/", text_labels$lang, "/maps_different_costs_tt_", travel_time, "_res_", res, ".png"),
              width = 2100,
              height = 1650)
+  
+}
+
+maps_reduction_different_costs <- function(grid_data, travel_time, percentage_minimum_wage, text_labels, res) {
+ 
+  # read data
+  
+  if (!file.exists("./data/rj_state.rds")) {
+    rj_state <- geobr::read_municipality(code_muni = "RJ")
+    readr::write_rds(rj_state, "./data/rj_state.rds")
+  } else rj_state <- readr::read_rds("./data/rj_state.rds")
+  
+  crs <- st_crs(rj_state)
+  
+  accessibility_data <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(stringr::str_c("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
+  
+  # calculate the accessibility difference between the cases with and the one without a cost threshold
+  # then bind everything in the same dataframe to plot each case as a facet (bind_rows doesn't work with sf objects, worked around it with mutate and pmap)
+  # filter out the case without a cost threshold
+  
+  n_cases <- length(percentage_minimum_wage)
+  
+  accessibility_data <- purrr::map(accessibility_data, function(i) left_join(i, st_drop_geometry(accessibility_data[[n_cases]]), by = "id")) %>% 
+    purrr::map(function(i) mutate(i, reduction = (accessibility.y - accessibility.x) / accessibility.y))
+  
+  accessibility_data <- purrr::map(1:n_cases, function(i) mutate(accessibility_data[[i]], percentage_minimum_wage = percentage_minimum_wage[i])) %>% 
+    purrr::pmap_df(rbind) %>% 
+    st_as_sf(crs = crs) %>% 
+    filter(percentage_minimum_wage <= 100)
+  
+  # convert percentage_minimum_wage to factor so the facets are adequately ordered 
+  
+  accessibility_data$percentage_minimum_wage <- factor(
+    accessibility_data$percentage_minimum_wage,
+    levels = percentage_minimum_wage,
+    labels = text_labels$reduction_maps$facets_title
+  )
+  
+  # plot settings
+  
+  rio_border <- accessibility_data %>% group_by(id) %>% slice(1) %>% ungroup() %>% summarise()
+  expanded_rio_border <- rio_border %>% st_transform(5880) %>% st_buffer(3000) %>% st_transform(crs)
+  
+  xlim <- c(st_bbox(rio_border)[1], st_bbox(rio_border)[3])
+  ylim <- c(st_bbox(expanded_rio_border)[2], st_bbox(rio_border)[4])
+  
+  p <- ggplot() +
+    geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
+    geom_sf(data = accessibility_data, aes(fill = reduction), color = NA) +
+      facet_wrap(~ percentage_minimum_wage, ncol = 2) +
+    geom_sf(data = rio_border, color = "gray50", fill = NA) +
+    ggsn::scalebar(data = rio_border, dist = 10, dist_unit = "km", location = "bottomright", transform = TRUE, model = "WGS84",
+                   height = 0.03, border.size = 0.4, st.dist = 0.05, st.size = 3) +
+    scale_fill_gradient(name = text_labels$reduction_maps$legend_title, low = "#efeeec", high = "red", labels = scales::percent) +
+    coord_sf(xlim = xlim, ylim = ylim) +
+    theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(),
+          panel.grid = element_blank(), panel.background = element_rect(fill = "#aadaff"),
+          legend.position = "bottom", strip.text.x = element_text(size = 13), strip.background = element_rect(fill = NA))
+  
+  p <- lemon::reposition_legend(p, position = "bottom left", panel = "panel-2-2")
+  
+  # save plot
+  
+  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/map_reduction_different_costs_tt_", travel_time, "_res_", res, ".png"),
+         plot = p,
+         width = 9,
+         height = 5.8)
   
 }
 
