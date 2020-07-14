@@ -162,23 +162,23 @@ maps_reduction_different_costs <- function(grid_data, travel_time, percentage_mi
     readr::write_rds(rj_state, "./data/rj_state.rds")
   } else rj_state <- readr::read_rds("./data/rj_state.rds")
   
+  rapid_transit_stations <- extract_stations()
+  
   crs <- st_crs(rj_state)
   
   accessibility_data <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(stringr::str_c("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
   
   # calculate the accessibility difference between the cases with and the one without a cost threshold
-  # then bind everything in the same dataframe to plot each case as a facet (bind_rows doesn't work with sf objects, worked around it with mutate and pmap)
+  # then bind everything in the same dataframe to plot each case as a facet
   # filter out the case without a cost threshold
   
   n_cases <- length(percentage_minimum_wage)
   
   accessibility_data <- purrr::map(accessibility_data, function(i) left_join(i, st_drop_geometry(accessibility_data[[n_cases]]), by = "id")) %>% 
-    purrr::map(function(i) mutate(i, reduction = (accessibility.y - accessibility.x) / accessibility.y))
-  
-  accessibility_data <- purrr::map(1:n_cases, function(i) mutate(accessibility_data[[i]], percentage_minimum_wage = percentage_minimum_wage[i])) %>% 
-    purrr::pmap_df(rbind) %>% 
-    st_as_sf(crs = crs) %>% 
-    filter(percentage_minimum_wage <= 100)
+    purrr::map(function(i) mutate(i, reduction = (accessibility.y - accessibility.x) / accessibility.y)) %>% 
+    purrr::set_names(as.character(percentage_minimum_wage)) %>% 
+    bind_rows(.id = "percentage_minimum_wage") %>% 
+    filter(percentage_minimum_wage != "1000")
   
   # convert percentage_minimum_wage to factor so the facets are adequately ordered 
   
@@ -201,6 +201,7 @@ maps_reduction_different_costs <- function(grid_data, travel_time, percentage_mi
     geom_sf(data = accessibility_data, aes(fill = reduction), color = NA) +
       facet_wrap(~ percentage_minimum_wage, ncol = 2) +
     geom_sf(data = rio_border, color = "gray50", fill = NA) +
+    geom_sf(data = rapid_transit_stations) +
     ggsn::scalebar(data = rio_border, dist = 10, dist_unit = "km", location = "bottomright", transform = TRUE, model = "WGS84",
                    height = 0.03, border.size = 0.4, st.dist = 0.05, st.size = 3) +
     scale_fill_gradient(name = text_labels$reduction_maps$legend_title, low = "#efeeec", high = "red", labels = scales::percent) +
@@ -211,12 +212,14 @@ maps_reduction_different_costs <- function(grid_data, travel_time, percentage_mi
   
   p <- lemon::reposition_legend(p, position = "bottom left", panel = "panel-2-2")
   
-  # save plot
+  p
   
-  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/map_reduction_different_costs_tt_", travel_time, "_res_", res, ".png"),
-         plot = p,
-         width = 9,
-         height = 5.8)
+  # save plot
+
+  # ggsave(stringr::str_c("./analysis/", text_labels$lang, "/map_reduction_different_costs_tt_", travel_time, "_res_", res, ".png"),
+  #        plot = p,
+  #        width = 9,
+  #        height = 5.8)
   
 }
 
@@ -592,5 +595,48 @@ theil_between_group_share <- function(theil_data, travel_time, percentage_minimu
          width = 9,
          height = 4,
          units = "in")
+  
+}
+
+extract_stations <- function(use = c("plotting", "modelling")) {
+  
+  # read each gtfs 'stops' file and convert it into a sf object
+  
+  zip_supervia <- stringr::str_c("./otp/graphs/rio/gtfs_supervia.zip")
+  
+  stops_supervia <- readr::read_csv(unz(zip_supervia, "stops.txt")) %>% 
+    select(stop_id, stop_name, stop_lat, stop_lon) %>% 
+    st_as_sf(coords = c("stop_lon", "stop_lat")) %>% 
+    st_set_crs(4674)
+  
+  #
+  
+  zip_fetranspor <- stringr::str_c("./otp/graphs/rio/gtfs_fetranspor.zip")
+  
+  stops_fetranspor <- readr::read_csv(unz(zip_fetranspor, "stops.txt")) %>% 
+    filter(!is.na(stop_code), !stringr::str_detect(stop_code, "^(3|BRS|PF|SUB)")) %>% 
+    select(stop_id, stop_name, stop_lat, stop_lon) %>% 
+    st_as_sf(coords = c("stop_lon", "stop_lat")) %>% 
+    st_set_crs(4674)
+  
+  # rbind(stops_supervia, stops_fetranspor)
+  
+  # itdp case
+  
+  brt_lines <- st_read("./data/rio_brt_lines_itdp.gpkg") %>% 
+    st_transform(4674) %>% 
+    select(Corridor, Segment, Status, geom)
+  
+  brt_stations <- st_read("./data/rio_brt_stations_itdp.gpkg") %>% 
+    st_transform(4674) %>% 
+    select(Corridor, Stations, Type, Status, geom)
+  
+  metro_rail_lines <- st_read("./data/rio_metro_rail_lines_itdp.gpkg") %>% 
+    st_transform(4674) %>% 
+    select(Corridor, Segment, Status, geom)
+  
+  metro_rail_stations <- st_read("./data/rio_metro_rail_stations_itdp.gpkg") %>% 
+    st_transform(4674) %>% 
+    select(Corridor, Stations, Type, Status, geom)
   
 }
