@@ -5,10 +5,8 @@ generate_hex_grid <- function(res = 7) {
   
   rio_municipality <- geobr::read_municipality(3304557)
   
-  data(h3_info_table, package = "h3jsr") # hopefully this will soon not be needed
-  
   # when the resolution is below 9 no hexagons have their centroids on Paquetá, hence the island is not actually represented
-  # to prevent that, the hexagons are generated to cover the entire bounding box of rio, and then are insersected with rio's shape
+  # to prevent that, the hexagons are generated covering the entire bounding box of rio, and then are intersected with rio's shape
   # even when accounting that, Paquetá is not represented in resolution 6 or below due to the increased size of hexagons
   
   if (res < 9) {
@@ -28,6 +26,7 @@ generate_hex_grid <- function(res = 7) {
     
     # st_intersection assumes its input is in a projected crs
     # since data downloaded from geobr comes with crs 4674 (geographic), the crs is temporarily transformed to 5880 (projected)
+    
     rio_municipality <- rio_municipality %>% st_transform(5880)
     
     hex_ids <- h3jsr::polyfill(shape_bbox, res = res, simple = FALSE)

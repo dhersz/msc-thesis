@@ -57,7 +57,7 @@ analyse_results <- function(n_quantiles = 10, res = 7, lang = "pt") {
     # maps_cases_bu(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
     # maps_increase_cases_bu(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
     # boxplot_increase_cases_bu(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
-    # oi <- theil_cases_bu(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
+    # theil_cases_bu(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
      
   }
   
@@ -164,7 +164,7 @@ maps_different_costs <- function(grid_data, travel_time, percentage_minimum_wage
   maps_combined <- tmap_arrange(accessibility_maps, nrow = 2)
   
   tmap_save(maps_combined,
-             stringr::str_c("./analysis/", text_labels$lang, "/maps_different_costs_tt_", travel_time, "_res_", res, ".png"),
+             stringr::str_c("./analysis/", text_labels$lang, "/different_costs/comparative_maps_tt_", travel_time, "_res_", res, ".png"),
              width = 2100,
              height = 1650)
   
@@ -231,7 +231,7 @@ maps_reduction_different_costs <- function(grid_data, travel_time, percentage_mi
   
   # save plot
   
-  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/map_reduction_different_costs_tt_", travel_time, "_res_", res, ".png"),
+  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/different_costs/reduction_maps_tt_", travel_time, "_res_", res, ".png"),
          plot = p,
          width = 9,
          height = 5.8)
@@ -307,7 +307,7 @@ boxplot_different_costs <- function(grid_data, travel_time, percentage_minimum_w
   
   # save plot
   
-  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/boxplot_different_costs_tt_", travel_time, "_res_", res, ".png"),
+  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/different_costs/boxplot_tt_", travel_time, "_res_", res, ".png"),
          width = 9,
          height = 7,
          units = "in")
@@ -395,7 +395,7 @@ theil_components_stacked <- function(theil_data, travel_time, percentage_minimum
   
   # save plot
   
-  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/theil_components_stacked_tt_", travel_time, "_res_", res, ".png"),
+  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/different_costs/theil_components_stacked_tt_", travel_time, "_res_", res, ".png"),
          width = 7,
          height = 3,
          units = "in")
@@ -433,7 +433,7 @@ theil_between_group_share <- function(theil_data, travel_time, percentage_minimu
   
   # save plot
   
-  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/between_group_share_tt_", travel_time, "_res_", res, ".png"),
+  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/different_costs/between_group_share_tt_", travel_time, "_res_", res, ".png"),
          width = 9,
          height = 4,
          units = "in")
@@ -471,8 +471,8 @@ labels_cases_bu <- function(travel_time, percentage_minimum_wage, lang) {
         "y_axis" = "Aumento de acess. (% total de empregos)",
         "x_axis" = "Decil de renda"
       ),
-      "theil_stacked" = list(
-        "bar_labels" = ifelse(percentage_minimum_wage <= 100, stringr::str_c(percentage_minimum_wage, "% do sal. mín."), "Não considerado"),
+      "theil" = list(
+        "bar_labels" = stringr::str_c(percentage_minimum_wage, "% do sal. mín."),
         "y_axis" = "Índice de Theil",
         "x_axis" = "Valor limite de custo",
         "component" = "Componente",
@@ -706,15 +706,53 @@ theil_cases_bu <- function(grid_data, travel_time, percentage_minimum_wage, text
     purrr::set_names(as.character(percentage_minimum_wage)) %>%
     bind_rows(.id = "percentage_minimum_wage")
   
-  return(theil_data)
+  # prepare dataframe to plot and create a label_y column to place annotations within each stack
+  # convert component info and minimum wage percentages to factors
   
-  # first plot: stacked bar chart
+  theil_data <- theil_data %>% 
+    group_by(percentage_minimum_wage, component) %>% 
+    summarise(share = sum(share), .groups = "drop_last") %>% 
+    arrange(percentage_minimum_wage, desc(component)) %>% 
+    mutate(label_y = cumsum(share) - share/2) %>% 
+    ungroup() %>% 
+    mutate(
+      component = factor(component, levels = c("between", "within"), labels = text_labels$theil$components_names),
+      percentage_minimum_wage = factor(percentage_minimum_wage, unique(percentage_minimum_wage), text_labels$theil$bar_labels)
+    )
   
-  theil_components_stacked(theil_data, travel_time, percentage_minimum_wage, text_labels, res)
+  # find max total theil to resize the plot's graphic area in order to fit the annotation on top of bars
   
-  # second plot: between-group component share per decile
+  max_theil_data <- theil_data %>% 
+    group_by(percentage_minimum_wage) %>% 
+    summarise(theil = sum(share), .groups = "drop")
   
-  theil_between_group_share(theil_data, travel_time, percentage_minimum_wage, text_labels, res)
+  max_theil <- max(max_theil_data$theil)
+  
+  y_upper_limit <- purrr::map_dbl(max_theil + 0.05, function(i, level = 1) round(i + 5*10^(-level-1), level))
+  
+  # plot settings
+  
+  ggplot(theil_data) +
+    geom_col(aes(percentage_minimum_wage, share, fill = component)) + 
+    geom_text(aes(percentage_minimum_wage, label_y, label = format(round(share, digits = 4)), nsmall = 4), color = "white") +
+    stat_summary(fun = sum, aes(percentage_minimum_wage, share, label = format(round(..y.., digits = 4), nsmall = 4), group = percentage_minimum_wage), geom = "text", vjust = -0.5) +
+    labs(x = text_labels$theil$x_axis, y = text_labels$theil$y_axis, fill = text_labels$theil$component) +
+    coord_cartesian(ylim = c(0, y_upper_limit)) +
+    theme(
+      axis.title.x = element_text(size = 12),
+      axis.text.x = element_text(size = 11, angle = 22.5, hjust = 1),
+      axis.title.y = element_text(size = 12),
+      axis.text.y = element_text(size = 11),
+      legend.title = element_text(size = 12),
+      legend.text = element_text(size = 11),
+    )
+  
+  # save plot
+  
+  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/cases_bu/theil_components_tt_", travel_time, "_res_", res, ".png"),
+         width = 7,
+         height = 3,
+         units = "in")
   
 }
 
