@@ -756,6 +756,7 @@ theil_cases_bu <- function(grid_data, travel_time, percentage_minimum_wage, text
   
 }
 
+
 ###############
 # GENERAL USE #
 ###############
