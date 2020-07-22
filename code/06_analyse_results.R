@@ -42,7 +42,7 @@ analyse_results <- function(n_quantiles = 10, res = 7, lang = "pt") {
     # maps_reduction_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
     # boxplot_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
     # theil_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
-    oi <- average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
+    average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
     
   }
   
@@ -62,7 +62,7 @@ analyse_results <- function(n_quantiles = 10, res = 7, lang = "pt") {
      
   }
   
-  oi
+  # oi
   
 }
 
@@ -109,8 +109,8 @@ labels_different_costs <- function(travel_time, percentage_minimum_wage, lang) {
         "x_axis" = "Decil de renda"
       ),
       "average_access" = list(
-        "facets_title" = stringr::str_c("Custo monetário ", ifelse(percentage_minimum_wage <= 100, stringr::str_c("<= ", percentage_minimum_wage, "% do salário mínimo"), "não considerado")),
-        "y_axis" = "Acessibilidade média",
+        "facets_title" = stringr::str_c("Custo ", ifelse(percentage_minimum_wage <= 100, stringr::str_c("<= ", percentage_minimum_wage, "% sal. mín."), "não consid.")),
+        "y_axis" = "Acessibilidade média\n(% do total de empregos)",
         "x_axis" = "Decil de renda"
       )
     )
@@ -463,7 +463,12 @@ average_access_different_costs <- function(grid_data, travel_time, percentage_mi
     bind_rows(.id = "percentage_minimum_wage") %>% 
     mutate(percentage_minimum_wage = factor(percentage_minimum_wage, unique(percentage_minimum_wage), labels = text_labels$average_access$facets_title))
   
+  # change income_levels for a cleaner plot
+  
+  levels(accessibility_data$income_quantile) <- c(1:10)
+  
   # calculate the average accessibility of the whole distribution and of each income quantile, weighted by the hexagons' population
+  # also create columns in the quantiles dataframe to highlight the 9th decile in the plot
   
   distribution_mean <- accessibility_data %>% 
     group_by(percentage_minimum_wage) %>% 
@@ -471,55 +476,51 @@ average_access_different_costs <- function(grid_data, travel_time, percentage_mi
   
   quantile_mean <- accessibility_data %>% 
     group_by(percentage_minimum_wage, income_quantile) %>% 
-    summarise(avg_accessibility = weighted.mean(accessibility, w = population), .groups = "drop")
-  
-  return(quantile_mean)
-  
-  
-  # convert names to factors so the facets are adequately ordered 
-  
-  accessibility_data$percentage_minimum_wage <- factor(
-    accessibility_data$percentage_minimum_wage,
-    levels = percentage_minimum_wage,
-    labels = text_labels$boxplot$facets_title
-  )
-  
-  # create a dataframe with the palma ratios to plot them as annotations
-  
-  palma_data <- tibble::tibble(
-    percentage_minimum_wage = factor(percentage_minimum_wage,
-                                     levels = percentage_minimum_wage,
-                                     labels = text_labels$boxplot$facets_title),
-    x = 0.625,
-    y = max(accessibility_data$accessibility),
-    label = stringr::str_c(text_labels$boxplot$palma_ratio, format(round(ratios, digits = 4), nsmall = 4))
-  )
+    summarise(avg_accessibility = weighted.mean(accessibility, w = population), .groups = "drop") %>%
+    left_join(distribution_mean, by = "percentage_minimum_wage", suffix = c("", "_distribution")) %>% 
+    mutate(
+      highlight = ifelse(income_quantile == 9, TRUE, FALSE),
+      ratio = ifelse(income_quantile == 9, avg_accessibility / avg_accessibility_distribution, NA),
+      ratio = ifelse(!is.na(ratio), format(round(ratio, digits = 2), nsmall = 2), ratio),
+      ratio = stringr::str_c(ratio, "x")
+    )
   
   # plot settings
   
-  ggplot(accessibility_data, aes(income_quantile, accessibility)) +
-    geom_boxplot(aes(weight = population)) +
-    facet_wrap(~ percentage_minimum_wage, ncol = 2) +
-    labs(x = text_labels$boxplot$x_axis, y = text_labels$boxplot$y_axis) +
-    geom_text(data = palma_data, aes(x, y, label = label, hjust = "left"), size = 4.5) +
-    scale_y_continuous(
-      limits = c(0, max_accessibility),
-      breaks = seq(0, max_accessibility, max_accessibility/3),
-      labels = scales::percent_format(accuracy = 0.1, scale = 100 / total_opportunities)
-    ) +
-    theme(
-      strip.text.x = element_text(size = 13),
-      axis.title.x = element_text(size = 12),
-      axis.text.x = element_text(size = 11),
-      axis.title.y = element_text(size = 12),
-      axis.text.y = element_text(size = 11)
-    )
+  max_accessibility <- max(quantile_mean$avg_accessibility)
+  total_opportunities <- sum(grid_data$opportunities)
+  
+  upper_limit <- purrr::map_dbl(
+    plyr::round_any(max_accessibility * 4/3, accuracy = 0.1 * total_opportunities),
+    function(i) ifelse(i > total_opportunities, total_opportunities, i)
+  )
+  
+  ggplot() +
+    geom_hline(data = distribution_mean, mapping = aes(yintercept = avg_accessibility),
+               linetype = "dashed", color = "gray50") +
+    geom_point(data = quantile_mean, mapping = aes(income_quantile, avg_accessibility, color = highlight),
+               size = 2) +
+    geom_text(data = quantile_mean, mapping = aes(income_quantile, avg_accessibility, label = ratio),
+              na.rm = TRUE, vjust = -0.5) +
+    geom_text(data = distribution_mean,
+              mapping = aes(0.625, upper_limit - 0.05 * total_opportunities, label = stringr::str_c("Média geral: ", scales::percent(avg_accessibility, scale = 100 / total_opportunities, accuracy = 1))),
+              hjust = 0) +
+    facet_wrap(~ percentage_minimum_wage, nrow = 1) +
+    labs(x = text_labels$average_access$x_axis, y = text_labels$average_access$y_axis) +
+    scale_color_manual(values = c("black", "dodgerblue3"), guide = FALSE) +
+    scale_y_continuous(limits = c(0, upper_limit),
+                       breaks = seq(0, upper_limit, upper_limit / 4),
+                       labels = scales::percent_format(accuracy = 1, scale = 100 / total_opportunities)) +
+    theme(strip.text.x = element_text(size = 13), strip.background.x = element_rect(fill = NA),
+          axis.title.x = element_text(size = 12), axis.text.x = element_text(size = 11),
+          axis.title.y = element_text(size = 12), axis.text.y = element_text(size = 11),
+          panel.background = element_rect(fill = "gray95"), panel.grid = element_line(color = NA))
   
   # save plot
   
   ggsave(stringr::str_c("./analysis/", text_labels$lang, "/different_costs/average_accessibility_tt_", travel_time, "_res_", res, ".png"),
          width = 9,
-         height = 7,
+         height = 2.5,
          units = "in")
   
 }
