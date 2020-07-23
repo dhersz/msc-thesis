@@ -503,8 +503,8 @@ average_access_different_costs <- function(grid_data, travel_time, percentage_mi
     geom_text(data = quantile_mean, mapping = aes(income_quantile, avg_accessibility, label = ratio),
               na.rm = TRUE, vjust = -0.5) +
     geom_text(data = distribution_mean,
-              mapping = aes(0.625, upper_limit - 0.05 * total_opportunities, label = stringr::str_c("Média geral: ", scales::percent(avg_accessibility, scale = 100 / total_opportunities, accuracy = 1))),
-              hjust = 0) +
+              mapping = aes(0.625, upper_limit, label = stringr::str_c("Média geral: ", scales::percent(avg_accessibility, scale = 100 / total_opportunities, accuracy = 0.1))),
+              hjust = 0, vjust = 0.625, color = "gray20") +
     facet_wrap(~ percentage_minimum_wage, nrow = 1) +
     labs(x = text_labels$average_access$x_axis, y = text_labels$average_access$y_axis) +
     scale_color_manual(values = c("black", "dodgerblue3"), guide = FALSE) +

@@ -1,7 +1,17 @@
 library(dplyr)
 library(sf)
 
+# before using these functions, specifically get_transit_itineraries, it's important to start the OTP server.
+# to do so, one could use:
+#    opentripplanner::otp_setup(otp = "./otp/otp.jar", dir = "./otp", memory = 2048, router = "rio")
+#    opentripplanner::otp_stop(warn = FALSE)
+# but unfortunately that wasn't really working reliably, sometimes java would crash, not sure why.
+# so I manually started it running the following command within the otp directory (via cmd):
+#    "java -Xmx2G -jar otp.jar --server --graphs graphs --router rio"
+
 generate_itinerary_details <- function(res = 7) {
+  
+  # list of parameters sent to the OTP api
   
   parameters <- list(
     mode = "TRANSIT,WALK",
@@ -12,10 +22,18 @@ generate_itinerary_details <- function(res = 7) {
     numItineraries = "10"
   )
   
-  itineraries_list <- get_transit_itineraries3(parameters, res)
-  readr::write_rds(itineraries_list, "./data/temp_itineraries_list.rds")
+  # set of leg characteristics important for accessibility analysis
   
   desired_leg_details <- c("startTime","endTime", "distance", "mode", "routeId", "route")
+  
+  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
+  # very important to change the number of cores accordingly to what is available #
+  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
+  
+  n_cores <- 3L
+  
+  itineraries_list <- get_transit_itineraries(parameters, n_cores, res)
+  readr::write_rds(itineraries_list, "./data/temp_itineraries_list.rds")
   
   itineraries_details <- extract_itinerary_details(itineraries_list, desired_leg_details)
   
@@ -25,9 +43,11 @@ generate_itinerary_details <- function(res = 7) {
   
 }
 
-get_transit_itineraries <- function(parameters, res = 7) {
+get_transit_itineraries <- function(parameters, n_cores = 3, res = 7) {
   
-  rio_centroids_coordinates <- readr::read_rds(stringr::str_c("./data/rio_h3_grid_res_", res, "_with_data.rds")) %>%
+  # calculate the centroids coordinates of the grid with resolution 'res'
+  
+  centroids_coordinates <- readr::read_rds(stringr::str_c("./data/rio_h3_grid_res_", res, "_with_data.rds")) %>%
     filter(opportunities != 0 | population != 0) %>% 
     st_transform(5880) %>% 
     st_centroid() %>% 
@@ -38,28 +58,58 @@ get_transit_itineraries <- function(parameters, res = 7) {
     mutate(lat_lon = stringr::str_c(Y, ",", X)) %>% 
     select(-X, -Y)
   
-  # opentripplanner::otp_setup(otp = "./otp/otp.jar", dir = "./otp", memory = 2048, router = "rio")
+  # centroids_coordinates is sent to a function which calculates a route between a specific origin and all possible destinations,
+  # then processes the data from a list into a dataframe and saves the final dataframe in a temporary folder
   
-  n <- nrow(rio_centroids_coordinates)
+  n <- nrow(centroids_coordinates)
   
-  future::plan(future::multiprocess)
+  future::plan(future::multiprocess, workers = n_cores)
   
-  responses <- furrr::future_map(1:n, make_request, rio_centroids_coordinates, parameters, .progress = TRUE) %>% 
+  responses <- furrr::future_map(1:n, make_request, centroids_coordinates, parameters, .progress = TRUE) %>% 
     purrr::flatten()
-  
-  # opentripplanner::otp_stop(warn = FALSE)
   
   responses
   
 }
 
+save_same_origin_details <- function(x, od_points, parameters) {
+  
+  # this function calls the two most important functions in this whole ensemble
+  # make_request sends requests to the OTP API and returns its responses
+  # extract_itinerary_details takes these responses and processes their data from a list into a dataframe
+  # this dataframe is then saved inside a temporary folder that contains the itineraries details from each origin to all destinations (each origin is a separate file)
+  
+  make_request(x, od_points, parameters)
+  
+}
+
 make_request <- function(x, od_points, parameters) {
+  
+  # use origin lat_lon as the fromPlace parameter sent to the API
   
   orig <- od_points[x, ]
   parameters$fromPlace <- orig$lat_lon
   
+  # iterates through each centroid and use them as the destinations of the itineraries
+  # process it from a json to a list and add an identification nested list 
+  
   n <- nrow(od_points)
   response_list <- vector("list", length = n)
+  
+  # response_list <- purrr::map(1:nrow(od_points), function(i) {
+  #   
+  #   parameters$toPlace <- od_points[i, ]$lat_lon
+  #   
+  #   request_url <- httr::parse_url("http://localhost:8080/otp/routers/rio/plan/")
+  #   request_url$query <- parameters
+  #   request_url <- httr::build_url(request_url)
+  #   
+  #   res <- httr::GET(request_url) %>% httr::content(as = "text", encoding = "UTF-8") %>% jsonlite::fromJSON()
+  #   res$identification <- list(orig_id = orig$id, dest_id = od_points[i, ]$id)
+  #   
+  #   res
+  #   
+  # })
   
   for (i in 1:n) {
     
@@ -80,13 +130,13 @@ make_request <- function(x, od_points, parameters) {
   
 }
 
-extract_itinerary_details <- function(itineraries_list, leg_details, ta_tudo_errado = FALSE) {
+extract_itinerary_details <- function(itineraries_list, leg_details) {
   
   n <- length(itineraries_list)
   
   future::plan(future::multiprocess, workers = future::availableCores() - 1)
   
-  furrr::future_map_dfr(itineraries_list, itinerary_details_to_df, leg_details, ta_tudo_errado) %>% 
+  furrr::future_map_dfr(itineraries_list, itinerary_details_to_df, leg_details) %>% 
     select(
       all_of(names(.)[! names(.) %in% c("leg_id", leg_details)]),
       all_of(c("leg_id", leg_details))
@@ -100,18 +150,10 @@ extract_itinerary_details <- function(itineraries_list, leg_details, ta_tudo_err
   
 }
 
-itinerary_details_to_df <- function(itineraries_list, leg_details, ta_tudo_errado = FALSE) {
+itinerary_details_to_df <- function(itineraries_list, leg_details) {
   
-  if (ta_tudo_errado) {
-    id_latlon <- readr::read_rds("./data/id_latlon.rds")
-    id_ids <- setNames(id_latlon$id, id_latlon$lat_lon)
-    orig_id <- id_ids[itineraries_list$requestParameters$fromPlace]
-    dest_id <- id_ids[itineraries_list$requestParameters$toPlace]
-  }
-  else {
-    orig_id <- itineraries_list$identification$orig_id
-    dest_id <- itineraries_list$identification$dest_id
-  }
+  orig_id <- itineraries_list$identification$orig_id
+  dest_id <- itineraries_list$identification$dest_id
   
   if (!is.null(itineraries_list$error)) {
     
@@ -195,41 +237,9 @@ select_unique_itineraries <- function(itineraries_details) {
 }
 
 
-
-get_transit_itineraries2 <- function(parameters, res = 7) {
-  
-  rio_centroids_coordinates <- readr::read_rds(stringr::str_c("./data/rio_h3_grid_res_", res, "_with_data.rds")) %>%
-    filter(opportunities != 0 | population != 0) %>% 
-    st_transform(5880) %>% 
-    st_centroid() %>% 
-    st_transform(4674) %>% 
-    st_coordinates() %>% 
-    tibble::as_tibble() %>% 
-    tibble::rowid_to_column("id") %>% 
-    mutate(lat_lon = stringr::str_c(Y, ",", X)) %>% 
-    select(-X, -Y)
-  
-  # opentripplanner::otp_setup(otp = "./otp/otp.jar", dir = "./otp", memory = 2048, router = "rio")
-  
-  n <- nrow(rio_centroids_coordinates)
-  
-  responses <- purrr::map(1:n, make_request, rio_centroids_coordinates, parameters) %>% 
-    purrr::flatten()
-  
-  # opentripplanner::otp_stop(warn = FALSE)
-  
-  responses
-  
-}
-
-
-
-
-
-
-
-
-
+####################
+# ANOTHER APPROACH #
+####################
 
 
 get_transit_itineraries3 <- function(parameters, res = 7) {
