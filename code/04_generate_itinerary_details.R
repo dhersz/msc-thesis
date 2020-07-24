@@ -8,6 +8,7 @@ library(sf)
 # but unfortunately that wasn't really working reliably, sometimes java would crash, not sure why.
 # so I manually started it running the following command within the otp directory (via cmd):
 #    "java -Xmx2G -jar otp.jar --server --graphs graphs --router rio"
+# note that the ammount of memory allocated can change (e.g 2G, 3G, 4G, etc.) - not sure how that affects the whole process
 
 generate_itinerary_details <- function(res = 7) {
   
@@ -32,10 +33,10 @@ generate_itinerary_details <- function(res = 7) {
   
   n_cores <- 3L
   
-  itineraries_list <- get_transit_itineraries(parameters, n_cores, res)
+  itineraries_list <- get_transit_itineraries(parameters, desired_leg_details, n_cores, res)
   readr::write_rds(itineraries_list, "./data/temp_itineraries_list.rds")
   
-  itineraries_details <- extract_itinerary_details(itineraries_list, desired_leg_details)
+  itineraries_details <- extract_itinerary_details(itineraries_list, desired_leg_details, n_cores)
   
   # file.remove("./data/temp_itineraries_list.rds")
   
@@ -43,28 +44,35 @@ generate_itinerary_details <- function(res = 7) {
   
 }
 
-get_transit_itineraries <- function(parameters, n_cores = 3, res = 7) {
+get_transit_itineraries <- function(parameters, leg_details, n_cores = 3, res = 7) {
   
   # calculate the centroids coordinates of the grid with resolution 'res'
+  # cells with no opportunities and population are cleaned out of the dataframe to speed up the requests, since they won't affect accessibility
   
-  centroids_coordinates <- readr::read_rds(stringr::str_c("./data/rio_h3_grid_res_", res, "_with_data.rds")) %>%
-    filter(opportunities != 0 | population != 0) %>% 
+  clean_grid <- readr::read_rds(stringr::str_c("./data/rio_h3_grid_res_", res, "_with_data.rds")) %>%
+    filter(opportunities != 0 | population != 0)
+  
+  clean_grid_cell_ids <- clean_grid$id
+  
+  centroids_coordinates <- clean_grid %>% 
     st_transform(5880) %>% 
     st_centroid() %>% 
     st_transform(4674) %>% 
     st_coordinates() %>% 
     tibble::as_tibble() %>% 
-    tibble::rowid_to_column("id") %>% 
+    tibble::add_column(id = clean_grid_cell_ids) %>% 
     mutate(lat_lon = stringr::str_c(Y, ",", X)) %>% 
     select(-X, -Y)
   
   # centroids_coordinates is sent to a function which calculates a route between a specific origin and all possible destinations,
   # then processes the data from a list into a dataframe and saves the final dataframe in a temporary folder
+  # STILL A WORK IN PROGRESS, NOT WHAT IS SHOWN BELOW
   
-  n <- nrow(centroids_coordinates)
+  if(!file.exists("./data/temp")) dir.create("./data/temp")
   
   future::plan(future::multiprocess, workers = n_cores)
   
+  n <- nrow(centroids_coordinates)
   responses <- furrr::future_map(1:n, make_request, centroids_coordinates, parameters, .progress = TRUE) %>% 
     purrr::flatten()
   
@@ -72,14 +80,16 @@ get_transit_itineraries <- function(parameters, n_cores = 3, res = 7) {
   
 }
 
-save_same_origin_details <- function(x, od_points, parameters) {
+save_same_origin_details <- function(x, od_points, parameters, leg_details, n_cores = 3, res = 7) {
   
   # this function calls the two most important functions in this whole ensemble
   # make_request sends requests to the OTP API and returns its responses
   # extract_itinerary_details takes these responses and processes their data from a list into a dataframe
   # this dataframe is then saved inside a temporary folder that contains the itineraries details from each origin to all destinations (each origin is a separate file)
   
-  make_request(x, od_points, parameters)
+  make_request(x, od_points, parameters) %>% 
+    extract_itinerary_details(leg_details, n_cores) %>% 
+    readr::write_rds(stringr::str_c("./data/temp/itineraries_details_orig_", x, "_res_", res, ".rds"))
   
 }
 
@@ -90,26 +100,11 @@ make_request <- function(x, od_points, parameters) {
   orig <- od_points[x, ]
   parameters$fromPlace <- orig$lat_lon
   
-  # iterates through each centroid and use them as the destinations of the itineraries
+  # iterate through each centroid and use them as the destinations of the itineraries
   # process it from a json to a list and add an identification nested list 
   
   n <- nrow(od_points)
   response_list <- vector("list", length = n)
-  
-  # response_list <- purrr::map(1:nrow(od_points), function(i) {
-  #   
-  #   parameters$toPlace <- od_points[i, ]$lat_lon
-  #   
-  #   request_url <- httr::parse_url("http://localhost:8080/otp/routers/rio/plan/")
-  #   request_url$query <- parameters
-  #   request_url <- httr::build_url(request_url)
-  #   
-  #   res <- httr::GET(request_url) %>% httr::content(as = "text", encoding = "UTF-8") %>% jsonlite::fromJSON()
-  #   res$identification <- list(orig_id = orig$id, dest_id = od_points[i, ]$id)
-  #   
-  #   res
-  #   
-  # })
   
   for (i in 1:n) {
     
@@ -130,11 +125,11 @@ make_request <- function(x, od_points, parameters) {
   
 }
 
-extract_itinerary_details <- function(itineraries_list, leg_details) {
+extract_itinerary_details <- function(itineraries_list, leg_details, n_cores) {
   
   n <- length(itineraries_list)
   
-  future::plan(future::multiprocess, workers = future::availableCores() - 1)
+  future::plan(future::multiprocess, workers = n_cores)
   
   furrr::future_map_dfr(itineraries_list, itinerary_details_to_df, leg_details) %>% 
     select(
@@ -152,8 +147,12 @@ extract_itinerary_details <- function(itineraries_list, leg_details) {
 
 itinerary_details_to_df <- function(itineraries_list, leg_details) {
   
+  # save origin and destination id for easier cell identification later on
+  
   orig_id <- itineraries_list$identification$orig_id
   dest_id <- itineraries_list$identification$dest_id
+  
+  # check if request has thrown an error - if positive return a tibble with error id and message
   
   if (!is.null(itineraries_list$error)) {
     
@@ -167,6 +166,11 @@ itinerary_details_to_df <- function(itineraries_list, leg_details) {
     
   }
   
+  # if the request hasn't thrown an error, an itinerary has successfully been calculated 
+  
+  # the clampInitialWait API parameter is not working properly, not sure why. sometimes it clamps all the wait, sometimes it doesn't.
+  # so the itinerary start time is saved as the time sent as the departure time set as the parameter, and not the first leg start time
+
   itinerary_start_time <- itineraries_list$plan$date
   
   itineraries <- itineraries_list$plan$itineraries
@@ -216,21 +220,44 @@ select_unique_itineraries <- function(itineraries_details) {
   # itineraries, which is very slow
   #### e.g. mutate(temp = map(data, function(i) select(i, -leg_start_time, -leg_end_time)))
   
+  # filter out errors, select relevant columns and nest each itinerary's legs details in a df
+  
   itineraries_details <- itineraries_details %>%
-    
-    # filter out errors, select relevant columns and nest each itinerary's legs details in a df
     filter(is.na(error_id)) %>% 
     select(-error_id, -error_msg, -leg_start_time, -leg_end_time) %>% 
     group_by(orig_id, dest_id, it_id, itinerary_start_time, itinerary_end_time) %>% 
-    tidyr::nest() %>% 
+    tidyr::nest()
     
-    # filter out non unique itineraries (within each OD pair)
+  # filter out non unique itineraries (within each OD pair) and format back to how it used to be
+    
+  itineraries_details <- itineraries_details %>%
     group_by(orig_id, dest_id) %>% 
     filter(!duplicated(data)) %>% 
-    
-    # format back to how it used to be
     ungroup() %>% 
     tidyr::unnest(data)
+  
+  itineraries_details
+  
+}
+
+tidy_itineraries <- function(itineraries_details, leg_details){
+  
+  # select itinerary-level columns and place to the left of leg-level columns
+  # convert names from camelCase to snake_case
+  # convert time columns from epoch to datetime
+  # select unique itineraries 
+  
+  itineraries_details <- itineraries_details %>% 
+    select(
+      all_of(names(.)[! names(.) %in% c("leg_id", leg_details)]),
+      all_of(c("leg_id", leg_details))
+    ) %>%
+    rename(leg_start_time = startTime, leg_end_time = endTime, route_id = routeId) %>% 
+    mutate_at(
+      vars(ends_with("time")),
+      list(~ lubridate::as_datetime(as.double(.) / 1000, tz = "America/Sao_Paulo"))
+    ) %>% 
+    select_unique_itineraries()
   
   itineraries_details
   
