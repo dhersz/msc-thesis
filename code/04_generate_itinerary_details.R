@@ -44,6 +44,39 @@ generate_itinerary_details <- function(res = 7) {
   
 }
 
+
+
+generate_itinerary_details2 <- function(res = 7) {
+  
+  # list of parameters sent to the OTP api
+  
+  parameters <- list(
+    mode = "TRANSIT,WALK",
+    date = "01-08-2020",
+    time = "08:00am",
+    arriveBy = "FALSE",
+    maxWalkDistance = "2000",
+    numItineraries = "10"
+  )
+  
+  # set of leg characteristics important for accessibility analysis
+  
+  desired_leg_details <- c("startTime","endTime", "distance", "mode", "routeId", "route")
+  
+  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
+  # very important to change the number of cores accordingly to what is available #
+  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
+  
+  n_cores <- 3L
+  
+  get_transit_itineraries2(parameters, desired_leg_details, n_cores, res)
+  
+}
+
+
+
+
+
 get_transit_itineraries <- function(parameters, leg_details, n_cores = 3, res = 7) {
   
   # calculate the centroids coordinates of the grid with resolution 'res'
@@ -80,7 +113,47 @@ get_transit_itineraries <- function(parameters, leg_details, n_cores = 3, res = 
   
 }
 
-save_same_origin_details <- function(x, od_points, parameters, leg_details, n_cores = 3, res = 7) {
+
+
+get_transit_itineraries2 <- function(parameters, leg_details, n_cores = 3, res = 7) {
+  
+  # calculate the centroids coordinates of the grid with resolution 'res'
+  # cells with no opportunities and population are cleaned out of the dataframe to speed up the requests, since they won't affect accessibility
+  
+  clean_grid <- readr::read_rds(stringr::str_c("./data/rio_h3_grid_res_", res, "_with_data.rds")) %>%
+    filter(opportunities != 0 | population != 0)
+  
+  clean_grid_cell_ids <- clean_grid$id
+  
+  centroids_coordinates <- clean_grid %>% 
+    st_transform(5880) %>% 
+    st_centroid() %>% 
+    st_transform(4674) %>% 
+    st_coordinates() %>% 
+    tibble::as_tibble() %>% 
+    tibble::add_column(id = clean_grid_cell_ids) %>% 
+    mutate(lat_lon = stringr::str_c(Y, ",", X)) %>% 
+    select(-X, -Y)
+  
+  # centroids_coordinates is sent to a function which calculates a route between a specific origin and all possible destinations,
+  # then processes the data from a list into a dataframe and saves the final dataframe in a temporary folder
+  
+  if(!file.exists("./data/temp")) dir.create("./data/temp")
+  
+  future::plan(future::multiprocess, workers = n_cores)
+  
+  # n <- nrow(centroids_coordinates)
+  n <- 1
+  furrr::future_map_int(1:n, save_same_origin_details, centroids_coordinates, parameters, leg_details, .progress = TRUE, res)
+  
+}
+
+
+
+
+
+
+save_same_origin_details <- function(x, od_points, parameters, leg_details, res = 7) {
   
   # this function calls the two most important functions in this whole ensemble
   # make_request sends requests to the OTP API and returns its responses
@@ -88,8 +161,10 @@ save_same_origin_details <- function(x, od_points, parameters, leg_details, n_co
   # this dataframe is then saved inside a temporary folder that contains the itineraries details from each origin to all destinations (each origin is a separate file)
   
   make_request(x, od_points, parameters) %>% 
-    extract_itinerary_details(leg_details, n_cores) %>% 
+    # extract_itinerary_details2(leg_details) %>% 
     readr::write_rds(stringr::str_c("./data/temp/itineraries_details_orig_", x, "_res_", res, ".rds"))
+  
+  x
   
 }
 
@@ -144,6 +219,69 @@ extract_itinerary_details <- function(itineraries_list, leg_details, n_cores) {
     select_unique_itineraries()
   
 }
+
+
+extract_itinerary_details2 <- function(itineraries_list, leg_details) {
+  
+  # save origin and destination id for easier cell identification later on
+  
+  orig_id <- itineraries_list$identification$orig_id
+  dest_id <- itineraries_list$identification$dest_id
+  
+  # check if request has thrown an error - if positive return a tibble with error id and message
+  
+  if (!is.null(itineraries_list$error)) {
+    
+    error_id <- itineraries_list$error$id
+    error_msg <- itineraries_list$error$msg
+    
+    itineraries_details <- tibble::tibble(orig_id = orig_id, dest_id = dest_id,
+                                          error_id = error_id, error_msg = error_msg)
+    
+    return(itineraries_details)
+    
+  }
+  
+  # if the request hasn't thrown an error, an itinerary has successfully been calculated 
+  
+  # the clampInitialWait API parameter is not working properly, not sure why. sometimes it clamps all the wait, sometimes it doesn't.
+  # so the itinerary start time is saved as the time sent as the departure time set as the parameter, and not the first leg start time
+  
+  itinerary_start_time <- itineraries_list$plan$date
+  
+  itineraries <- itineraries_list$plan$itineraries
+  n <- nrow(itineraries)
+  
+  itineraries_details <- NULL
+  
+  for (i in 1:n) {
+    
+    itinerary_end_time <- itineraries$endTime[[i]]
+    
+    legs <- itineraries$legs[[i]]
+    nl <- nrow(legs)
+    
+    legs$leg_id <- 1:nl
+    if (is.null(legs$routeId)) legs$routeId <- NA
+    
+    legs <- legs[c("leg_id", leg_details)] %>% 
+      bind_cols(
+        tibble(orig_id = rep(orig_id, nl),
+               dest_id = rep(dest_id, nl),
+               it_id = rep(i, nl),
+               itinerary_start_time = rep(itinerary_start_time, nl),
+               itinerary_end_time = rep(itinerary_end_time, nl)
+        )
+      )
+    
+    itineraries_details <- bind_rows(itineraries_details, legs)
+    
+  }
+  
+  itineraries_details
+  
+}
+
 
 itinerary_details_to_df <- function(itineraries_list, leg_details) {
   
