@@ -10,7 +10,7 @@ library(sf)
 #    "java -Xmx2G -jar otp.jar --server --graphs graphs --router rio"
 # note that the amount of memory allocated can change (e.g 2G, 3G, 4G, etc.) - not sure how that affects the whole process
 
-generate_itinerary_details <- function(res = 7) {
+generate_itinerary_details <- function(n_cores = 3L, res = 7) {
   
   # list of parameters sent to the OTP api
   
@@ -27,11 +27,9 @@ generate_itinerary_details <- function(res = 7) {
   
   leg_details <- c("startTime","endTime", "distance", "mode", "routeId", "route")
   
-  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
-  # very important to change the number of cores accordingly to what is available #
-  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
-  
-  n_cores <- 3L
+  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
+  # very important to change the number of cores according to what is available #
+  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
   
   get_transit_itineraries(parameters, leg_details, n_cores, res)
   
@@ -72,18 +70,22 @@ get_transit_itineraries <- function(parameters, leg_details, n_cores, res) {
   # read each dataframe from the temporary folder into a list and bind everything together
   # then tidy the resulting dataframe (format columns, arrange rows, etc) and save it
   
-  # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
-  # VERY IMPORTANT: tidy_itineraries() removes errors rows
-  # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
+    # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
+    # VERY IMPORTANT: tidy_itineraries() removes errors rows
+    # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
   
   furrr::future_map(1:n, function(i) readr::read_rds(stringr::str_c("./data/temp/itineraries_details_orig_", i, "_res_", res, ".rds"))) %>% 
     bind_rows() %>% 
     tidy_itineraries(leg_details = leg_details) %>% 
     readr::write_rds(stringr::str_c("./data/itineraries_details_res_", res, ".rds"))
   
+  # close multisession workers by switching plan
+  
+  future::plan(future::sequential)
+  
   # delete the temporary folder
   
-  # unlink("./data/temp", recursive = TRUE)
+  unlink("./data/temp", recursive = TRUE)
   
 }
 
@@ -94,10 +96,10 @@ save_same_origin_details <- function(x, od_points, parameters, leg_details, n_co
   # extract_itinerary_details takes these responses and processes their data from a list into a dataframe
   # this dataframe is then saved inside a temporary folder that contains the itineraries details from each origin to all destinations (each origin is a separate file)
   
-  future::plan(future::multisession, workers = n_cores)
+  # future::plan(future::multisession, workers = n_cores)
   
   make_request(x, od_points, parameters) %>% 
-    furrr::future_map_dfr(extract_itinerary_details, leg_details) %>% 
+    purrr::map_dfr(extract_itinerary_details, leg_details) %>% 
     readr::write_rds(stringr::str_c("./data/temp/itineraries_details_orig_", x, "_res_", res, ".rds"))
   
   x
@@ -117,13 +119,13 @@ make_request <- function(x, od_points, parameters) {
   n <- nrow(od_points)
   response_list <- vector("list", length = n)
   
+  request_url <- httr::parse_url(stringr::str_c("http://localhost:", 8080 + x %% 5, "/otp/routers/rio/plan/"))
+  
   for (i in 1:n) {
     
     parameters$toPlace <- od_points[i, ]$lat_lon
     
-    request_url <- httr::parse_url("http://localhost:8080/otp/routers/rio/plan/")
-    request_url$query <- parameters
-    request_url <- httr::build_url(request_url)
+    request_url <- httr::modify_url(request_url, query = parameters)
     
     res <- httr::GET(request_url) %>% httr::content(as = "text", encoding = "UTF-8") %>% jsonlite::fromJSON()
     res$identification <- list(orig_id = orig$id, dest_id = od_points[i, ]$id)
@@ -283,8 +285,8 @@ generate_itinerary_details_alt <- function(res = 7) {
   
   n_cores <- 3L
   
-  #itineraries_list <- get_transit_itineraries3(parameters, res)
-  itineraries_list <- get_transit_itineraries_alt(parameters, leg_details, n_cores, res)
+  itineraries_list <- get_transit_itineraries3(parameters, res)
+  #itineraries_list <- get_transit_itineraries_alt(parameters, leg_details, n_cores, res)
   
   # readr::write_rds(itineraries_list, "./data/temp_itineraries_list.rds")
   
