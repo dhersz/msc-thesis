@@ -24,7 +24,7 @@ analyse_results <- function(n_quantiles = 10, res = 7, lang = "pt") {
 
   grid_data <- grid_data %>% 
     mutate(
-      income_quantile = cut(avg_income - 0.0001, qntls, labels = stringr::str_c("Q", 1:n_quantiles), include.lowest = TRUE)
+      income_quantile = cut(avg_income - 0.0001, qntls, labels = FALSE, include.lowest = TRUE)
     )
   
   # first analysis: effect of incorporating monetary costs
@@ -32,7 +32,7 @@ analyse_results <- function(n_quantiles = 10, res = 7, lang = "pt") {
   # monetary cost threshold
   
   travel_time <- c(30, 60, 90, 120)
-  percentage_minimum_wage <- c(20, 30, 40, 1000)
+  percentage_minimum_wage <- c(1000, 40, 30, 20)
   
   for (i in seq_along(travel_time)) {
     
@@ -40,9 +40,9 @@ analyse_results <- function(n_quantiles = 10, res = 7, lang = "pt") {
     
     # maps_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
     # maps_reduction_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
-    # boxplot_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
+    # boxplot_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
     # theil_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
-    average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
+     average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
     
   }
   
@@ -191,7 +191,7 @@ maps_reduction_different_costs <- function(grid_data, travel_time, percentage_mi
   # then bind everything in the same dataframe to plot each case as a facet
   # filter out the case without a cost threshold
   
-  n_cases <- length(percentage_minimum_wage)
+  n_cases <- which(percentage_minimum_wage == 1000)
   
   accessibility_data <- purrr::map(accessibility_data, function(i) left_join(i, st_drop_geometry(accessibility_data[[n_cases]]), by = "id")) %>% 
     purrr::map(function(i) mutate(i, reduction = accessibility.y - accessibility.x)) %>% 
@@ -244,7 +244,7 @@ maps_reduction_different_costs <- function(grid_data, travel_time, percentage_mi
   
 }
 
-boxplot_different_costs <- function(grid_data, travel_time, percentage_minimum_wage, text_labels, res) {
+boxplot_different_costs <- function(grid_data, travel_time, percentage_minimum_wage, n_quantiles, text_labels, res) {
   
   accessibility_data <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(stringr::str_c("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
   
@@ -294,28 +294,28 @@ boxplot_different_costs <- function(grid_data, travel_time, percentage_minimum_w
   # plot settings
   
   ggplot(accessibility_data, aes(income_quantile, accessibility)) +
-    geom_boxplot(aes(weight = population)) +
+    geom_boxplot(aes(weight = population, group = income_quantile)) +
     facet_wrap(~ percentage_minimum_wage, ncol = 2) +
     labs(x = text_labels$boxplot$x_axis, y = text_labels$boxplot$y_axis) +
-    geom_text(data = palma_data, aes(x, y, label = label, hjust = "left"), size = 4.5) +
+    geom_text(data = palma_data, aes(x, y, label = label, hjust = "left"), size = 4.5, color = "gray20", vjust = -0.3) +
+    scale_x_continuous(breaks = 1:n_quantiles) +
     scale_y_continuous(
-      limits = c(0, max_accessibility),
+      limits = c(0, max_accessibility * 1.055),
       breaks = seq(0, max_accessibility, max_accessibility/3),
       labels = scales::percent_format(accuracy = 0.1, scale = 100 / total_opportunities)
     ) +
-    theme(
-      strip.text.x = element_text(size = 13),
-      axis.title.x = element_text(size = 12),
-      axis.text.x = element_text(size = 11),
-      axis.title.y = element_text(size = 12),
-      axis.text.y = element_text(size = 11)
-    )
+    theme(strip.text.x = element_text(size = 13),
+          strip.background.x = element_rect(fill = NA),
+          axis.title.x = element_text(size = 12), axis.title.y = element_text(size = 12),
+          axis.text.x = element_text(size = 11), axis.text.y = element_text(size = 11),
+          panel.grid.minor = element_blank(),
+          panel.background = element_rect(fill = "gray94"))
   
   # save plot
   
   ggsave(stringr::str_c("./analysis/", text_labels$lang, "/different_costs/boxplot_tt_", travel_time, "_res_", res, ".png"),
-         width = 9,
-         height = 7,
+         width = 8,
+         height = 5,
          units = "in")
   
 }
@@ -397,6 +397,8 @@ theil_components_stacked <- function(theil_data, travel_time, percentage_minimum
       axis.text.y = element_text(size = 11),
       legend.title = element_text(size = 12),
       legend.text = element_text(size = 11),
+      panel.grid = element_blank(),
+      panel.background = element_rect(fill = "gray94")
     )
   
   # save plot
@@ -446,7 +448,7 @@ theil_between_group_share <- function(theil_data, travel_time, percentage_minimu
   
 }
 
-average_access_different_costs <- function(grid_data, travel_time, percentage_minimum_wage, text_labels, res) {
+average_access_different_costs <- function(grid_data, travel_time, percentage_minimum_wage, n_quantiles, text_labels, res) {
   
   # read and prepare data
   
@@ -462,10 +464,6 @@ average_access_different_costs <- function(grid_data, travel_time, percentage_mi
     purrr::set_names(as.character(percentage_minimum_wage)) %>%
     bind_rows(.id = "percentage_minimum_wage") %>% 
     mutate(percentage_minimum_wage = factor(percentage_minimum_wage, unique(percentage_minimum_wage), labels = text_labels$average_access$facets_title))
-  
-  # change income_levels for a cleaner plot
-  
-  levels(accessibility_data$income_quantile) <- c(1:10)
   
   # calculate the average accessibility of the whole distribution and of each income quantile, weighted by the hexagons' population
   # also create columns in the quantiles dataframe to highlight the 9th decile in the plot
@@ -503,18 +501,20 @@ average_access_different_costs <- function(grid_data, travel_time, percentage_mi
     geom_text(data = quantile_mean, mapping = aes(income_quantile, avg_accessibility, label = ratio),
               na.rm = TRUE, vjust = -0.5) +
     geom_text(data = distribution_mean,
-              mapping = aes(0.625, upper_limit, label = stringr::str_c("Média geral: ", scales::percent(avg_accessibility, scale = 100 / total_opportunities, accuracy = 0.1))),
+              mapping = aes(0.625, upper_limit, label = stringr::str_c("Média geral: ", scales::percent(avg_accessibility, scale = 100 / total_opportunities, accuracy = 1))),
               hjust = 0, vjust = 0.625, color = "gray20") +
     facet_wrap(~ percentage_minimum_wage, nrow = 1) +
     labs(x = text_labels$average_access$x_axis, y = text_labels$average_access$y_axis) +
     scale_color_manual(values = c("black", "dodgerblue3"), guide = FALSE) +
+    scale_x_continuous(breaks = 1:n_quantiles) +
     scale_y_continuous(limits = c(0, upper_limit),
                        breaks = seq(0, upper_limit, upper_limit / 4),
                        labels = scales::percent_format(accuracy = 1, scale = 100 / total_opportunities)) +
     theme(strip.text.x = element_text(size = 13), strip.background.x = element_rect(fill = NA),
           axis.title.x = element_text(size = 12), axis.text.x = element_text(size = 11),
           axis.title.y = element_text(size = 12), axis.text.y = element_text(size = 11),
-          panel.background = element_rect(fill = "gray95"), panel.grid = element_line(color = NA))
+          panel.background = element_rect(fill = "gray94"),
+          panel.grid.minor = element_blank(), panel.grid.major.x = element_blank())
   
   # save plot
   
@@ -963,11 +963,11 @@ palma_ratio <- function(accessibility_data, variable = "accessibility") {
     rename(variable = any_of(variable))
   
   richest_10 <- accessibility_data %>% 
-    filter(income_quantile == "Q10") %>% 
+    filter(income_quantile == 10) %>% 
     summarise(avg_variable = sum(variable * population) / sum(population))
   
   poorest_40 <- accessibility_data %>% 
-    filter(income_quantile %in% c("Q1", "Q2", "Q3", "Q4")) %>% 
+    filter(income_quantile %in% 1:4) %>% 
     summarise(avg_variable = sum(variable * population) / sum(population))
   
   palma_ratio <- richest_10$avg_variable / poorest_40$avg_variable
