@@ -42,7 +42,7 @@ analyse_results <- function(n_quantiles = 10, res = 7, lang = "pt") {
     # maps_reduction_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
     # boxplot_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
     # theil_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
-     average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
+    oi <-  average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
     
   }
   
@@ -62,7 +62,7 @@ analyse_results <- function(n_quantiles = 10, res = 7, lang = "pt") {
      
   }
   
-  # oi
+  oi
   
 }
 
@@ -494,6 +494,10 @@ average_access_different_costs <- function(grid_data, travel_time, percentage_mi
   )
   
   ggplot() +
+    geom_segment(data = quantile_mean,
+                 mapping = aes(x = income_quantile, xend = income_quantile,
+                               y = avg_accessibility_distribution, yend = avg_accessibility,
+                               color = highlight)) +
     geom_hline(data = distribution_mean, mapping = aes(yintercept = avg_accessibility),
                linetype = "dashed", color = "gray50") +
     geom_point(data = quantile_mean, mapping = aes(income_quantile, avg_accessibility, color = highlight),
