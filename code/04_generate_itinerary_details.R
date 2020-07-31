@@ -12,6 +12,10 @@ library(sf)
 
 generate_itinerary_details <- function(n_cores = 3L, res = 7) {
   
+  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  # very important to change the number of cores according to what is available !
+  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  
   # list of parameters sent to the OTP api
   
   parameters <- list(
@@ -26,16 +30,6 @@ generate_itinerary_details <- function(n_cores = 3L, res = 7) {
   # set of leg details important for accessibility analysis
   
   leg_details <- c("startTime","endTime", "distance", "mode", "routeId", "route")
-  
-  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
-  # very important to change the number of cores according to what is available #
-  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
-  
-  get_transit_itineraries(parameters, leg_details, n_cores, res)
-  
-}
-
-get_transit_itineraries <- function(parameters, leg_details, n_cores, res) {
   
   # calculate the centroids coordinates of the grid with resolution 'res'
   # cells with no opportunities and population are cleaned out of the dataframe to speed up the requests, since they won't affect accessibility
@@ -65,14 +59,14 @@ get_transit_itineraries <- function(parameters, leg_details, n_cores, res) {
   future::plan(future::multisession, workers = n_cores)
   
   n <- nrow(centroids_coordinates)
-  invisible(furrr::future_map(1:n, save_same_origin_details, centroids_coordinates, parameters, leg_details, n_cores, res, .progress = TRUE))
+  invisible(furrr::future_map(1:n, get_transit_itineraries, centroids_coordinates, parameters, leg_details, n_cores, res, .progress = TRUE))
   
   # read each dataframe from the temporary folder into a list and bind everything together
   # then tidy the resulting dataframe (format columns, arrange rows, etc) and save it
   
-    # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
-    # VERY IMPORTANT: tidy_itineraries() removes errors rows
-    # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
+    # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
+    # IMPORTANT: tidy_itineraries() removes errors rows _/
+    # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
   
   furrr::future_map(1:n, function(i) readr::read_rds(stringr::str_c("./data/temp/itineraries_details_orig_", i, "_res_", res, ".rds"))) %>% 
     bind_rows() %>% 
@@ -89,14 +83,12 @@ get_transit_itineraries <- function(parameters, leg_details, n_cores, res) {
   
 }
 
-save_same_origin_details <- function(x, od_points, parameters, leg_details, n_cores, res) {
+get_transit_itineraries <- function(x, od_points, parameters, leg_details, n_cores, res) {
   
   # this function calls the two most important functions in this whole ensemble
   # make_request sends requests to the OTP API and returns its responses
   # extract_itinerary_details takes these responses and processes their data from a list into a dataframe
   # this dataframe is then saved inside a temporary folder that contains the itineraries details from each origin to all destinations (each origin is a separate file)
-  
-  # future::plan(future::multisession, workers = n_cores)
   
   make_request(x, od_points, parameters) %>% 
     purrr::map_dfr(extract_itinerary_details, leg_details) %>% 
@@ -119,7 +111,7 @@ make_request <- function(x, od_points, parameters) {
   n <- nrow(od_points)
   response_list <- vector("list", length = n)
   
-  request_url <- httr::parse_url(stringr::str_c("http://localhost:", 8080 + x %% 5, "/otp/routers/rio/plan/"))
+  request_url <- httr::parse_url(stringr::str_c("http://localhost:", 8080, "/otp/routers/rio/plan/"))
   
   for (i in 1:n) {
     
@@ -262,7 +254,7 @@ select_unique_itineraries <- function(itineraries_details) {
 ##############################
 
 
-generate_itinerary_details_alt <- function(res = 7) {
+generate_itinerary_details_alt <- function(n_cores = 3L, res = 7) {
   
   # list of parameters sent to the OTP api
   
@@ -282,8 +274,6 @@ generate_itinerary_details_alt <- function(res = 7) {
   # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
   # very important to change the number of cores accordingly to what is available #
   # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!#
-  
-  n_cores <- 3L
   
   itineraries_list <- get_transit_itineraries3(parameters, res)
   #itineraries_list <- get_transit_itineraries_alt(parameters, leg_details, n_cores, res)
@@ -500,7 +490,7 @@ make_request3 <- function(od_points, parameters) {
       
       parameters$toPlace <- od_points[j, ]$lat_lon
       
-      request_url <- httr::parse_url("http://localhost:8080/otp/routers/rio/plan/")
+      request_url <- httr::parse_url(stringr::str_c("http://localhost:", 8080, "/otp/routers/rio/plan/"))
       request_url$query <- parameters
       request_url <- httr::build_url(request_url)
       
