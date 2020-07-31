@@ -42,7 +42,7 @@ analyse_results <- function(n_quantiles = 10, res = 7, lang = "pt") {
     # maps_reduction_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
     # boxplot_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
     # theil_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
-    oi <-  average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
+    # average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
     
   }
   
@@ -61,8 +61,6 @@ analyse_results <- function(n_quantiles = 10, res = 7, lang = "pt") {
     # theil_cases_bu(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
      
   }
-  
-  oi
   
 }
 
@@ -96,17 +94,12 @@ labels_different_costs <- function(travel_time, percentage_minimum_wage, lang) {
         "y_axis" = "Empregos acessíveis (% do total)",
         "x_axis" = "Decil de renda"
       ),
-      "theil_stacked" = list(
+      "theil" = list(
         "bar_labels" = ifelse(percentage_minimum_wage <= 100, stringr::str_c(percentage_minimum_wage, "% do sal. mín."), "Não considerado"),
         "y_axis" = "Índice de Theil",
         "x_axis" = "Valor limite de custo",
         "component" = "Componente",
         "components_names" = c("Entregrupos", "Intragrupos")
-      ),
-      "between_group" = list(
-        "facets_title" = stringr::str_c("Custo monetário ", ifelse(percentage_minimum_wage <= 100, stringr::str_c("<= ", percentage_minimum_wage, "% do salário mínimo"), "não considerado")),
-        "y_axis" = "Participação",
-        "x_axis" = "Decil de renda"
       ),
       "average_access" = list(
         "facets_title" = stringr::str_c("Custo ", ifelse(percentage_minimum_wage <= 100, stringr::str_c("<= ", percentage_minimum_wage, "% sal. mín."), "não consid.")),
@@ -334,49 +327,32 @@ theil_different_costs <- function(grid_data, travel_time, percentage_minimum_wag
   
   theil_data <- accessibility_data %>% 
     purrr::map(theil_info) %>%
-    purrr::set_names(as.character(percentage_minimum_wage))  %>%
-    bind_rows(.id = "percentage_minimum_wage")
+    purrr::set_names(percentage_minimum_wage) %>%
+    bind_rows(.id = "percentage_minimum_wage") %>% 
+    mutate(percentage_minimum_wage = as.integer(percentage_minimum_wage))
   
-  # first plot: stacked bar chart
+  # aggregate component data and create a label_y column to place annotations within each stack
   
-  theil_components_stacked(theil_data, travel_time, percentage_minimum_wage, text_labels, res)
-  
-  # second plot: between-group component share per decile
-  
-  theil_between_group_share(theil_data, travel_time, percentage_minimum_wage, text_labels, res)
-  
-}
-
-theil_components_stacked <- function(theil_data, travel_time, percentage_minimum_wage, text_labels, res) {
-  
-  # create a dataframe with aggregated component data
-  # create a label_y column to place annotations within each stack
-  
-  theil_stacked <- theil_data %>% 
+  theil_data <- theil_data %>% 
     group_by(percentage_minimum_wage, component) %>% 
-    summarise(share = sum(share)) %>% 
-    arrange(percentage_minimum_wage, desc(component)) %>% 
+    summarise(share = sum(share), .groups = "drop_last") %>% 
+    arrange(desc(percentage_minimum_wage), desc(component)) %>% 
     mutate(label_y = cumsum(share) - share/2) %>% 
     ungroup()
   
-  # convert component info to factors to adequately stack the bars
+  # convert component info and minimum wage percentages to factors to adequately order and stack the bars2
   
-  theil_stacked$component <- factor(theil_stacked$component, levels = c("between", "within"), labels = text_labels$theil_stacked$components_names)
-  
-  # convert minimum wage percentages to factors to adequately order the bars
-
-  theil_stacked$percentage_minimum_wage <- factor(
-    theil_stacked$percentage_minimum_wage,
-    levels = percentage_minimum_wage,
-    labels = text_labels$theil_stacked$bar_labels
-  )
+  theil_data <- theil_data %>% 
+    mutate(
+      component = factor(component, levels = c("between", "within"), labels = text_labels$theil$components_names),
+      percentage_minimum_wage = factor(percentage_minimum_wage, levels = unique(percentage_minimum_wage), labels = text_labels$theil$bar_labels)
+    )
   
   # find max total theil to resize the plot's graphic area in order to fit the annotation on top of bars
   
-  max_theil_data <- theil_stacked %>% 
+  max_theil_data <- theil_data %>% 
     group_by(percentage_minimum_wage) %>% 
-    summarise(theil = sum(share)) %>% 
-    ungroup
+    summarise(theil = sum(share), .groups = "drop")
   
   max_theil <- max(max_theil_data$theil)
   
@@ -384,11 +360,15 @@ theil_components_stacked <- function(theil_data, travel_time, percentage_minimum
   
   # plot settings
   
-  ggplot(theil_stacked) +
+  ggplot(theil_data) +
     geom_col(aes(percentage_minimum_wage, share, fill = component)) + 
-    geom_text(aes(percentage_minimum_wage, label_y, label = format(round(share, digits = 4)), nsmall = 4), color = "white") +
-    stat_summary(fun = sum, aes(percentage_minimum_wage, share, label = format(round(..y.., digits = 4), nsmall = 4), group = percentage_minimum_wage), geom = "text", vjust = -0.5) +
-    labs(x = text_labels$theil_stacked$x_axis, y = text_labels$theil_stacked$y_axis, fill = text_labels$theil_stacked$component) +
+    geom_text(aes(percentage_minimum_wage, label_y, label = format(round(share, digits = 4)), nsmall = 4),
+              color = "white") +
+    stat_summary(fun = sum,
+                 aes(percentage_minimum_wage, share, label = format(round(..y.., digits = 4), nsmall = 4), group = percentage_minimum_wage),
+                 geom = "text",
+                 vjust = -0.5) +
+    labs(x = text_labels$theil$x_axis, y = text_labels$theil$y_axis, fill = text_labels$theil$component) +
     coord_cartesian(ylim = c(0, y_upper_limit)) +
     theme(
       axis.title.x = element_text(size = 12),
@@ -403,47 +383,9 @@ theil_components_stacked <- function(theil_data, travel_time, percentage_minimum
   
   # save plot
   
-  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/different_costs/theil_components_stacked_tt_", travel_time, "_res_", res, ".png"),
+  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/different_costs/theil_tt_", travel_time, "_res_", res, ".png"),
          width = 7,
          height = 3,
-         units = "in")
-  
-}
-
-theil_between_group_share <- function(theil_data, travel_time, percentage_minimum_wage, text_labels, res) {
-  
-  # convert minimum wage percentages to factors to adequately order the facets
-  
-  theil_data$percentage_minimum_wage <- factor(
-    theil_data$percentage_minimum_wage,
-    levels = percentage_minimum_wage,
-    labels = text_labels$between_group$facets_title
-  )
-  
-  # filter between-group data only
-  
-  theil_between <- theil_data %>% 
-    filter(component == "between")
-  
-  # plot settings
-  
-  ggplot(theil_between, aes(income_quantile, share)) +
-    geom_col() +
-    facet_wrap(~ percentage_minimum_wage, ncol = 2) + 
-    labs(x = text_labels$between_group$x_axis, y = text_labels$between_group$y_axis) +
-    theme(
-      strip.text.x = element_text(size = 13),
-      axis.title.x = element_text(size = 12),
-      axis.text.x = element_text(size = 11),
-      axis.title.y = element_text(size = 12),
-      axis.text.y = element_text(size = 11)
-    )
-  
-  # save plot
-  
-  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/different_costs/between_group_share_tt_", travel_time, "_res_", res, ".png"),
-         width = 9,
-         height = 4,
          units = "in")
   
 }
