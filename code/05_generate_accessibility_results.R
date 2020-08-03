@@ -89,7 +89,7 @@ generate_routes_info <- function() {
 
 raw_routes_info <- function(holder) {
   
-  rio <- geobr::read_municipality(3304557) %>% st_transform(5880)
+  # rio <- geobr::read_municipality(3304557) %>% st_transform(5880)
   
   zip_filepath <- stringr::str_c("./otp/graphs/rio/gtfs_", holder, ".zip")
   

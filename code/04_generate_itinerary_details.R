@@ -10,7 +10,7 @@ library(sf)
 #    "java -Xmx2G -jar otp.jar --server --graphs graphs --router rio"
 # note that the amount of memory allocated can change (e.g 2G, 3G, 4G, etc.) - not sure how that affects the whole process
 
-generate_itinerary_details <- function(n_cores = 3L, res = 7) {
+generate_itinerary_details <- function(n_instances = 1, n_cores = 3L, res = 7) {
   
   # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   # very important to change the number of cores according to what is available !
@@ -59,7 +59,7 @@ generate_itinerary_details <- function(n_cores = 3L, res = 7) {
   future::plan(future::multisession, workers = n_cores)
   
   n <- nrow(centroids_coordinates)
-  invisible(furrr::future_map(1:n, get_transit_itineraries, centroids_coordinates, parameters, leg_details, n_cores, res, .progress = TRUE))
+  invisible(furrr::future_map(1:n, get_transit_itineraries, centroids_coordinates, parameters, leg_details, n_instances, n_cores, res, .progress = TRUE))
   
   # read each dataframe from the temporary folder into a list and bind everything together
   # then tidy the resulting dataframe (format columns, arrange rows, etc) and save it
@@ -70,7 +70,7 @@ generate_itinerary_details <- function(n_cores = 3L, res = 7) {
   
   furrr::future_map(1:n, function(i) readr::read_rds(stringr::str_c("./data/temp/itineraries_details_orig_", i, "_res_", res, ".rds"))) %>% 
     bind_rows() %>% 
-    tidy_itineraries(leg_details = leg_details) %>% 
+    tidy_itineraries(leg_details, res) %>% 
     readr::write_rds(stringr::str_c("./data/itineraries_details_res_", res, ".rds"))
   
   # close multisession workers by switching plan
@@ -83,14 +83,14 @@ generate_itinerary_details <- function(n_cores = 3L, res = 7) {
   
 }
 
-get_transit_itineraries <- function(x, od_points, parameters, leg_details, n_cores, res) {
+get_transit_itineraries <- function(x, od_points, parameters, leg_details, n_instances, n_cores, res) {
   
   # this function calls the two most important functions in this whole ensemble
   # make_request sends requests to the OTP API and returns its responses
   # extract_itinerary_details takes these responses and processes their data from a list into a dataframe
   # this dataframe is then saved inside a temporary folder that contains the itineraries details from each origin to all destinations (each origin is a separate file)
   
-  make_request(x, od_points, parameters) %>% 
+  make_request(x, od_points, parameters, n_instances) %>% 
     purrr::map_dfr(extract_itinerary_details, leg_details) %>% 
     readr::write_rds(stringr::str_c("./data/temp/itineraries_details_orig_", x, "_res_", res, ".rds"))
   
@@ -98,7 +98,7 @@ get_transit_itineraries <- function(x, od_points, parameters, leg_details, n_cor
   
 }
 
-make_request <- function(x, od_points, parameters) {
+make_request <- function(x, od_points, parameters, n_instances) {
   
   # use origin lat_lon as the fromPlace parameter sent to the API
   
@@ -111,7 +111,7 @@ make_request <- function(x, od_points, parameters) {
   n <- nrow(od_points)
   response_list <- vector("list", length = n)
   
-  request_url <- httr::parse_url(stringr::str_c("http://localhost:", 8080, "/otp/routers/rio/plan/"))
+  request_url <- httr::parse_url(stringr::str_c("http://localhost:", 8080 + x %% n_instances, "/otp/routers/rio/plan/"))
   
   for (i in 1:n) {
     
@@ -191,7 +191,7 @@ extract_itinerary_details <- function(itineraries_list, leg_details) {
   
 }
 
-tidy_itineraries <- function(itineraries_details, leg_details){
+tidy_itineraries <- function(itineraries_details, leg_details, res){
   
   # select itinerary-level columns and place to the left of leg-level columns
   # convert names from camelCase to snake_case
@@ -208,13 +208,13 @@ tidy_itineraries <- function(itineraries_details, leg_details){
       vars(ends_with("time")),
       list(~ lubridate::as_datetime(as.double(.) / 1000, tz = "America/Sao_Paulo"))
     ) %>% 
-    select_unique_itineraries()
+    select_unique_itineraries(res)
   
   itineraries_details
   
 }
 
-select_unique_itineraries <- function(itineraries_details) {
+select_unique_itineraries <- function(itineraries_details, res) {
   
   # sometimes OTP returns multiple identical itineraries for each OD pair, but at different times
   # this issue gets more relevant when you increase the numItineraries parameter sent in request
@@ -227,6 +227,13 @@ select_unique_itineraries <- function(itineraries_details) {
   # column with map() in order to use a copy of 'data' with no legs' start and end time to compare
   # itineraries, which is very slow
   #### e.g. mutate(temp = map(data, function(i) select(i, -leg_start_time, -leg_end_time)))
+  
+  # first save errors in another file
+  
+  errors <- itineraries_details %>%
+    filter(!is.na(error_id)) %>% 
+    select(orig_id, dest_id, error_id, error_msg) %>% 
+    readr::write_rds(stringr::str_c("./data/itineraries_details_res_", res, "_errors.rds"))
   
   # filter out errors, select relevant columns and nest each itinerary's legs details in a df
   
@@ -245,6 +252,44 @@ select_unique_itineraries <- function(itineraries_details) {
     tidyr::unnest(data)
   
   itineraries_details
+  
+}
+
+setup_otp <- function(n_instances) {
+  
+  # original_wd <- getwd()
+  
+  # setwd("~")
+  
+  future::plan(future::multisession, workers = n_instances)
+  
+  invisible(furrr::future_map(
+    1:n_instances, 
+    function(i){ 
+      system2("java", 
+        args = c("-Xmx2G", 
+                 "-jar", stringr::str_c("otp/otp", i, ".jar"), 
+                 "--server", "--graphs", "otp/graphs", "--router", "rio", 
+                 "--port", as.character(8080 + i-1), 
+                 "--securePort", as.character(8800 + i-1)), 
+        wait = FALSE)
+      
+      # setwd(original_wd)
+    }))
+  
+  future::plan(future::sequential)
+  
+  # setwd(original_wd)
+  
+}
+
+timer <- function(n_instances, n_cores, res) {
+  
+  tictoc::tic()
+  generate_itinerary_details(n_instances = n_instances, n_cores = n_cores, res = res)
+  elapsed <-  tictoc::toc(func.toc = out_msg_toc, quiet = TRUE)
+  
+  elapsed$toc - elapsed$tic
   
 }
 
