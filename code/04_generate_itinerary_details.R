@@ -48,7 +48,7 @@ generate_itinerary_details <- function(n_instances = 1, n_cores = 3L, res = 7) {
     tibble::add_column(id = clean_grid_cell_ids) %>% 
     mutate(lat_lon = stringr::str_c(Y, ",", X)) %>% 
     select(-X, -Y) %>% 
-    head(10)
+    head(20)
   
   # centroids_coordinates is sent to a function which calculates a route between a specific origin and all possible destinations,
   # then processes the data from a list into a dataframe and saves it in a temporary folder
@@ -117,6 +117,7 @@ make_request <- function(x, od_points, parameters, n_instances) {
     
     parameters$toPlace <- od_points[i, ]$lat_lon
     
+    # request_url <- httr::parse_url(stringr::str_c("http://localhost:", 8080 + ((x - 1) * n + i) %% n_instances, "/otp/routers/rio/plan/"))
     request_url <- httr::modify_url(request_url, query = parameters)
     
     res <- httr::GET(request_url) %>% httr::content(as = "text", encoding = "UTF-8") %>% jsonlite::fromJSON()
@@ -268,7 +269,7 @@ setup_otp <- function(n_instances) {
     function(i){ 
       system2("java", 
         args = c("-Xmx2G", 
-                 "-jar", stringr::str_c("otp/otp", i, ".jar"), 
+                 "-jar", "otp/otp.jar", 
                  "--server", "--graphs", "otp/graphs", "--router", "rio", 
                  "--port", as.character(8080 + i-1), 
                  "--securePort", as.character(8800 + i-1)), 
@@ -287,9 +288,10 @@ timer <- function(n_instances, n_cores, res) {
   
   tictoc::tic()
   generate_itinerary_details(n_instances = n_instances, n_cores = n_cores, res = res)
-  elapsed <-  tictoc::toc(func.toc = out_msg_toc, quiet = TRUE)
+  #elapsed <-  tictoc::toc(func.toc = out_msg_toc, quiet = TRUE)
+  tictoc::toc()
   
-  elapsed$toc - elapsed$tic
+  # elapsed$toc - elapsed$tic
   
 }
 
