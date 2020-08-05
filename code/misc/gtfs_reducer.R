@@ -2,7 +2,7 @@ generate_smaller_gtfs <- function(holder = "fetranspor") {
   
   # path to the original big gtfs file
   
-  original_gtfs_filepath <- stringr::str_c("./otp/graphs/rio/gtfs_", holder, ".zip")
+  original_gtfs_filepath <- stringr::str_c("./otp/graphs/rio_old/gtfs_", holder, ".zip")
   
   # extract the id of routes within a given distance from rio municipality
   
@@ -14,20 +14,20 @@ generate_smaller_gtfs <- function(holder = "fetranspor") {
   # edit each gtfs file to keep only the entries related to these routes #
   ########################################################################
   
-  if(!file.exists("./otp/graphs/rio_edited/gtfs_fetranspor_reduced")) dir.create("./otp/graphs/rio_edited/gtfs_fetranspor_reduced")
+  if(!file.exists("./otp/graphs/rio/gtfs_fetranspor_reduced")) dir.create("./otp/graphs/rio/gtfs_fetranspor_reduced")
   
   # routes.txt
   
   readr::read_csv(unz(original_gtfs_filepath, "routes.txt")) %>% 
     filter(route_id %in% relevant_route_ids) %>% 
-    readr::write_csv("./otp/graphs/rio_edited/gtfs_fetranspor_reduced/routes.txt")
+    readr::write_csv("./otp/graphs/rio/gtfs_fetranspor_reduced/routes.txt")
   
   # fare_rules.txt
   
   fare_rules <- readr::read_csv(unz(original_gtfs_filepath, "fare_rules.txt")) %>% 
     filter(route_id %in% relevant_route_ids)
   
-  readr::write_csv(fare_rules, "./otp/graphs/rio_edited/gtfs_fetranspor_reduced/fare_rules.txt")
+  readr::write_csv(fare_rules, "./otp/graphs/rio/gtfs_fetranspor_reduced/fare_rules.txt")
   
   relevant_fare_ids <- unique(fare_rules$fare_id)
   
@@ -35,14 +35,14 @@ generate_smaller_gtfs <- function(holder = "fetranspor") {
   
   readr::read_csv(unz(original_gtfs_filepath, "fare_attributes.txt")) %>% 
     filter(fare_id %in% relevant_fare_ids) %>% 
-    readr::write_csv("./otp/graphs/rio_edited/gtfs_fetranspor_reduced/fare_attributes.txt")
+    readr::write_csv("./otp/graphs/rio/gtfs_fetranspor_reduced/fare_attributes.txt")
   
   # trips.txt
   
   trips <- readr::read_csv(unz(original_gtfs_filepath, "trips.txt")) %>% 
     filter(route_id %in% relevant_route_ids)
   
-  readr::write_csv(trips, "./otp/graphs/rio_edited/gtfs_fetranspor_reduced/trips.txt")
+  readr::write_csv(trips, "./otp/graphs/rio/gtfs_fetranspor_reduced/trips.txt")
   
   relevant_service_ids <- unique(trips$service_id)
   relevant_trip_ids <- unique(trips$trip_id)
@@ -52,32 +52,32 @@ generate_smaller_gtfs <- function(holder = "fetranspor") {
   
   readr::read_csv(unz(original_gtfs_filepath, "calendar.txt")) %>% 
     filter(service_id %in% relevant_service_ids) %>% 
-    readr::write_csv("./otp/graphs/rio_edited/gtfs_fetranspor_reduced/calendar.txt")
+    readr::write_csv("./otp/graphs/rio/gtfs_fetranspor_reduced/calendar.txt")
   
   # calendar_dates.txt
   
   readr::read_csv(unz(original_gtfs_filepath, "calendar_dates.txt")) %>% 
     filter(service_id %in% relevant_service_ids) %>% 
-    readr::write_csv("./otp/graphs/rio_edited/gtfs_fetranspor_reduced/calendar_dates.txt")
+    readr::write_csv("./otp/graphs/rio/gtfs_fetranspor_reduced/calendar_dates.txt")
   
   # frequencies.txt
   
   readr::read_csv(unz(original_gtfs_filepath, "frequencies.txt"), col_types = "cccdl") %>% 
     filter(trip_id %in% relevant_trip_ids) %>% 
-    readr::write_csv("./otp/graphs/rio_edited/gtfs_fetranspor_reduced/frequencies.txt")
+    readr::write_csv("./otp/graphs/rio/gtfs_fetranspor_reduced/frequencies.txt")
   
   # shapes.txt
   
   readr::read_csv(unz(original_gtfs_filepath, "shapes.txt")) %>% 
     filter(shape_id %in% relevant_shape_ids) %>% 
-    readr::write_csv("./otp/graphs/rio_edited/gtfs_fetranspor_reduced/shapes.txt")
+    readr::write_csv("./otp/graphs/rio/gtfs_fetranspor_reduced/shapes.txt")
   
   # stop_times.txt
   
   stop_times <- readr::read_csv(unz(original_gtfs_filepath, "stop_times.txt"), col_types = "cccddcccc") %>% 
     filter(trip_id %in% relevant_trip_ids)
   
-  readr::write_csv(stop_times, "./otp/graphs/rio_edited/gtfs_fetranspor_reduced/stop_times.txt")
+  readr::write_csv(stop_times, "./otp/graphs/rio/gtfs_fetranspor_reduced/stop_times.txt")
   
   relevant_stop_ids <- unique(stop_times$stop_id)
   
@@ -85,15 +85,15 @@ generate_smaller_gtfs <- function(holder = "fetranspor") {
   
   readr::read_csv(unz(original_gtfs_filepath, "stops.txt")) %>% 
     filter(stop_id %in% relevant_stop_ids) %>% 
-    readr::write_csv("./otp/graphs/rio_edited/gtfs_fetranspor_reduced/stops.txt")
+    readr::write_csv("./otp/graphs/rio/gtfs_fetranspor_reduced/stops.txt")
   
   # agency.txt and feed_info.txt go unchanged
   
   readr::read_csv(unz(original_gtfs_filepath, "agency.txt")) %>% 
-    readr::write_csv("./otp/graphs/rio_edited/gtfs_fetranspor_reduced/agency.txt")
+    readr::write_csv("./otp/graphs/rio/gtfs_fetranspor_reduced/agency.txt")
   
   readr::read_csv(unz(original_gtfs_filepath, "feed_info.txt")) %>% 
-    readr::write_csv("./otp/graphs/rio_edited/gtfs_fetranspor_reduced/feed_info.txt")
+    readr::write_csv("./otp/graphs/rio/gtfs_fetranspor_reduced/feed_info.txt")
   
   ######################
   # now zip everything #
@@ -101,13 +101,13 @@ generate_smaller_gtfs <- function(holder = "fetranspor") {
   
   original_wd <- getwd()
   
-  setwd("./otp/graphs/rio_edited/gtfs_fetranspor_reduced/")
+  setwd("./otp/graphs/rio/gtfs_fetranspor_reduced/")
   
-  zip(stringr::str_c(original_wd, "/otp/graphs/rio_edited/gtfs_fetranspor_reduced"), files = list.files())
+  zip(stringr::str_c(original_wd, "/otp/graphs/rio/gtfs_fetranspor_reduced"), files = list.files())
   
   setwd(original_wd)
   
-  unlink("./otp/graphs/rio_edited/gtfs_fetranspor_reduced", recursive = TRUE)
+  unlink("./otp/graphs/rio/gtfs_fetranspor_reduced", recursive = TRUE)
   
 }
 
@@ -117,7 +117,7 @@ raw_routes_info <- function(holder, buffer_dist = 0) {
     st_transform(5880) %>% 
     st_buffer(dist = buffer_dist)
   
-  zip_filepath <- stringr::str_c("./otp/graphs/rio/gtfs_", holder, ".zip")
+  zip_filepath <- stringr::str_c("./otp/graphs/rio_old/gtfs_", holder, ".zip")
   
   required_files <- c("routes.txt", "shapes.txt", "trips.txt")
   

@@ -3,7 +3,7 @@ library(sf)
 
 generate_hex_grid <- function(res = 7) {
   
-  rio_municipality <- geobr::read_municipality(3304557)
+  rio_municipality <- readr::read_rds("./data/rio_municipality.rds")
   
   # when the resolution is below 9 no hexagons have their centroids on Paquetá, hence the island is not actually represented
   # to prevent that, the hexagons are generated covering the entire bounding box of rio, and then are intersected with rio's shape

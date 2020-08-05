@@ -47,7 +47,8 @@ generate_itinerary_details <- function(n_instances = 1, n_cores = 3L, res = 7) {
     tibble::as_tibble() %>% 
     tibble::add_column(id = clean_grid_cell_ids) %>% 
     mutate(lat_lon = stringr::str_c(Y, ",", X)) %>% 
-    select(-X, -Y)
+    select(-X, -Y) %>% 
+    head(10)
   
   # centroids_coordinates is sent to a function which calculates a route between a specific origin and all possible destinations,
   # then processes the data from a list into a dataframe and saves it in a temporary folder
@@ -110,7 +111,7 @@ make_request <- function(x, od_points, parameters, n_instances) {
   n <- nrow(od_points)
   response_list <- vector("list", length = n)
   
-  request_url <- httr::parse_url(stringr::str_c("http://localhost:", 8080 + x %% n_instances, "/otp/routers/rio_edited/plan/"))
+  request_url <- httr::parse_url(stringr::str_c("http://localhost:", 8080 + x %% n_instances, "/otp/routers/rio/plan/"))
   
   for (i in 1:n) {
     
@@ -144,8 +145,7 @@ extract_itinerary_details <- function(itineraries_list, leg_details) {
     error_id <- itineraries_list$error$id
     error_msg <- itineraries_list$error$msg
     
-    itineraries_details <- tibble::tibble(orig_id = orig_id, dest_id = dest_id,
-                                          error_id = error_id, error_msg = error_msg)
+    itineraries_details <- data.frame(orig_id = orig_id, dest_id = dest_id, error_id = error_id, error_msg = error_msg)
     
     return(itineraries_details)
     
@@ -173,15 +173,8 @@ extract_itinerary_details <- function(itineraries_list, leg_details) {
     legs$leg_id <- 1:nl
     if (is.null(legs$routeId)) legs$routeId <- NA
     
-    legs <- legs[c("leg_id", leg_details)] %>% 
-      bind_cols(
-        tibble(orig_id = rep(orig_id, nl),
-               dest_id = rep(dest_id, nl),
-               it_id = rep(i, nl),
-               itinerary_start_time = rep(itinerary_start_time, nl),
-               itinerary_end_time = rep(itinerary_end_time, nl)
-        )
-      )
+    legs <- legs[c("leg_id", leg_details)]
+    legs <- cbind(legs, orig_id = orig_id, dest_id = dest_id, it_id = i, itinerary_start_time = itinerary_start_time, itinerary_end_time = itinerary_end_time)
     
     itineraries_details <- bind_rows(itineraries_details, legs)
     
@@ -269,7 +262,7 @@ setup_otp <- function(n_instances) {
       system2("java", 
         args = c("-Xmx2G", 
                  "-jar", "otp/otp.jar", 
-                 "--server", "--graphs", "otp/graphs", "--router", "rio_edited", 
+                 "--server", "--graphs", "otp/graphs", "--router", "rio", 
                  "--port", as.character(8080 + i-1), 
                  "--securePort", as.character(8800 + i-1)), 
         wait = FALSE)
@@ -287,7 +280,7 @@ timer <- function(n_instances, n_cores, res) {
   
   tictoc::tic()
   generate_itinerary_details(n_instances = n_instances, n_cores = n_cores, res = res)
-  elapsed <-  tictoc::toc(func.toc = function(tic, toc, msg, info) toc - tic, quiet = TRUE)
+  elapsed <-  tictoc::toc()
   
   elapsed$toc - elapsed$tic
   
@@ -295,7 +288,9 @@ timer <- function(n_instances, n_cores, res) {
 
 times_dataset_builder <- function(n_list = c(3, 6, 10, 15, 20)){
   
-  # setup_otp(max(n_list))
+  setup_otp(max(n_list))
+  
+  Sys.sleep(max(n_list) * 15)
   
   df <- tibble::tibble(
     n_instances = rep(n_list, times = length(n_list)),
@@ -303,23 +298,15 @@ times_dataset_builder <- function(n_list = c(3, 6, 10, 15, 20)){
     running_time = rep(NA, times = length(n_list) * length(n_list))
   )
   
-  for (i in 1:5) {
+  for (i in 1:nrow(df)) {
     
     case <- df[i, ]
     
-    df$running_time[i] = case$n_instances + case$n_cores
+    df$running_time[i] = timer(n_instances = case$n_instances, n_cores = case$n_cores, 6)
     
     readr::write_rds(df, "./data/times_dataset_temp.rds")
     
   }
-  
-  
-  # times <- purrr::map_dbl(1:nrow(df), function(i) {
-  #   case <- df[i, ]
-  #   timer(n_instances = case$n_instances, n_cores = case$n_cores, 6)
-  # })
-  
-  # df <- df %>% tibble::add_column(running_time = times)
   
   readr::write_rds(df, "./data/times_dataset.rds")
   
