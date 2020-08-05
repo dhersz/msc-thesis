@@ -87,9 +87,11 @@ generate_routes_info <- function() {
   
 }
 
-raw_routes_info <- function(holder) {
+raw_routes_info <- function(holder, buffer_dist = 0) {
   
-  # rio <- geobr::read_municipality(3304557) %>% st_transform(5880)
+  rio <- readr::read_rds("./data/rio_municipality.rds") %>% 
+    st_transform(5880) %>% 
+    st_buffer(dist = buffer_dist)
   
   zip_filepath <- stringr::str_c("./otp/graphs/rio/gtfs_", holder, ".zip")
   
@@ -113,9 +115,8 @@ raw_routes_info <- function(holder) {
     left_join(fare_attributes_treatment(fare_attributes), by = "fare_id") %>% 
     left_join(shapes_treatment(shapes, 4674), by = "shape_id") %>% 
     st_as_sf() %>% 
-    # st_transform(5880) %>% 
-    # st_buffer(1000) %>% 
-    # filter(st_intersects(., rio, sparse = FALSE)) %>% 
+    #st_transform(5880) %>% 
+    #filter(st_intersects(., rio, sparse = FALSE)) %>% 
     st_drop_geometry() %>% 
     distinct(route_id, fare_id, route_short_name, route_long_name, price)
   

@@ -47,8 +47,7 @@ generate_itinerary_details <- function(n_instances = 1, n_cores = 3L, res = 7) {
     tibble::as_tibble() %>% 
     tibble::add_column(id = clean_grid_cell_ids) %>% 
     mutate(lat_lon = stringr::str_c(Y, ",", X)) %>% 
-    select(-X, -Y) %>% 
-    head(20)
+    select(-X, -Y)
   
   # centroids_coordinates is sent to a function which calculates a route between a specific origin and all possible destinations,
   # then processes the data from a list into a dataframe and saves it in a temporary folder
@@ -111,7 +110,7 @@ make_request <- function(x, od_points, parameters, n_instances) {
   n <- nrow(od_points)
   response_list <- vector("list", length = n)
   
-  request_url <- httr::parse_url(stringr::str_c("http://localhost:", 8080 + x %% n_instances, "/otp/routers/rio/plan/"))
+  request_url <- httr::parse_url(stringr::str_c("http://localhost:", 8080 + x %% n_instances, "/otp/routers/rio_edited/plan/"))
   
   for (i in 1:n) {
     
@@ -270,7 +269,7 @@ setup_otp <- function(n_instances) {
       system2("java", 
         args = c("-Xmx2G", 
                  "-jar", "otp/otp.jar", 
-                 "--server", "--graphs", "otp/graphs", "--router", "rio", 
+                 "--server", "--graphs", "otp/graphs", "--router", "rio_edited", 
                  "--port", as.character(8080 + i-1), 
                  "--securePort", as.character(8800 + i-1)), 
         wait = FALSE)
@@ -288,10 +287,45 @@ timer <- function(n_instances, n_cores, res) {
   
   tictoc::tic()
   generate_itinerary_details(n_instances = n_instances, n_cores = n_cores, res = res)
-  #elapsed <-  tictoc::toc(func.toc = out_msg_toc, quiet = TRUE)
-  tictoc::toc()
+  elapsed <-  tictoc::toc(func.toc = function(tic, toc, msg, info) toc - tic, quiet = TRUE)
   
-  # elapsed$toc - elapsed$tic
+  elapsed$toc - elapsed$tic
+  
+}
+
+times_dataset_builder <- function(n_list = c(3, 6, 10, 15, 20)){
+  
+  # setup_otp(max(n_list))
+  
+  df <- tibble::tibble(
+    n_instances = rep(n_list, times = length(n_list)),
+    n_cores = rep(n_list, each = length(n_list)),
+    running_time = rep(NA, times = length(n_list) * length(n_list))
+  )
+  
+  for (i in 1:5) {
+    
+    case <- df[i, ]
+    
+    df$running_time[i] = case$n_instances + case$n_cores
+    
+    readr::write_rds(df, "./data/times_dataset_temp.rds")
+    
+  }
+  
+  
+  # times <- purrr::map_dbl(1:nrow(df), function(i) {
+  #   case <- df[i, ]
+  #   timer(n_instances = case$n_instances, n_cores = case$n_cores, 6)
+  # })
+  
+  # df <- df %>% tibble::add_column(running_time = times)
+  
+  readr::write_rds(df, "./data/times_dataset.rds")
+  
+  file.remove("./data/times_dataset_temp.rds")
+  
+  opentripplanner::otp_stop(warn = FALSE)
   
 }
 
