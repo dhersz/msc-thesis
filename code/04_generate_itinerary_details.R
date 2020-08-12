@@ -10,7 +10,7 @@ library(sf)
 #    "java -Xmx2G -jar otp.jar --server --graphs graphs --router rio"
 # note that the amount of memory allocated can change (e.g 2G, 3G, 4G, etc.) - not sure how that affects the whole process
 
-generate_itinerary_details <- function(groups_size = 1, n_instances = 1, n_cores = 3L, res = 7) {
+generate_itinerary_details <- function(dyn, groups_size = 1, n_instances = 1, n_cores = 3L, res = 7) {
 
   # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   # very important to change the number of cores according to what is available !
@@ -19,12 +19,14 @@ generate_itinerary_details <- function(groups_size = 1, n_instances = 1, n_cores
   # list of parameters sent to the OTP api
 
   parameters <- list(
-    mode = "TRANSIT,WALK",
+    mode = "WALK",
     date = "01-08-2020",
     time = "08:00am",
     arriveBy = "FALSE",
-    maxWalkDistance = "2000",
+    # maxWalkDistance = "2000",
     numItineraries = "10"
+    # ,maxHours = "1"
+    # ,useRequestedDateTimeInMaxHours = "TRUE"
   )
 
   # set of leg details important for accessibility analysis
@@ -47,8 +49,7 @@ generate_itinerary_details <- function(groups_size = 1, n_instances = 1, n_cores
     tibble::as_tibble() %>%
     tibble::add_column(id = clean_grid_cell_ids) %>%
     mutate(lat_lon = paste0(Y, ",", X)) %>%
-    select(-X, -Y) %>%
-    head(2)
+    select(-X, -Y)
 
   # calculate groups of centroids to be sent in bashes to each core
 
@@ -64,7 +65,7 @@ generate_itinerary_details <- function(groups_size = 1, n_instances = 1, n_cores
 
   future::plan(future::multisession, workers = n_cores)
 
-  invisible(furrr::future_map(1:length(origin_groups), get_transit_itineraries, origin_groups, centroids_coordinates, parameters, leg_details, n_instances, n_cores, res, .progress = TRUE))
+  invisible(furrr::future_map(1:length(origin_groups), get_transit_itineraries, origin_groups, centroids_coordinates, parameters, leg_details, n_instances, n_cores, dyn, res, .progress = TRUE))
 
   # read each dataframe from the temporary folder into a list and bind everything together
   # then tidy the resulting dataframe (format columns, arrange rows, etc) and save it
@@ -84,11 +85,11 @@ generate_itinerary_details <- function(groups_size = 1, n_instances = 1, n_cores
 
   # delete the temporary folder
 
-  unlink("./data/temp", recursive = TRUE)
+  # unlink("./data/temp", recursive = TRUE)
 
 }
 
-get_transit_itineraries <- function(x, origin_groups, od_points, parameters, leg_details, n_instances, n_cores, res) {
+get_transit_itineraries <- function(x, origin_groups, od_points, parameters, leg_details, n_instances, n_cores, dyn, res) {
 
   # this function calls the two most important functions in this whole ensemble
   # make_request sends requests to the OTP API and returns its responses
@@ -99,7 +100,7 @@ get_transit_itineraries <- function(x, origin_groups, od_points, parameters, leg
 
   group_id <- ifelse(length(origin_group) == 1, as.character(origin_group), paste0(origin_group[1], "_to_", origin_group[length(origin_group)]))
 
-  make_request(x, origin_group, od_points, parameters, n_instances) %>%
+  make_request(x, origin_group, od_points, parameters, n_instances, dyn) %>%
     purrr::map_dfr(extract_itinerary_details, leg_details) %>%
     readr::write_rds(stringr::str_c("./data/temp/itineraries_details_orig_", group_id, "_res_", res, ".rds"))
 
@@ -107,7 +108,7 @@ get_transit_itineraries <- function(x, origin_groups, od_points, parameters, leg
 
 }
 
-make_request <- function(x, origin_group, od_points, parameters, n_instances) {
+make_request <- function(x, origin_group, od_points, parameters, n_instances, dyn) {
 
   origins_pool <- od_points[origin_group, ]
 
@@ -128,6 +129,8 @@ make_request <- function(x, origin_group, od_points, parameters, n_instances) {
     # process it from a json to a list and add an identification nested list
 
     for (j in 1:nrow(od_points)) {
+      
+      if (dyn) request_url <- httr::parse_url(paste0("http://localhost:", 8080 + cont %% n_instances, "/otp/routers/rio/plan/"))
 
       parameters$toPlace <- od_points[j, ]$lat_lon
 
@@ -292,10 +295,10 @@ setup_otp <- function(n_instances) {
 
 }
 
-timer <- function(groups_size, n_instances, n_cores, res) {
+timer <- function(dyn, groups_size, n_instances, n_cores, res) {
 
   tictoc::tic()
-  generate_itinerary_details(groups_size, n_instances, n_cores, res)
+  generate_itinerary_details(dyn, groups_size, n_instances, n_cores, res)
   elapsed <-  tictoc::toc()
 
   elapsed$toc - elapsed$tic
@@ -304,15 +307,23 @@ timer <- function(groups_size, n_instances, n_cores, res) {
 
 times_dataset_builder <- function(n_list = c(1, 5, 10, 13, 16, 20)){
 
-  setup_otp(max(n_list))
+  n_instances <- 12
+  n_cores <- 19
+  res <- 6
+  dyn <- 0
+  # group_size <- 1
+  
+  test_repetitions <- 20
+  
+  setup_otp(n_instances)
 
-  Sys.sleep(max(n_list) * 20)
-
-  test_repetitions <- 10
+  Sys.sleep(60)
 
   df <- data.frame(
-    n_instances = rep(n_list, times = test_repetitions),
-    test_no = rep(1:10, each = length(n_list)),
+    # n_instances = rep(n_list, times = test_repetitions),
+    # dyn = rep(c(0, 1), times = test_repetitions),
+    group_size = rep(n_list, times = test_repetitions),
+    test_no = rep(1:test_repetitions, each = length(n_list)),
     running_time = rep(NA, times = length(n_list) * test_repetitions)
   )
 
@@ -320,13 +331,13 @@ times_dataset_builder <- function(n_list = c(1, 5, 10, 13, 16, 20)){
 
     case <- df[i, ]
 
-    df$running_time[i] = timer(groups_size = 1, n_instances = case$n_instances, n_cores = 19, res = 6)
+    df$running_time[i] = timer(dyn = dyn, groups_size = case$group_size, n_instances = n_instances, n_cores = n_cores, res = res)
 
     readr::write_rds(df, "./data/times_dataset_temp.rds")
 
   }
 
-  readr::write_rds(df, "./data/times_dataset_19_cores.rds")
+  readr::write_rds(df, "./data/times_dataset_group_size_20_c.rds")
 
   file.remove("./data/times_dataset_temp.rds")
 
