@@ -270,29 +270,28 @@ select_unique_itineraries <- function(itineraries_details, res) {
 
 setup_otp <- function(n_instances) {
 
-  # original_wd <- getwd()
-
-  # setwd("~")
-
   future::plan(future::multisession, workers = n_instances)
 
   invisible(furrr::future_map(1:n_instances,
     function(i) {
-      system2("java",
+      system2("C:/Program Files/Java/jre1.8.0_261/bin/java",
         args = c("-Xmx4G",
                  "-jar", "otp/otp.jar",
                  "--server", "--graphs", "otp/graphs", "--router", "rio",
                  "--port", as.character(8080 + i-1),
                  "--securePort", as.character(8800 + i-1)),
         wait = FALSE)
-
-      # setwd(original_wd)
-    }))
+    })
+  )
 
   future::plan(future::sequential)
 
-  # setwd(original_wd)
+}
 
+stop_otp <- function() {
+  
+  system("Taskkill /IM java.exe /F", intern = TRUE)
+  
 }
 
 timer <- function(dyn, groups_size, n_instances, n_cores, res) {
