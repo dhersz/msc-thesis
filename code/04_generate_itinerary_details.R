@@ -1,40 +1,41 @@
 library(dplyr)
 library(sf)
 
-# before using these functions, specifically get_transit_itineraries, it's important to start the OTP server.
-# to do so, one could use:
+# before using these functions, specifically get_transit_itineraries, it's
+# important to start the OTP server. to do so, one could use:
 #    opentripplanner::otp_setup(otp = "./otp/otp.jar", dir = "./otp", memory = 2048, router = "rio")
 #    opentripplanner::otp_stop(warn = FALSE)
-# but unfortunately that wasn't really working reliably, sometimes java would crash, not sure why.
-# so I manually started it running the following command within the otp directory (via cmd):
-#    "java -Xmx2G -jar otp.jar --server --graphs graphs --router rio"
-# note that the amount of memory allocated can change (e.g 2G, 3G, 4G, etc.) - not sure how that affects the whole process
+# but unfortunately that wasn't really working reliably, sometimes java would
+# crash, not sure why.
 
-generate_itinerary_details <- function(dyn, groups_size = 1, n_instances = 1, n_cores = 3L, res = 7) {
-
-  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-  # very important to change the number of cores according to what is available !
-  # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+generate_itinerary_details <- function(dyn,
+                                       dep_time = "08:00am",
+                                       groups_size = 1,
+                                       n_instances = 1,
+                                       n_cores = 3L,
+                                       res = 7) {
 
   # list of parameters sent to the OTP api
-
   parameters <- list(
-    mode = "WALK",
+    mode = "TRANSIT,WALK",
     date = "01-08-2020",
-    time = "08:00am",
+    time = dep_time,
     arriveBy = "FALSE",
-    # maxWalkDistance = "2000",
     numItineraries = "10"
+    # ,maxWalkDistance = "2000"
     # ,maxHours = "1"
     # ,useRequestedDateTimeInMaxHours = "TRUE"
   )
+  
+  # replace ':' in dep_time to later use it in the files names
+  dep_time <- gsub(":", "", dep_time)
 
   # set of leg details important for accessibility analysis
-
   leg_details <- c("startTime","endTime", "distance", "mode", "routeId", "route")
 
-  # calculate the centroids coordinates of the grid with resolution 'res'
-  # cells with no opportunities and population are cleaned out of the dataframe to speed up the requests, since they won't affect accessibility
+  # calculate the centroids coordinates of the grid with resolution 'res'.
+  # cells with no opportunities and population are cleaned out of the dataframe
+  # to speed up the requests, since they won't affect accessibility.
 
   clean_grid <- readr::read_rds(paste0("./data/rio_h3_grid_res_", res, "_with_data.rds")) %>%
     filter(opportunities != 0 | population != 0)
@@ -56,61 +57,105 @@ generate_itinerary_details <- function(dyn, groups_size = 1, n_instances = 1, n_
   centroids_ids <- centroids_coordinates$id
 
   origin_groups <- split(centroids_ids, ceiling(centroids_ids / groups_size))
+  
+  names(origin_groups) <- lapply(
+    origin_groups, 
+    function(i) {
+      ifelse(
+        length(i) == 1, 
+        as.character(i), 
+        paste0(i[1], "_to_", i[length(i)])
+      )
+    }
+  )
 
-  # centroids_coordinates is sent to a function which calculates routes between an origin (or a group of) and all possible destinations,
-  # then processes the data from a list into a dataframe and saves it in a temporary folder
-  # since there is no parallel equivalent of walk(), invisible() is used with future_map()
+  # centroids_coordinates is sent to a function which calculates routes between
+  # an origin (or a group of) and all possible destinations, then processes the
+  # data from a list into a dataframe and saves it in a temporary folder.
 
   if(!file.exists("./data/temp")) dir.create("./data/temp")
 
   future::plan(future::multisession, workers = n_cores)
 
-  invisible(furrr::future_map(1:length(origin_groups), get_transit_itineraries, origin_groups, centroids_coordinates, parameters, leg_details, n_instances, n_cores, dyn, res, .progress = TRUE))
+  invisible(
+    furrr::future_map(
+      1:length(origin_groups),
+      get_transit_itineraries,
+      origin_groups,
+      centroids_coordinates,
+      parameters,
+      leg_details,
+      n_instances,
+      n_cores,
+      dyn,
+      dep_time,
+      res,
+      .progress = TRUE
+    )
+  )
 
-  # read each dataframe from the temporary folder into a list and bind everything together
-  # then tidy the resulting dataframe (format columns, arrange rows, etc) and save it
+  # read each dataframe from the temporary folder into a list and bind
+  # everything together. then tidy the resulting dataframe (format columns,
+  # arrange rows, etc) and save it
 
   # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
   # IMPORTANT: tidy_itineraries() removes errors rows _/
   # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
 
-  furrr::future_map(paste0("./data/temp/", list.files("./data/temp")), readr::read_rds) %>%
+  furrr::future_map(paste0("./data/temp/itineraries_details_orig_",
+                           names(origin_groups),"_res_", res, "_", dep_time,
+                           ".rds"),
+                    readr::read_rds) %>%
     bind_rows() %>%
     tidy_itineraries(leg_details, res) %>%
-    readr::write_rds(paste0("./data/itineraries_details_res_", res, ".rds"))
+    readr::write_rds(paste0("./data/itineraries_details_res_", res, "_", dep_time, ".rds"))
 
   # close multisession workers by switching plan
-
   future::plan(future::sequential)
 
   # delete the temporary folder
-
-  # unlink("./data/temp", recursive = TRUE)
+  unlink("./data/temp", recursive = TRUE)
 
 }
 
-get_transit_itineraries <- function(x, origin_groups, od_points, parameters, leg_details, n_instances, n_cores, dyn, res) {
 
-  # this function calls the two most important functions in this whole ensemble
-  # make_request sends requests to the OTP API and returns its responses
-  # extract_itinerary_details takes these responses and processes their data from a list into a dataframe
-  # this dataframe is then saved inside a temporary folder that contains the itineraries details from each single origin of the origin groups to all destinations
 
-  origin_group = origin_groups[[x]]
+get_transit_itineraries <- function(x, 
+                                    origin_groups, 
+                                    od_points, 
+                                    parameters, 
+                                    leg_details, 
+                                    n_instances, 
+                                    n_cores, 
+                                    dyn, 
+                                    dep_time, 
+                                    res) {
 
-  group_id <- ifelse(length(origin_group) == 1, as.character(origin_group), paste0(origin_group[1], "_to_", origin_group[length(origin_group)]))
+  # this function calls the two most important functions in this whole ensemble.
+  # make_request sends requests to the OTP API and returns its responses.
+  # extract_itinerary_details takes these responses and processes their data
+  # from a list into a dataframe.
+  # this dataframe is then saved inside a temporary folder that contains the
+  # itineraries details from each single origin of the origin groups to all
+  # destinations.
+
+  origin_group <- origin_groups[x]
 
   make_request(x, origin_group, od_points, parameters, n_instances, dyn) %>%
     purrr::map_dfr(extract_itinerary_details, leg_details) %>%
-    readr::write_rds(stringr::str_c("./data/temp/itineraries_details_orig_", group_id, "_res_", res, ".rds"))
+    readr::write_rds(paste0("./data/temp/itineraries_details_orig_",
+                            names(origin_group),"_res_", res, "_", dep_time,
+                            ".rds"))
 
   origin_group
 
 }
 
-make_request <- function(x, origin_group, od_points, parameters, n_instances, dyn) {
 
-  origins_pool <- od_points[origin_group, ]
+
+make_request <- function(x, origin_group, od_points, parameters, n_instances, dyn) {
+  
+  origins_pool <- od_points[origin_group[[1]], ]
 
   request_url <- httr::parse_url(paste0("http://localhost:", 8080 + x %% n_instances, "/otp/routers/rio/plan/"))
 
@@ -150,6 +195,8 @@ make_request <- function(x, origin_group, od_points, parameters, n_instances, dy
   response_list
 
 }
+
+
 
 extract_itinerary_details <- function(itineraries_list, leg_details) {
 
@@ -204,6 +251,8 @@ extract_itinerary_details <- function(itineraries_list, leg_details) {
 
 }
 
+
+
 tidy_itineraries <- function(itineraries_details, leg_details, res){
 
   # select itinerary-level columns and place to the left of leg-level columns
@@ -226,6 +275,8 @@ tidy_itineraries <- function(itineraries_details, leg_details, res){
   itineraries_details
 
 }
+
+
 
 select_unique_itineraries <- function(itineraries_details, res) {
 
@@ -268,13 +319,15 @@ select_unique_itineraries <- function(itineraries_details, res) {
 
 }
 
+
+
 setup_otp <- function(n_instances) {
 
   future::plan(future::multisession, workers = n_instances)
 
   invisible(furrr::future_map(1:n_instances,
     function(i) {
-      system2("C:/Program Files/Java/jre1.8.0_261/bin/java",
+      system2("java8",
         args = c("-Xmx4G",
                  "-jar", "otp/otp.jar",
                  "--server", "--graphs", "otp/graphs", "--router", "rio",
@@ -288,11 +341,15 @@ setup_otp <- function(n_instances) {
 
 }
 
+
+
 stop_otp <- function() {
   
-  system("Taskkill /IM java.exe /F", intern = TRUE)
+  system("Taskkill /IM java8.exe /F", intern = TRUE)
   
 }
+
+
 
 timer <- function(dyn, groups_size, n_instances, n_cores, res) {
 
@@ -304,15 +361,18 @@ timer <- function(dyn, groups_size, n_instances, n_cores, res) {
 
 }
 
-times_dataset_builder <- function(n_list = c(1, 5, 10, 13, 16, 20)){
+
+
+times_dataset_builder <- function(n_list = c(1, 5, 10, 15)){
 
   n_instances <- 12
-  n_cores <- 19
+  n_cores <- 10
   res <- 6
   dyn <- 0
+  dep_time <- "08:00am"
   # group_size <- 1
   
-  test_repetitions <- 20
+  test_repetitions <- 1
   
   setup_otp(n_instances)
 
@@ -330,17 +390,17 @@ times_dataset_builder <- function(n_list = c(1, 5, 10, 13, 16, 20)){
 
     case <- df[i, ]
 
-    df$running_time[i] = timer(dyn = dyn, groups_size = case$group_size, n_instances = n_instances, n_cores = n_cores, res = res)
+    df$running_time[i] = timer(dyn = dyn, dep_time = dep_time, groups_size = case$group_size, n_instances = n_instances, n_cores = n_cores, res = res)
 
     readr::write_rds(df, "./data/times_dataset_temp.rds")
 
   }
 
-  readr::write_rds(df, "./data/times_dataset_group_size_20_c.rds")
+  readr::write_rds(df, "./data/t•imes_dataset_group_size_res_7.rds")
 
   file.remove("./data/times_dataset_temp.rds")
 
-  opentripplanner::otp_stop(warn = FALSE)
+  stop_otp()
 
 }
 
