@@ -39,6 +39,14 @@ generate_itinerary_details <- function(dyn,
 
   clean_grid <- readr::read_rds(paste0("./data/rio_h3_grid_res_", res, "_with_data.rds")) %>%
     filter(opportunities != 0 | population != 0)
+  
+  if (res == 8) {
+    
+    clean_grid <- readr::read_rds("../../data/acesso_oport/hex_agregados/2019/hex_agregado_rio_08_2019.rds") %>% 
+      filter(empregos_total != 0 | pop_total != 0) %>% 
+      rename(id = id_hex)
+    
+  }
 
   clean_grid_cell_ids <- clean_grid$id
 
@@ -351,10 +359,10 @@ stop_otp <- function() {
 
 
 
-timer <- function(dyn, groups_size, n_instances, n_cores, res) {
+timer <- function(dyn, dep_time, groups_size, n_instances, n_cores, res) {
 
   tictoc::tic()
-  generate_itinerary_details(dyn, groups_size, n_instances, n_cores, res)
+  generate_itinerary_details(dyn, dep_time, groups_size, n_instances, n_cores, res)
   elapsed <-  tictoc::toc()
 
   elapsed$toc - elapsed$tic
@@ -366,8 +374,8 @@ timer <- function(dyn, groups_size, n_instances, n_cores, res) {
 times_dataset_builder <- function(n_list = c(1, 5, 10, 15)){
 
   n_instances <- 12
-  n_cores <- 10
-  res <- 6
+  n_cores <- 18
+  res <- 7
   dyn <- 0
   dep_time <- "08:00am"
   # group_size <- 1
@@ -396,7 +404,7 @@ times_dataset_builder <- function(n_list = c(1, 5, 10, 15)){
 
   }
 
-  readr::write_rds(df, "./data/t•imes_dataset_group_size_res_7.rds")
+  readr::write_rds(df, "./data/times_dataset_group_size_res_7.rds")
 
   file.remove("./data/times_dataset_temp.rds")
 
