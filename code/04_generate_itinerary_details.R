@@ -8,7 +8,7 @@ library(sf)
 # but unfortunately that wasn't really working reliably, sometimes java would
 # crash, not sure why.
 
-generate_itinerary_details <- function(dyn,
+generate_itinerary_details <- function(dyn = FALSE,
                                        dep_time = "08:00am",
                                        groups_size = 1,
                                        n_instances = 1,
@@ -59,8 +59,7 @@ generate_itinerary_details <- function(dyn,
     tibble::add_column(id = clean_grid_cell_ids) %>%
     mutate(lat_lon = paste0(Y, ",", X)) %>%
     select(-X, -Y) %>% 
-    cbind(numeric_id = 1:nrow(.)) %>% 
-    head(20)
+    cbind(numeric_id = 1:nrow(.))
 
   # calculate groups of centroids to be sent in bashes to each core
 
@@ -118,7 +117,7 @@ generate_itinerary_details <- function(dyn,
                     readr::read_rds) %>%
     bind_rows() %>%
     tidy_itineraries(leg_details, res) %>%
-    readr::write_rds(paste0("./data/itineraries_details_res_", res, "_", dep_time, ".rds"))
+    readr::write_csv(paste0("./data/itineraries_details_res_", res, "_", dep_time, ".csv"))
 
   # close multisession workers by switching plan
   future::plan(future::sequential)
