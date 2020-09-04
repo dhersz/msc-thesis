@@ -58,13 +58,15 @@ generate_itinerary_details <- function(dyn,
     tibble::as_tibble() %>%
     tibble::add_column(id = clean_grid_cell_ids) %>%
     mutate(lat_lon = paste0(Y, ",", X)) %>%
-    select(-X, -Y)
+    select(-X, -Y) %>% 
+    cbind(numeric_id = 1:nrow(.)) %>% 
+    head(20)
 
   # calculate groups of centroids to be sent in bashes to each core
 
-  centroids_ids <- centroids_coordinates$id
+  num_ids <- centroids_coordinates$numeric_id
 
-  origin_groups <- split(centroids_ids, ceiling(centroids_ids / groups_size))
+  origin_groups <- split(num_ids, ceiling(num_ids / groups_size))
   
   names(origin_groups) <- lapply(
     origin_groups, 
@@ -165,7 +167,7 @@ make_request <- function(x, origin_group, od_points, parameters, n_instances, dy
   
   origins_pool <- od_points[origin_group[[1]], ]
 
-  request_url <- httr::parse_url(paste0("http://localhost:", 8080 + x %% n_instances, "/otp/routers/rio/plan/"))
+  request_url <- httr::parse_url(paste0("http://localhost:", 8090 + x %% n_instances, "/otp/routers/rio/plan/"))
 
   # iterate through origins_pool and use each entry as an origin
 
@@ -183,7 +185,7 @@ make_request <- function(x, origin_group, od_points, parameters, n_instances, dy
 
     for (j in 1:nrow(od_points)) {
       
-      if (dyn) request_url <- httr::parse_url(paste0("http://localhost:", 8080 + cont %% n_instances, "/otp/routers/rio/plan/"))
+      if (dyn) request_url <- httr::parse_url(paste0("http://localhost:", 8090 + cont %% n_instances, "/otp/routers/rio/plan/"))
 
       parameters$toPlace <- od_points[j, ]$lat_lon
 
@@ -339,8 +341,8 @@ setup_otp <- function(n_instances) {
         args = c("-Xmx4G",
                  "-jar", "otp/otp.jar",
                  "--server", "--graphs", "otp/graphs", "--router", "rio",
-                 "--port", as.character(8080 + i-1),
-                 "--securePort", as.character(8800 + i-1)),
+                 "--port", as.character(8090 + i-1),
+                 "--securePort", as.character(8900 + i-1)),
         wait = FALSE)
     })
   )
