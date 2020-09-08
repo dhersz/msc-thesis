@@ -1,46 +1,77 @@
 library(dplyr)
 library(sf)
 
-generate_accessibility_results <- function(res = 7) {
+generate_accessibility_results <- function(dep_time = NULL,
+                                           res = 7,
+                                           router = "rio") {
   
-  itineraries_details <- readr::read_rds(stringr::str_c("./data/itineraries_details_res_", res, ".rds"))
+  # # store itineraries paths in a character vector which will be followed along
+  # # to calculate accessibility
+  # 
+  # itineraries_folder <- paste0("./data/", router, "_res_", res, "/itineraries")
+  # 
+  # if (!is.null(dep_time)) {
+  #   
+  #   dep_time <- gsub(":", "", dep_time)
+  #   
+  #   itineraries_paths <- paste0(itineraries_folder, "/itineraries_", dep_time, ".rds")
+  #   
+  # } else {
+  #   
+  #   itineraries <- list.files(itineraries_folder)
+  #   
+  #   itineraries_paths <- paste0(itineraries_folder, "/", itineraries)
+  #   
+  # }
+  
+  # loop through each itineraries' path, calculate accessibility and save it in
+  # separate folder
   
   routes_info <- generate_routes_info()
   fare_schema <- generate_fare_schema()
   
-  costs <- itineraries_details %>% 
-    mutate(
-      leg_cost_with_BU = calculate_fare(., routes_info, fare_schema, BU = TRUE),
-      leg_cost_without_BU = calculate_fare(., routes_info, fare_schema, BU = FALSE),
-      travel_time = as.numeric(lubridate::as.duration(itinerary_end_time - itinerary_start_time), "minutes")
-    ) %>%
-    group_by(orig_id, dest_id, it_id) %>%
-    summarise(
-      travel_time = mean(travel_time),
-      cost_with_BU = sum(leg_cost_with_BU),
-      cost_without_BU = sum(leg_cost_without_BU),
-      .groups = "drop"
-    )
-  
-  return(costs)
-
-  minimum_wage <- 1045
-  minimum_wage_percentages <- c(0.20, 0.25, 0.30, 0.35, 0.40, 10)
-  
-  travel_time_thresholds <- c(30, 60, 90, 120)
-  monetary_cost_thresholds <- minimum_wage_percentages * minimum_wage / (22 * 2)
-  
-  if (!file.exists("./results")) dir.create("./results")
-  
-  for (i in 1:length(travel_time_thresholds)) {
+  #for (i in seq_along(itineraries_paths)) {
+  for (i in c(1)) {
     
-    for (j in 1:length(monetary_cost_thresholds)) {
+    #itineraries_details <- readr::read_rds(itineraries_paths[i])
+    
+    itineraries_details <- readr::read_rds("./data/itineraries_details_res_6_0800am.rds")
+    
+    costs <- itineraries_details %>% 
+      mutate(
+        leg_cost_with_BU = calculate_fare(., routes_info, fare_schema, BU = TRUE),
+        leg_cost_without_BU = calculate_fare(., routes_info, fare_schema, BU = FALSE),
+        travel_time = as.numeric(lubridate::as.duration(itinerary_end_time - itinerary_start_time), "minutes")
+      ) %>%
+      group_by(orig_id, dest_id, it_id) %>%
+      summarise(
+        travel_time = mean(travel_time),
+        cost_with_BU = sum(leg_cost_with_BU),
+        cost_without_BU = sum(leg_cost_without_BU),
+        .groups = "drop"
+      )
+    
+    return(costs)
+    
+    minimum_wage <- 1045
+    minimum_wage_percentages <- c(0.20, 0.25, 0.30, 0.35, 0.40, 10)
+    
+    travel_time_thresholds <- c(30, 60, 90, 120)
+    monetary_cost_thresholds <- minimum_wage_percentages * minimum_wage / (22 * 2)
+    
+    if (!file.exists("./results")) dir.create("./results")
+    
+    for (i in 1:length(travel_time_thresholds)) {
       
-      accessibility_with_bu <- calculate_accessibility(costs, travel_time_thresholds[i], monetary_cost_thresholds[j], BU = TRUE, res) %>% 
-        readr::write_rds(stringr::str_c("./results/with_bu_tt_", travel_time_thresholds[i], "_mc_", minimum_wage_percentages[j] * 100, "_res_", res, ".rds"))
-      
-      accessibility_without_bu <- calculate_accessibility(costs, travel_time_thresholds[i], monetary_cost_thresholds[j], BU = FALSE, res) %>% 
-        readr::write_rds(stringr::str_c("./results/without_bu_tt_", travel_time_thresholds[i], "_mc_", minimum_wage_percentages[j] * 100, "_res_", res, ".rds"))
+      for (j in 1:length(monetary_cost_thresholds)) {
+        
+        accessibility_with_bu <- calculate_accessibility(costs, travel_time_thresholds[i], monetary_cost_thresholds[j], BU = TRUE, res) %>% 
+          readr::write_rds(stringr::str_c("./results/with_bu_tt_", travel_time_thresholds[i], "_mc_", minimum_wage_percentages[j] * 100, "_res_", res, ".rds"))
+        
+        accessibility_without_bu <- calculate_accessibility(costs, travel_time_thresholds[i], monetary_cost_thresholds[j], BU = FALSE, res) %>% 
+          readr::write_rds(stringr::str_c("./results/without_bu_tt_", travel_time_thresholds[i], "_mc_", minimum_wage_percentages[j] * 100, "_res_", res, ".rds"))
+        
+      }
       
     }
     
@@ -50,7 +81,7 @@ generate_accessibility_results <- function(res = 7) {
 
 generate_routes_info <- function() {
   
-  fetranspor_info <- raw_routes_info("fetranspor")
+  fetranspor_info <- raw_routes_info("fetranspor_reduced")
   supervia_info <- raw_routes_info("supervia")
   
   # the buses below have a specific fare integration with the subway
@@ -149,7 +180,7 @@ fare_rules_treatment <- function(fare_rules, style, routes_treated = NA) {
   # origin/destination_id = 79 refers to Teleférico do Alemão, which costs 1 BRL (fare_id = 127)
   # origin/destination_id = 78 refers to the ~usual~ SuperVia stations and is our ~default~ (4.6) (fare_id = 125)
   
-  if (style == "fetranspor") {
+  if (style == "fetranspor_reduced") {
     fare_rules_treated <- fare_rules %>% 
       select(fare_id, route_id)
   } else {
@@ -442,172 +473,17 @@ calculate_accessibility <- function(costs_df, travel_time_threshold, monetary_co
 }
 
 
-##################################
-# PARALLEL COST CALCULATION TEST #
-##################################
-
-
-par_generate_accessibility_results <- function(res = 7) {
-  
-  routes_info <- generate_routes_info()
-  fare_schema <- generate_fare_schema()
-  
-  itineraries_details <- readr::read_rds(stringr::str_c("./data/itineraries_details_res_", res, ".rds")) %>% 
-    mutate(
-      route_id = stringr::str_extract(route_id, "\\d+$"),
-      route_id = ifelse(is.na(route_id), "0", route_id),
-      route_id = as.integer(route_id)
-    ) %>% 
-    left_join(routes_info, by = "route_id") %>% 
-    select(c(orig_id, dest_id, it_id, itinerary_start_time, itinerary_end_time, leg_id, route_id, route, price, price_bu, type)) %>% 
-    tidyr::nest(legs = c(leg_id, route_id, route, price, price_bu, type))
-  
-  costs <- itineraries_details %>% 
-    mutate(
-      leg_cost_with_BU = par_calculate_fare(., fare_schema, BU = TRUE),
-      leg_cost_without_BU = par_calculate_fare(., fare_schema, BU = FALSE),
-      travel_time = as.numeric(lubridate::as.duration(itinerary_end_time - itinerary_start_time), "minutes")
-    )
-
-  costs
-  
-}
-
-par_calculate_fare <- function(itineraries_details, fare_schema, BU = TRUE) {
-  
-  # if BU argument has been set to FALSE the function calculates the fare as if there isn't any 
-  # type of discounts, so the special fares are filtered out of the fare_schema dataframe
-  
-  if(!BU) fare_schema <- fare_schema %>% filter(need_bu == FALSE)
-  
-  future::plan(future::multiprocess)
-  
-  fare_costs <- furrr::future_map_dbl(itineraries_details$legs, par_calculator, fare_schema, BU, .progress = TRUE)
-  
-  fare_costs
-  
-}
-
-par_calculator <- function(legs, fare_schema, BU = TRUE) {
-  
-  # initialise
-  
-  last_moto <- ""
-  price_last_moto <- 0
-  has_integrated <- FALSE
-  had_special <- FALSE
-  
-  # blublublu
-  
-  int_fare <- rlang::set_names(fare_schema$fare, nm = fare_schema$int_id)
-  int_need_bu <- rlang::set_names(fare_schema$need_bu, nm = fare_schema$int_id)
-  
-  # initialise vector to store legs' cost
-  
-  n <- nrow(legs)
-  leg_cost <- vector("double", length = n)
-  
-  for (i in 1:n) {
-    
-    # leg_id is used to lookup for integrations and its prices in the vectors set previously
-    
-    leg_id <- stringr::str_c(last_moto, "&", legs$type[i])
-    
-    # if int_fare[leg_id] is NA the current leg doesn't have any kind of integration with the previous
-    # also it may mean that it refers to a walking leg
-    # an exception to this rule is when the current leg refers to an intermunicipal bus or a ferry. these
-    # modes may have a special price when using the BU. if its original price is higher than the special
-    # price, then the user is charged the special price (in the routes_info dataframe the price_bu column
-    # indicates the special price)
-    # now, let's say that after the ~special leg~ a user embarks another motorised leg, but this new
-    # current leg doesn't have any kind of integration with its previous leg (the special). then the
-    # system accounts the special price grant as an integration itself, and no further integrations
-    # are accounted. if, however, the new current leg integrates with the special, the fare discount is granted
-    
-    # note that if BU is set to false all the integrations that require the BU have been filtered out,
-    # so the majority of the legs (with the exception of those related to modes with full integration)
-    # fall within this if and have their full prices accounted for
-    
-    if (is.na(int_fare[leg_id])) {
-      
-      # checking for the conditions for the special price leg.
-      # if met, account the special price and assign a variable to indicate it
-      # else, account the full normal price
-      
-      if (BU && !had_special && !has_integrated && legs$type[i] %in% c("barca", "onibus_intermunicipal") && legs$price_bu[i] < legs$price[i]) {
-        leg_cost[i] <- legs$price_bu[i]
-        had_special <- TRUE
-      }
-      else leg_cost[i] <- legs$price[i]
-      
-      # check for the case where a specially priced leg is accounted as an integration
-      
-      if (legs$type[i] != "caminhada" && had_special && !has_integrated && last_moto %in% c("barca", "onibus_intermunicipal")) {
-        has_integrated <- TRUE
-      }
-      
-    } else {
-      
-      # if a integration exists, it can fall within 4 categories:
-      # * the integration doesn't require BU, so the current leg price is 0 (equivalent to the first
-      # expression since int_fare[leg_id] and legs$price[i] are the same)
-      # * an integration has happenned before already, in which case the full leg price is charged
-      # * an integration has not occurred and the sum of the fares of the two modes is higher than the
-      # integration fare, in which case the excess of the integration fare compared to the last motorised
-      # leg price is charged
-      # * an integration has not occurred and the sum of the fares that compose it is lower than the
-      # integration fare (some intermunicipal buses cost less than 4.50, for instance, so the sum of their
-      # fares and the municipal buses fares fall below 8.55, the integration cost), in which case the
-      # mode fare is charged and the integration is not actually accounted
-      
-      if (!int_need_bu[leg_id]) leg_cost[i] <- int_fare[leg_id] - legs$price[i]
-      
-      else if (has_integrated) leg_cost[i] <- legs$price[i]
-      
-      else {
-        
-        if (price_last_moto + legs$price[i] > int_fare[leg_id]) {
-          leg_cost[i] <- int_fare[leg_id] - price_last_moto
-          has_integrated <- TRUE
-        }
-        
-        else leg_cost[i] <- legs$price[i]
-        
-      }
-      
-    }
-    
-    # if the current leg mode is not walk, save it as the last motorised
-    # also checks if an full integration has happenned. if so, doesn't update the variables, so the price
-    # of the last motorised mode is the original price of the mode, and not 0 (the second leg price).
-    # this is important to ensure that integrations with these modes work alright.
-    # e.g. suppose we have brt-> brt -> metro.
-    # the correct leg cost is be (brt_price) -> 0 -> (metro_brt_integration - brt_price)
-    # if the variables were updated we'd have (brt_price) -> 0 -> (metro_brt_integration)
-    
-    if (legs$type[i] != "caminhada" && (is.na(int_fare[leg_id]) || int_need_bu[leg_id])){
-      last_moto <- legs$type[i]
-      price_last_moto <- leg_cost[i]
-    }
-  
-  }
-  
-  sum(leg_cost)
-    
-}
-
-
 ####################################
 # PARALLEL COST CALCULATION TEST 2 #
 ####################################
 
 
-par2_generate_accessibility_results <- function(res = 7) {
+par2_generate_accessibility_results <- function(n_cores, res = 7) {
   
   routes_info <- generate_routes_info()
   fare_schema <- generate_fare_schema()
   
-  itineraries_details <- readr::read_rds(stringr::str_c("./data/itineraries_details_res_", res, ".rds")) 
+  itineraries_details <- readr::read_rds(stringr::str_c("./data/itineraries_details_res_", res, "_0800am.rds")) 
   
   legs <- itineraries_details %>% 
     mutate(
@@ -616,10 +492,10 @@ par2_generate_accessibility_results <- function(res = 7) {
       route_id = as.integer(route_id)
     ) %>% 
     left_join(routes_info, by = "route_id") %>% 
-    select(c(orig_id, leg_id, route_id, route, price, price_bu, type)) %>% 
-    tidyr::nest(legs = c(leg_id, route_id, route, price, price_bu, type))
+    select(c(orig_id, dest_id, leg_id, route_id, route, price, price_bu, type)) %>% 
+    tidyr::nest(legs = c(dest_id, leg_id, route_id, route, price, price_bu, type))
   
-  future::plan(future::multiprocess)
+  future::plan(future::multisession, workers = n_cores)
   
   leg_cost_with_BU <- furrr::future_map(legs$legs, par2_calculate_fare, fare_schema, BU = TRUE, .progress = TRUE) %>% 
     bind_rows() %>% 
@@ -628,6 +504,8 @@ par2_generate_accessibility_results <- function(res = 7) {
   leg_cost_without_BU <- furrr::future_map(legs$legs, par2_calculate_fare, fare_schema, BU = FALSE, .progress = TRUE) %>% 
     bind_rows() %>% 
     rename(leg_cost_without_BU = leg_cost)
+  
+  future::plan(future::sequential)
   
   costs <- itineraries_details %>% 
     bind_cols(leg_cost_with_BU, leg_cost_without_BU) %>% 
