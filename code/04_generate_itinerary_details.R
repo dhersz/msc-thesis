@@ -13,8 +13,16 @@ generate_itinerary_details <- function(dyn = FALSE,
                                        groups_size = 1,
                                        n_instances = 1,
                                        n_cores = 3L,
-                                       res = 7) {
+                                       res = 7,
+                                       router = "rio") {
 
+  # set data.table options
+  
+  old_dt_threads <- data.table::getDTthreads()
+  on.exit(data.table::setDTthreads(threads = old_dt_threads))
+  
+  data.table::setDTthreads(threads = n_cores)
+  
   # list of parameters sent to the OTP api
   parameters <- list(
     mode = "TRANSIT,WALK",
@@ -82,7 +90,7 @@ generate_itinerary_details <- function(dyn = FALSE,
   # an origin (or a group of) and all possible destinations, then processes the
   # data from a list into a dataframe and saves it in a temporary folder.
 
-  if(!file.exists("./data/temp")) dir.create("./data/temp")
+  if (!file.exists("./data/temp")) dir.create("./data/temp")
 
   future::plan(future::multisession, workers = n_cores)
 
@@ -105,25 +113,32 @@ generate_itinerary_details <- function(dyn = FALSE,
 
   # read each dataframe from the temporary folder into a list and bind
   # everything together. then tidy the resulting dataframe (format columns,
-  # arrange rows, etc) and save it
+  # arrange rows, etc) and save it in a separate folder
 
   # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
   # IMPORTANT: tidy_itineraries() removes errors rows _/
   # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
 
-  furrr::future_map(paste0("./data/temp/itineraries_details_orig_",
-                           names(origin_groups),"_res_", res, "_", dep_time,
-                           ".rds"),
-                    readr::read_rds) %>%
-    bind_rows() %>%
+  folder_path <- paste0("./data/", router, "_res_", res)
+  if (!file.exists(folder_path)) dir.create(folder_path)
+  
+  subfolder_path <- paste0("./data/", router, "_res_", res, "/itineraries")
+  if (!file.exists(folder_path)) dir.create(subfolder_path)
+  
+  temp_files_path <- paste0("./data/temp/itineraries_details_orig_",
+                            names(origin_groups),"_res_", res, "_", dep_time,
+                            ".rds")
+  
+  furrr::future_map(temp_files_path, readr::read_rds) %>%
+    data.table::rbindlist(fill = TRUE) %>%
     tidy_itineraries(leg_details, res) %>%
-    readr::write_csv(paste0("./data/itineraries_details_res_", res, "_", dep_time, ".csv"))
+    readr::write_rds(paste0(subfolder_path, "/itineraries_", dep_time, ".rds"), compress = "gz")
 
   # close multisession workers by switching plan
   future::plan(future::sequential)
 
   # delete the temporary folder
-  unlink("./data/temp", recursive = TRUE)
+  # unlink("./data/temp", recursive = TRUE)
 
 }
 
@@ -149,12 +164,13 @@ get_transit_itineraries <- function(x,
   # destinations.
 
   origin_group <- origin_groups[x]
+  
+  filepath <- paste0("./data/temp/itineraries_details_orig_",
+                     names(origin_group),"_res_", res, "_", dep_time, ".rds")
 
   make_request(x, origin_group, od_points, parameters, n_instances, dyn) %>%
     purrr::map_dfr(extract_itinerary_details, leg_details) %>%
-    readr::write_rds(paste0("./data/temp/itineraries_details_orig_",
-                            names(origin_group),"_res_", res, "_", dep_time,
-                            ".rds"))
+    readr::write_rds(filepath, compress = "gz")
 
   origin_group
 
@@ -162,7 +178,12 @@ get_transit_itineraries <- function(x,
 
 
 
-make_request <- function(x, origin_group, od_points, parameters, n_instances, dyn) {
+make_request <- function(x,
+                         origin_group,
+                         od_points,
+                         parameters,
+                         n_instances,
+                         dyn) {
   
   origins_pool <- od_points[origin_group[[1]], ]
 
@@ -202,7 +223,7 @@ make_request <- function(x, origin_group, od_points, parameters, n_instances, dy
   }
 
   response_list
-
+  
 }
 
 
