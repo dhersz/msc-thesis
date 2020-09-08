@@ -2,6 +2,8 @@
 .Rproj.user
 /data/itineraries_details*
 /data/rio_h3*
+/data/rio_res_8
+/data/temp
 /data/temp_itineraries_list.rds
 /img
 /otp
