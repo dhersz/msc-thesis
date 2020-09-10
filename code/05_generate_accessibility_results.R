@@ -89,7 +89,6 @@ generate_accessibility_results <- function(dep_time = NULL,
             cost_with_BU = sum(leg_cost_with_BU), 
             cost_without_BU = sum(leg_cost_without_BU)), 
           by = .(orig_id, dest_id, it_id)]
-    
 
     # * calculate accessibility -----------------------------------------------
     
@@ -104,8 +103,6 @@ generate_accessibility_results <- function(dep_time = NULL,
     # total accessibility is the sum of opportunities within the origin itself
     # (column 'inside') and the opportunities of hexagons within reach
     
-    total_opportunities <- grid_data[, .(id, inside = opportunities)]
-    
     minimum_wage <- 1045
     
     iterator <- expand.grid(
@@ -116,6 +113,8 @@ generate_accessibility_results <- function(dep_time = NULL,
     )
     
     accessibility <-  rbindlist(purrr::pmap(iterator, function(tt, mw, wt) {
+      
+      total_opportunities <- grid_data[, .(id, inside = opportunities)]
       
       desired_cost <- paste0("cost_", wt, "_BU")
       
