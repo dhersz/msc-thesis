@@ -123,7 +123,7 @@ generate_itinerary_details <- function(dyn = FALSE,
   if (!file.exists(folder_path)) dir.create(folder_path)
   
   subfolder_path <- paste0("./data/", router, "_res_", res, "/itineraries")
-  if (!file.exists(folder_path)) dir.create(subfolder_path)
+  if (!file.exists(subfolder_path)) dir.create(subfolder_path)
   
   temp_files_path <- paste0("./data/temp/itineraries_details_orig_",
                             names(origin_groups),"_res_", res, "_", dep_time,
