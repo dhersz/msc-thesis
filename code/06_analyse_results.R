@@ -2,34 +2,74 @@ library(dplyr)
 library(sf)
 library(tmap)
 library(ggplot2)
+library(data.table)
 
-analyse_results <- function(n_quantiles = 10, res = 7, lang = "pt") {
+analyse_results <- function(grid_data_path = NULL,
+                            router = "rio",
+                            n_quantiles = 10,
+                            res = 7,
+                            lang = "pt") {
   
-  # classify each hexagon according to its residents' avg income per capita quantile
-  # not sure why, but the values returned by wtd.quantile() seem to have some kind of issue with their rounding
-  # when trying to classify each hexagon into a income quantile the values right at the boundaries of each quantile interval are not
-  # consistently accounted (sometimes it behaves like a open-close limit, sometimes as a close-open, etc)
-  # in order to fix this and to treat the intervals consistently as open-close like quantile() does (with the exception of the first one
-  # being close-close) the 0% value is set to -Inf e the avg_income - 0.0001 is used to place each entrance in a quantile (i.e. if the
-  # Q2 interval is 10-20 and we're trying to classify in which decile the 10 is in we use the values 9.9999 and 19.9999, therefore the
-  # 10 is in Q1 and 20 is in Q2)
+  # * read and prepare data -------------------------------------------------
   
-  grid_data <- readr::read_rds(stringr::str_c("./data/rio_h3_grid_res_", res, "_with_data.rds")) %>% 
-    st_drop_geometry() %>% 
-    as_tibble() %>% 
-    mutate(avg_income = total_income / population)
-    
-  qntls <- Hmisc::wtd.quantile(grid_data$avg_income, weights = grid_data$population, probs = seq(0, 1, 1/n_quantiles))
-  qntls[1] <- -Inf
-
-  grid_data <- grid_data %>% 
-    mutate(
-      income_quantile = cut(avg_income - 0.0001, qntls, labels = FALSE, include.lowest = TRUE)
+  
+  router_folder <- paste0("./data/", router, "_res_", res)
+  
+  # read accessibility for each departure time and use their average in the
+  # following analysis
+  
+  accessibility_folder <- paste0(router_folder, "/accessibility")
+  
+  accessibility_data <- rbindlist(
+    lapply(
+      paste0(accessibility_folder, "/", list.files(accessibility_folder)),
+      function(i) fread(i)
     )
+  )[, .(accessibility = mean(accessibility)), keyby = .(id, bilhete_unico, travel_time, min_wage_percent)]
   
-  # first analysis: effect of incorporating monetary costs
-  # create visualisations comparing accessibility at different monetary costs thresholds and without a
-  # monetary cost threshold
+  # read grid_data - when grid_data_path is null defaults to a specific path
+  
+  if (is.null(grid_data_path)) {
+    
+    grid_data_path <- paste0(router_folder, "/grid_with_data.rds")
+    
+  }
+  
+  grid_data <- setDT(readr::read_rds(grid_data_path)
+                     )[, avg_income := total_income / population]
+  
+  # classify hexagons according to their residents' avg income per capita quantile.
+  # not sure why, but the values returned by wtd.quantile() seem to have some 
+  # kind of issue with their rounding. when trying to classify each hexagon into
+  # a income quantile the values right at the boundaries of each quantile
+  # interval are not consistently accounted (sometimes it behaves like a
+  # open-close limit, sometimes as a close-open, etc).
+  # in order to fix this, and to treat the intervals consistently as open-close
+  # like quantile() does (with the exception of the first one being close-close),
+  # the 0% value is set to -Inf e the avg_income - 0.0001 is used to place each
+  # entrance in a quantile (i.e. if the Q2 interval is 10-20 and we're trying to
+  # classify in which decile the 10 is in we use the values 9.9999 and 19.9999,
+  # therefore the 10 is in Q1 and 20 is in Q2)
+  
+  qntls <- Hmisc::wtd.quantile(
+    x       = grid_data$avg_income,
+    weights = grid_data$population,
+    probs   = seq(0, 1, 1 / n_quantiles)
+  )
+  qntls[1] <- -Inf
+  
+  grid_data[, income_quantile := cut(avg_income - 0.0001, qntls, labels = FALSE, include.lowest = TRUE)]
+  
+  # join grid data to accessibility data
+  
+  accessibility_data[grid_data, 
+                     on = "id", 
+                     `:=`(population = i.population, 
+                          income_quantile = i.income_quantile, 
+                          geometry = i.geometry)
+                     ]
+  
+
   
   travel_time <- c(30, 60, 90, 120)
   percentage_minimum_wage <- c(1000, 40, 30, 20)
@@ -65,9 +105,7 @@ analyse_results <- function(n_quantiles = 10, res = 7, lang = "pt") {
 }
 
 
-######################################
-# DIFFERENT MONETARY COST THRESHOLDS #
-######################################
+# different monetary cost thresholds --------------------------------------
 
 
 labels_different_costs <- function(travel_time, percentage_minimum_wage, lang) {
