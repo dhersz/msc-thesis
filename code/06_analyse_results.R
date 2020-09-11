@@ -65,35 +65,50 @@ analyse_results <- function(grid_data_path = NULL,
   accessibility_data[grid_data, 
                      on = "id", 
                      `:=`(population = i.population, 
+                          opportunities = i.opportunities,
                           income_quantile = i.income_quantile, 
-                          geometry = i.geometry)
-                     ]
+                          geometry = i.geometry)]
   
+  
+  # * different costs analysis ----------------------------------------------
 
   
-  travel_time <- c(30, 60, 90, 120)
-  percentage_minimum_wage <- c(1000, 40, 30, 20)
+  analysis_folder <- paste0(router_folder, "/analysis")
+  if (!file.exists(analysis_folder)) dir.create(analysis_folder)
   
-  for (i in seq_along(travel_time)) {
+  analysis_folder <- paste0(analysis_folder, "/", lang)
+  if (!file.exists(analysis_folder)) dir.create(analysis_folder)
+  
+  ttimes <- c(30, 60, 90, 120)
+  mwpcts <- c(0.2, 0.3, 0.4, 10)
+  
+  purrr::walk(ttimes, function(tt) {
     
-    text_labels <- labels_different_costs(travel_time[i], percentage_minimum_wage, lang)
+    analysis_folder <- paste0(analysis_folder, "/different_costs")
+    if (!file.exists(analysis_folder)) dir.create(analysis_folder)
     
-    # maps_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
+    filtered_data <- copy(accessibility_data
+                          )[(bilhete_unico == "with") & (travel_time == tt) & (min_wage_percent %in% mwpcts)]
+    
+    text_labels <- labels_different_costs(tt, mwpcts, lang)
+    
+    maps_different_costs(filtered_data, tt, mwpcts, text_labels, analysis_folder)
     # maps_reduction_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
     # boxplot_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
     # theil_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
     # average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
     
-  }
+    
+  })
   
   # second analysis: effect of BU fare policy
   # create visualisations comparing accessibility at a specific combination of time travel and cost thresholds
   
   percentage_minimum_wage <- c(20, 30, 40)
   
-  for (i in seq_along(travel_time)) {
+  for (i in seq_along(ttimes)) {
     
-    text_labels <- labels_cases_bu(travel_time[i], percentage_minimum_wage, lang)
+    #text_labels <- labels_cases_bu(travel_time[i], percentage_minimum_wage, lang)
    
     # maps_cases_bu(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
     # maps_increase_cases_bu(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
@@ -117,30 +132,31 @@ labels_different_costs <- function(travel_time, percentage_minimum_wage, lang) {
     text_labels <- list(
       "lang" = lang,
       "maps" = list(
-        "facets_title" = stringr::str_c("Custo monetário ", ifelse(percentage_minimum_wage <= 100, stringr::str_c("<= ", percentage_minimum_wage, "% do salário mínimo"), "não considerado")),
+        "cost_title" = paste0("Custo <= ", percentage_minimum_wage, "% do sal. mín."),
+        "facets_title" = paste0("Custo monetário ", ifelse(percentage_minimum_wage <= 100, paste0("<= ", percentage_minimum_wage, "% do salário mínimo"), "não considerado")),
         "legend_title" = "  Empregos acessíveis (% do total)"
       ),
       "reduction_maps" = list(
-        "facets_title" = stringr::str_c("Custo monetário ", ifelse(percentage_minimum_wage <= 100, stringr::str_c("<= ", percentage_minimum_wage, "% do salário mínimo"), "não considerado")),
+        "facets_title" = paste0("Custo monetário ", ifelse(percentage_minimum_wage <= 100, paste0("<= ", percentage_minimum_wage, "% do salário mínimo"), "não considerado")),
         "access_legend_title" = "Redução (% da acess.\nsem limite de dinheiro)",
         "mode_legend_title" = "Modo",
         "mode_options" = c("BRT", "Metrô e trem")
       ),
       "boxplot" = list(
-        "facets_title" = stringr::str_c("Custo monetário ", ifelse(percentage_minimum_wage <= 100, stringr::str_c("<= ", percentage_minimum_wage, "% do salário mínimo"), "não considerado")),
+        "facets_title" = paste0("Custo monetário ", ifelse(percentage_minimum_wage <= 100, paste0("<= ", percentage_minimum_wage, "% do salário mínimo"), "não considerado")),
         "palma_ratio" = "Razão de Palma: ",
         "y_axis" = "Empregos acessíveis (% do total)",
         "x_axis" = "Decil de renda"
       ),
       "theil" = list(
-        "bar_labels" = ifelse(percentage_minimum_wage <= 100, stringr::str_c(percentage_minimum_wage, "% do sal. mín."), "Não considerado"),
+        "bar_labels" = ifelse(percentage_minimum_wage <= 100, paste0(percentage_minimum_wage, "% do sal. mín."), "Não considerado"),
         "y_axis" = "Índice de Theil",
         "x_axis" = "Valor limite de custo",
         "component" = "Componente",
         "components_names" = c("Entregrupos", "Intragrupos")
       ),
       "average_access" = list(
-        "facets_title" = stringr::str_c("Custo ", ifelse(percentage_minimum_wage <= 100, stringr::str_c("<= ", percentage_minimum_wage, "% sal. mín."), "não consid.")),
+        "facets_title" = paste0("Custo ", ifelse(percentage_minimum_wage <= 100, paste0("<= ", percentage_minimum_wage, "% sal. mín."), "não consid.")),
         "y_axis" = "Acessibilidade média\n(% do total de empregos)",
         "x_axis" = "Decil de renda"
       )
@@ -159,7 +175,7 @@ maps_different_costs <- function(grid_data, travel_time, percentage_minimum_wage
   
   rj_state <- geobr::read_municipality(code_muni = "RJ")
   
-  accessibility_data <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(stringr::str_c("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
+  accessibility_data <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
   
   # set breaks and labels
   
@@ -171,7 +187,7 @@ maps_different_costs <- function(grid_data, travel_time, percentage_minimum_wage
   breaks <- seq(0, max_accessibility, length.out = n)
   labels <- format(round(seq(0, proportion, length.out = n) * 100, digits = 1), nsmall = 1)
   labels[c(2, 4)] <- ""
-  labels[n] <- stringr::str_c(labels[n], "%")
+  labels[n] <- paste0(labels[n], "%")
   
   # create character vector holding map titles
   
@@ -179,8 +195,8 @@ maps_different_costs <- function(grid_data, travel_time, percentage_minimum_wage
     percentage_minimum_wage,
     function(i) ifelse(
       i <= 100,
-      stringr::str_c("travel time <= ", travel_time, " min;\ncost <= ", i, "% of minimum wage"),
-      stringr::str_c("travel time <= ", travel_time, " min;\nno cost considered")
+      paste0("travel time <= ", travel_time, " min;\ncost <= ", i, "% of minimum wage"),
+      paste0("travel time <= ", travel_time, " min;\nno cost considered")
       )
     )
   
@@ -201,9 +217,74 @@ maps_different_costs <- function(grid_data, travel_time, percentage_minimum_wage
   maps_combined <- tmap_arrange(accessibility_maps, nrow = 2)
   
   tmap_save(maps_combined,
-             stringr::str_c("./analysis/", text_labels$lang, "/different_costs/comparative_maps_tt_", travel_time, "_res_", res, ".png"),
+             paste0("./analysis/", text_labels$lang, "/different_costs/comparative_maps_tt_", travel_time, "_res_", res, ".png"),
              width = 2100,
              height = 1650)
+  
+}
+
+maps_different_costs <- function(accessibility_data, 
+                                 tt, 
+                                 mwpcts, 
+                                 text_labels, 
+                                 analysis_folder) {
+  
+  # read rj state shape
+  
+  rj_state <- readr::read_rds("./data/rj_state.rds")
+  
+  # convert min_wage_percent column to factor
+  
+  accessibility_data[, min_wage_percent := factor(min_wage_percent, 
+                                                 levels = unique(min_wage_percent), 
+                                                 labels = text_labels$maps$cost_title)]
+  
+  # create sf objects
+  
+  rio_border <- accessibility_data[accessibility_data[, .I[1], by = id]$V1] %>% 
+    st_as_sf() %>%
+    st_union() 
+  rio_border <- st_sf(geom = rio_border)
+
+  
+  expanded_rio_border <- rio_border %>% 
+    st_transform(5880) %>% 
+    st_buffer(3000) %>% 
+    st_transform(st_crs(rio_border))
+  
+  accessibility_data <- st_as_sf(accessibility_data)
+  
+  # plot settings
+  
+  xlim <- c(st_bbox(rio_border)[1], st_bbox(rio_border)[3])
+  ylim <- c(st_bbox(expanded_rio_border)[2], st_bbox(rio_border)[4])
+  
+  max_accessibility <- max(accessibility_data$accessibility)
+  total_opportunities <- sum(accessibility_data$opportunities)
+  
+  p <- ggplot() +
+    geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
+    geom_sf(data = accessibility_data, aes(fill = accessibility), color = NA) +
+    facet_wrap(~ min_wage_percent, nrow = 2) +
+    geom_sf(data = rio_border, color = "black", fill = NA) +
+    ggsn::scalebar(data = rio_border, dist = 10, dist_unit = "km",
+                   location = "bottomright", transform = TRUE, model = "WGS84",
+                   height = 0.03, border.size = 0.4, st.dist = 0.05, st.size = 3) +
+    coord_sf(xlim = xlim, ylim = ylim) +
+    scale_fill_viridis_c(name = text_labels$maps$legend_title, option = "inferno", breaks = seq(0, max_accessibility, max_accessibility / 3),
+                         labels = scales::label_percent(scale = 100 / total_opportunities)) +
+    guides(fill = guide_colorbar(title.vjust = 0.75)) +
+    theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(),
+          panel.grid = element_blank(), panel.background = element_rect(fill = "#aadaff"),
+          legend.position = "bottom", legend.box.just = "right", legend.box.spacing = unit(0 ,"points"),
+          strip.text.x = element_text(size = 13), strip.text.y = element_text(size = 13), strip.background = element_rect(fill = NA),
+          plot.margin = margin(b = 0))
+  
+  # save plot
+  
+  ggsave(paste0(analysis_folder, "/comparative_map_tt_", tt, ".png"),
+         width = 7,
+         height = 5.5)
   
 }
 
@@ -216,7 +297,7 @@ maps_reduction_different_costs <- function(grid_data, travel_time, percentage_mi
   rapid_transit_info <- extract_rapid_transit("plotting") %>% 
     purrr::map(function(i) mutate(i, Mode = factor(Mode, levels = unique(Mode), labels = text_labels$reduction_maps$mode_options)))
   
-  accessibility_data <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(stringr::str_c("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
+  accessibility_data <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
   
   # calculate the accessibility difference between the cases with and the one without a cost threshold
   # then bind everything in the same dataframe to plot each case as a facet
@@ -268,7 +349,7 @@ maps_reduction_different_costs <- function(grid_data, travel_time, percentage_mi
   
   # save plot
   
-  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/different_costs/reduction_maps_tt_", travel_time, "_res_", res, ".png"),
+  ggsave(paste0("./analysis/", text_labels$lang, "/different_costs/reduction_maps_tt_", travel_time, "_res_", res, ".png"),
          plot = p,
          width = 9,
          height = 5.8)
@@ -277,7 +358,7 @@ maps_reduction_different_costs <- function(grid_data, travel_time, percentage_mi
 
 boxplot_different_costs <- function(grid_data, travel_time, percentage_minimum_wage, n_quantiles, text_labels, res) {
   
-  accessibility_data <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(stringr::str_c("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
+  accessibility_data <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
   
   # calculate values to be used later when setting the plot's breaks and labels
   
@@ -319,7 +400,7 @@ boxplot_different_costs <- function(grid_data, travel_time, percentage_minimum_w
                                      labels = text_labels$boxplot$facets_title),
     x = 0.625,
     y = max(accessibility_data$accessibility),
-    label = stringr::str_c(text_labels$boxplot$palma_ratio, format(round(ratios, digits = 4), nsmall = 4))
+    label = paste0(text_labels$boxplot$palma_ratio, format(round(ratios, digits = 4), nsmall = 4))
   )
   
   # plot settings
@@ -344,7 +425,7 @@ boxplot_different_costs <- function(grid_data, travel_time, percentage_minimum_w
   
   # save plot
   
-  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/different_costs/boxplot_tt_", travel_time, "_res_", res, ".png"),
+  ggsave(paste0("./analysis/", text_labels$lang, "/different_costs/boxplot_tt_", travel_time, "_res_", res, ".png"),
          width = 8,
          height = 5,
          units = "in")
@@ -355,7 +436,7 @@ theil_different_costs <- function(grid_data, travel_time, percentage_minimum_wag
   
   # read and prepare data
   
-  accessibility_data <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(stringr::str_c("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds"))) %>%
+  accessibility_data <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds"))) %>%
     purrr::map(st_drop_geometry) %>% 
     purrr::map(function(i) left_join(i, grid_data, by = "id")) %>% 
     purrr::map(function(i) filter(i, population > 0))
@@ -421,7 +502,7 @@ theil_different_costs <- function(grid_data, travel_time, percentage_minimum_wag
   
   # save plot
   
-  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/different_costs/theil_tt_", travel_time, "_res_", res, ".png"),
+  ggsave(paste0("./analysis/", text_labels$lang, "/different_costs/theil_tt_", travel_time, "_res_", res, ".png"),
          width = 7,
          height = 3,
          units = "in")
@@ -432,7 +513,7 @@ average_access_different_costs <- function(grid_data, travel_time, percentage_mi
   
   # read and prepare data
   
-  accessibility_data <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(stringr::str_c("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds"))) %>% 
+  accessibility_data <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds"))) %>% 
     purrr::map(st_drop_geometry) %>% 
     purrr::map(function(i) left_join(i, grid_data, by = "id")) %>% 
     purrr::map(function(i) filter(i, population > 0))
@@ -460,7 +541,7 @@ average_access_different_costs <- function(grid_data, travel_time, percentage_mi
       highlight = ifelse(income_quantile == 9, TRUE, FALSE),
       ratio = ifelse(income_quantile == 9, avg_accessibility / avg_accessibility_distribution, NA),
       ratio = ifelse(!is.na(ratio), format(round(ratio, digits = 2), nsmall = 2), ratio),
-      ratio = stringr::str_c(ratio, "x")
+      ratio = paste0(ratio, "x")
     )
   
   # plot settings
@@ -485,7 +566,7 @@ average_access_different_costs <- function(grid_data, travel_time, percentage_mi
     geom_text(data = quantile_mean, mapping = aes(income_quantile, avg_accessibility, label = ratio),
               na.rm = TRUE, vjust = -0.5) +
     geom_text(data = distribution_mean,
-              mapping = aes(0.625, upper_limit, label = stringr::str_c("Média geral: ", scales::percent(avg_accessibility, scale = 100 / total_opportunities, accuracy = 1))),
+              mapping = aes(0.625, upper_limit, label = paste0("Média geral: ", scales::percent(avg_accessibility, scale = 100 / total_opportunities, accuracy = 1))),
               hjust = 0, vjust = 0.625, color = "gray20") +
     facet_wrap(~ percentage_minimum_wage, nrow = 1) +
     labs(x = text_labels$average_access$x_axis, y = text_labels$average_access$y_axis) +
@@ -502,7 +583,7 @@ average_access_different_costs <- function(grid_data, travel_time, percentage_mi
   
   # save plot
   
-  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/different_costs/average_accessibility_tt_", travel_time, "_res_", res, ".png"),
+  ggsave(paste0("./analysis/", text_labels$lang, "/different_costs/average_accessibility_tt_", travel_time, "_res_", res, ".png"),
          width = 9,
          height = 2.5,
          units = "in")
@@ -524,31 +605,31 @@ labels_cases_bu <- function(travel_time, percentage_minimum_wage, lang) {
     text_labels <- list(
       "lang" = lang,
       "maps" = list(
-        "cost_title" = stringr::str_c("Custo <= ", percentage_minimum_wage, "% do sal. mín."),
+        "cost_title" = paste0("Custo <= ", percentage_minimum_wage, "% do sal. mín."),
         "fare_title" = c("Sem Bilhete Único", "Com Bilhete Único"),
         "legend_title" = "Empregos acessíveis (% do total)"
       ),
       "increase_maps" = list(
-        "facets_title" = stringr::str_c("Custo monetário <= ", percentage_minimum_wage, "% do salário mínimo"),
+        "facets_title" = paste0("Custo monetário <= ", percentage_minimum_wage, "% do salário mínimo"),
         "legend_title" = "Aumento de acessibilidade\n(% do total de empregos)"
         # "mode_legend_title" = "Modo",
         # "mode_options" = c("BRT", "Metrô e trem")
       ),
       "boxplot_difference" = list(
-        "facets_title" = stringr::str_c("Custo <= ", percentage_minimum_wage, "% do sal. mín."),
+        "facets_title" = paste0("Custo <= ", percentage_minimum_wage, "% do sal. mín."),
         "palma_ratio" = "Razão de Palma: ",
         "y_axis" = "Aumento de acess. (% total de empregos)",
         "x_axis" = "Decil de renda"
       ),
       "theil" = list(
-        "bar_labels" = stringr::str_c(percentage_minimum_wage, "% do sal. mín."),
+        "bar_labels" = paste0(percentage_minimum_wage, "% do sal. mín."),
         "y_axis" = "Índice de Theil",
         "x_axis" = "Valor limite de custo",
         "component" = "Componente",
         "components_names" = c("Entregrupos", "Intragrupos")
       ),
       "between_group" = list(
-        "facets_title" = stringr::str_c("Custo monetário ", ifelse(percentage_minimum_wage <= 100, stringr::str_c("<= ", percentage_minimum_wage, "% do salário mínimo"), "não considerado")),
+        "facets_title" = paste0("Custo monetário ", ifelse(percentage_minimum_wage <= 100, paste0("<= ", percentage_minimum_wage, "% do salário mínimo"), "não considerado")),
         "y_axis" = "Participação",
         "x_axis" = "Decil de renda"
       )
@@ -573,7 +654,7 @@ maps_cases_bu <- function(grid_data, travel_time, percentage_minimum_wage, text_
   
   rj_state <- readr::read_rds("./data/rj_state.rds")
   
-  accessibility_data <- purrr::map2(without_with, percentage_minimum_wage, function(i, j) readr::read_rds(stringr::str_c("./results/", i, "_bu_tt_", travel_time, "_mc_", j, "_res_", res, ".rds"))) %>% 
+  accessibility_data <- purrr::map2(without_with, percentage_minimum_wage, function(i, j) readr::read_rds(paste0("./results/", i, "_bu_tt_", travel_time, "_mc_", j, "_res_", res, ".rds"))) %>% 
     purrr::map(function(i) mutate(i, bilhete_unico = "temp")) %>% 
     bind_rows(.id = "case") %>% 
     mutate(
@@ -620,7 +701,7 @@ maps_cases_bu <- function(grid_data, travel_time, percentage_minimum_wage, text_
 
   # save plot
   
-  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/cases_bu/comparative_map_tt_", travel_time, "_res_", res, ".png"),
+  ggsave(paste0("./analysis/", text_labels$lang, "/cases_bu/comparative_map_tt_", travel_time, "_res_", res, ".png"),
          width = 9,
          height = 8.3)
 }
@@ -631,8 +712,8 @@ maps_increase_cases_bu <- function(grid_data, travel_time, percentage_minimum_wa
   
   rj_state <- readr::read_rds("./data/rj_state.rds")
   
-  accessibility_with_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(stringr::str_c("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
-  accessibility_without_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(stringr::str_c("./results/without_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
+  accessibility_with_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
+  accessibility_without_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/without_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
   
   # calculate the accessibility difference between the cases with and without bilhete único
   # then bind everything in the same dataframe with adequate names, later converted to factors
@@ -673,7 +754,7 @@ maps_increase_cases_bu <- function(grid_data, travel_time, percentage_minimum_wa
   
   # save plot
   
-  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/cases_bu/increase_map_tt_", travel_time, "_res_", res, ".png"),
+  ggsave(paste0("./analysis/", text_labels$lang, "/cases_bu/increase_map_tt_", travel_time, "_res_", res, ".png"),
          plot = p,
          width = 9,
          height = 5.8)
@@ -683,8 +764,8 @@ boxplot_increase_cases_bu <- function(grid_data, travel_time, percentage_minimum
   
   # read data
   
-  accessibility_with_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(stringr::str_c("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
-  accessibility_without_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(stringr::str_c("./results/without_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
+  accessibility_with_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
+  accessibility_without_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/without_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
   
   # calculate the accessibility difference between the cases with and without bilhete único
 
@@ -717,7 +798,7 @@ boxplot_increase_cases_bu <- function(grid_data, travel_time, percentage_minimum
     percentage_minimum_wage = factor(percentage_minimum_wage, levels = percentage_minimum_wage, labels = text_labels$boxplot_difference$facets_title),
     x = 0.625,
     y = max(accessibility_data$increase),
-    label = stringr::str_c(text_labels$boxplot_difference$palma_ratio, format(round(ratios, digits = 4), nsmall = 4))
+    label = paste0(text_labels$boxplot_difference$palma_ratio, format(round(ratios, digits = 4), nsmall = 4))
   )
   
   # plot settings
@@ -745,7 +826,7 @@ boxplot_increase_cases_bu <- function(grid_data, travel_time, percentage_minimum
   
   # save plot
   
-  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/cases_bu/boxplot_increase_tt_", travel_time, "_res_", res, ".png"),
+  ggsave(paste0("./analysis/", text_labels$lang, "/cases_bu/boxplot_increase_tt_", travel_time, "_res_", res, ".png"),
          width = 9,
          height = 3.5,
          units = "in")
@@ -756,8 +837,8 @@ theil_cases_bu <- function(grid_data, travel_time, percentage_minimum_wage, text
   
   # read data
   
-  accessibility_with_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(stringr::str_c("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
-  accessibility_without_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(stringr::str_c("./results/without_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
+  accessibility_with_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
+  accessibility_without_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/without_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
   
   # calculate the accessibility difference between the cases with and without bilhete único and join grid_data
   
@@ -818,7 +899,7 @@ theil_cases_bu <- function(grid_data, travel_time, percentage_minimum_wage, text
   
   # save plot
   
-  ggsave(stringr::str_c("./analysis/", text_labels$lang, "/cases_bu/theil_components_tt_", travel_time, "_res_", res, ".png"),
+  ggsave(paste0("./analysis/", text_labels$lang, "/cases_bu/theil_components_tt_", travel_time, "_res_", res, ".png"),
          width = 7,
          height = 3,
          units = "in")
@@ -826,9 +907,7 @@ theil_cases_bu <- function(grid_data, travel_time, percentage_minimum_wage, text
 }
 
 
-###############
-# GENERAL USE #
-###############
+# support functions -------------------------------------------------------
 
 
 map_accessibility <- function(accessibility, grid_data, rj_state, breaks, labels, title, title.size, legend.show, legend.title) {
@@ -914,7 +993,7 @@ extract_rapid_transit <- function(use = "plotting") {
     
     # read each gtfs 'stops' file and convert it into a sf object
     
-    zip_supervia <- stringr::str_c("./otp/graphs/rio/gtfs_supervia.zip")
+    zip_supervia <- paste0("./otp/graphs/rio/gtfs_supervia.zip")
     
     stops_supervia <- readr::read_csv(unz(zip_supervia, "stops.txt")) %>% 
       mutate(Mode = "Metro and Rail") %>%
@@ -922,7 +1001,7 @@ extract_rapid_transit <- function(use = "plotting") {
       st_as_sf(coords = c("stop_lon", "stop_lat")) %>% 
       st_set_crs(4674)
     
-    zip_fetranspor <- stringr::str_c("./otp/graphs/rio/gtfs_fetranspor.zip")
+    zip_fetranspor <- paste0("./otp/graphs/rio/gtfs_fetranspor.zip")
     
     stops_fetranspor <- readr::read_csv(unz(zip_fetranspor, "stops.txt")) %>% 
       filter(!is.na(stop_code), !stringr::str_detect(stop_code, "^(3|BRS|PF|SUB)")) %>% 

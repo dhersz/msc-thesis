@@ -157,6 +157,135 @@ generate_accessibility_results <- function(dep_time = NULL,
   
 }
 
+
+calculate_fare <- function(legs, fare_schema, BU = TRUE) {
+  
+  # if BU argument has been set to FALSE the function calculates the fare as if there isn't any 
+  # type of discounts, so the special fares are filtered out of the fare_schema dataframe
+  
+  if (!BU) fare_schema <- fare_schema %>% filter(need_bu == FALSE)
+  
+  # create vector to lookup if fare needs BU to happen and its price (using vectors makes it much faster than dataframes)
+  
+  int_fare <- rlang::set_names(fare_schema$fare, nm = fare_schema$int_id)
+  int_need_bu <- rlang::set_names(fare_schema$need_bu, nm = fare_schema$int_id)
+  
+  # initialise vector to store legs' cost
+  
+  n <- nrow(legs)
+  leg_cost <- vector("double", length = n)
+  
+  # looping through each leg
+  
+  for (i in 1:n) {
+    
+    # leg costs are based on the mode of the leg, the previous motorised leg, whether a integration
+    # that required BU has happenned before and whether a specially priced mode (either intermunicipal
+    # bus or ferry) has been taken before
+    # the variables within the if below are used as auxiliaries to check for theses conditions. every
+    # first leg of a itinerary they need to be ~restarted~ so the previous itinerary doesn't affect the
+    # current one
+    
+    if (legs$leg_id[i] == 1) {
+      last_moto <- ""
+      price_last_moto <- 0
+      has_integrated <- FALSE
+      had_special <- FALSE
+    }
+    
+    # leg_id is used to lookup for integrations and its prices in the vectors set previously
+    
+    leg_id <- paste0(last_moto, "&", legs$type[i])
+    
+    # if int_fare[leg_id] is NA the current leg doesn't have any kind of integration with the previous
+    # also it may mean that it refers to a walking leg
+    # an exception to this rule is when the current leg refers to an intermunicipal bus or a ferry. these
+    # modes may have a special price when using the BU. if its original price is higher than the special
+    # price, then the user is charged the special price (in the routes_info dataframe the price_bu column
+    # indicates the special price)
+    # now, let's say that after the ~special leg~ a user embarks another motorised leg, but this new
+    # current leg doesn't have any kind of integration with its previous leg (the special). then the
+    # system accounts the special price grant as an integration itself, and no further integrations
+    # are accounted. if, however, the new current leg integrates with the special, the fare discount is granted
+    
+    # note that if BU is set to false all the integrations that require the BU have been filtered out,
+    # so the majority of the legs (with the exception of those related to modes with full integration)
+    # fall within this if and have their full prices accounted for
+    
+    if (is.na(int_fare[leg_id])) {
+      
+      # checking for the conditions for the special price leg.
+      # if met, account the special price and assign a variable to indicate it
+      # else, account the full normal price
+      
+      if (BU && !had_special && !has_integrated && legs$type[i] %chin% c("barca", "onibus_intermunicipal") && legs$price_bu[i] < legs$price[i]) {
+        leg_cost[i] <- legs$price_bu[i]
+        had_special <- TRUE
+      }
+      else leg_cost[i] <- legs$price[i]
+      
+      # check for the case where a specially priced leg is accounted as an integration
+      
+      if (legs$type[i] != "caminhada" && had_special && !has_integrated && last_moto %chin% c("barca", "onibus_intermunicipal")) {
+        has_integrated <- TRUE
+      }
+      
+    }
+    
+    else {
+      
+      # if a integration exists, it can fall within 4 categories:
+      # * the integration doesn't require BU, so the current leg price is 0 (equivalent to the first
+      # expression since int_fare[leg_id] and legs$price[i] are the same)
+      # * an integration has happenned before already, in which case the full leg price is charged
+      # * an integration has not occurred and the sum of the fares of the two modes is higher than the
+      # integration fare, in which case the excess of the integration fare compared to the last motorised
+      # leg price is charged
+      # * an integration has not occurred and the sum of the fares that compose it is lower than the
+      # integration fare (some intermunicipal buses cost less than 4.50, for instance, so the sum of their
+      # fares and the municipal buses fares fall below 8.55, the integration cost), in which case the
+      # mode fare is charged and the integration is not actually accounted
+      
+      if (!int_need_bu[leg_id]) leg_cost[i] <- int_fare[leg_id] - legs$price[i]
+      
+      else if (has_integrated) leg_cost[i] <- legs$price[i]
+      
+      else {
+        
+        if (price_last_moto + legs$price[i] > int_fare[leg_id]) {
+          leg_cost[i] <- int_fare[leg_id] - price_last_moto
+          has_integrated <- TRUE
+        }
+        
+        else leg_cost[i] <- legs$price[i]
+        
+      }
+      
+    }
+    
+    # if the current leg mode is not walk, save it as the last motorised
+    # also checks if an full integration has happenned. if so, doesn't update the variables, so the price
+    # of the last motorised mode is the original price of the mode, and not 0 (the second leg price).
+    # this is important to ensure that integrations with these modes work alright.
+    # e.g. suppose we have brt-> brt -> metro.
+    # the correct leg cost is be (brt_price) -> 0 -> (metro_brt_integration - brt_price)
+    # if the variables were updated we'd have (brt_price) -> 0 -> (metro_brt_integration)
+    
+    if (legs$type[i] != "caminhada" && (is.na(int_fare[leg_id]) || int_need_bu[leg_id])){
+      last_moto <- legs$type[i]
+      price_last_moto <- leg_cost[i]
+    }
+    
+  }
+  
+  list(leg_cost = leg_cost)
+  
+}
+
+
+# ROUTES_INFO_RELATED -----------------------------------------------------
+
+
 generate_routes_info <- function() {
   
   fetranspor_info <- raw_routes_info("fetranspor_reduced")
@@ -330,6 +459,10 @@ update_fares <- function(routes_info) {
   routes_info
 }
 
+
+# FARE_SCHEMA RELATED -----------------------------------------------------
+
+
 generate_fare_schema <- function() {
   
   # fares and fare schema can be consulted at https://www.cartaoriocard.com.br/rcc/institucional/tarifas
@@ -375,158 +508,3 @@ generate_fare_schema <- function() {
   
 }
 
-calculate_fare <- function(legs, fare_schema, BU = TRUE) {
-  
-  # if BU argument has been set to FALSE the function calculates the fare as if there isn't any 
-  # type of discounts, so the special fares are filtered out of the fare_schema dataframe
-  
-  if (!BU) fare_schema <- fare_schema %>% filter(need_bu == FALSE)
-  
-  # create vector to lookup if fare needs BU to happen and its price (using vectors makes it much faster than dataframes)
-  
-  int_fare <- rlang::set_names(fare_schema$fare, nm = fare_schema$int_id)
-  int_need_bu <- rlang::set_names(fare_schema$need_bu, nm = fare_schema$int_id)
-  
-  # initialise vector to store legs' cost
-  
-  n <- nrow(legs)
-  leg_cost <- vector("double", length = n)
-  
-  # looping through each leg
-  
-  for (i in 1:n) {
-    
-    # leg costs are based on the mode of the leg, the previous motorised leg, whether a integration
-    # that required BU has happenned before and whether a specially priced mode (either intermunicipal
-    # bus or ferry) has been taken before
-    # the variables within the if below are used as auxiliaries to check for theses conditions. every
-    # first leg of a itinerary they need to be ~restarted~ so the previous itinerary doesn't affect the
-    # current one
-    
-    if (legs$leg_id[i] == 1) {
-      last_moto <- ""
-      price_last_moto <- 0
-      has_integrated <- FALSE
-      had_special <- FALSE
-    }
-    
-    # leg_id is used to lookup for integrations and its prices in the vectors set previously
-    
-    leg_id <- paste0(last_moto, "&", legs$type[i])
-    
-    # if int_fare[leg_id] is NA the current leg doesn't have any kind of integration with the previous
-    # also it may mean that it refers to a walking leg
-    # an exception to this rule is when the current leg refers to an intermunicipal bus or a ferry. these
-    # modes may have a special price when using the BU. if its original price is higher than the special
-    # price, then the user is charged the special price (in the routes_info dataframe the price_bu column
-    # indicates the special price)
-    # now, let's say that after the ~special leg~ a user embarks another motorised leg, but this new
-    # current leg doesn't have any kind of integration with its previous leg (the special). then the
-    # system accounts the special price grant as an integration itself, and no further integrations
-    # are accounted. if, however, the new current leg integrates with the special, the fare discount is granted
-    
-    # note that if BU is set to false all the integrations that require the BU have been filtered out,
-    # so the majority of the legs (with the exception of those related to modes with full integration)
-    # fall within this if and have their full prices accounted for
-    
-    if (is.na(int_fare[leg_id])) {
-      
-      # checking for the conditions for the special price leg.
-      # if met, account the special price and assign a variable to indicate it
-      # else, account the full normal price
-      
-      if (BU && !had_special && !has_integrated && legs$type[i] %chin% c("barca", "onibus_intermunicipal") && legs$price_bu[i] < legs$price[i]) {
-        leg_cost[i] <- legs$price_bu[i]
-        had_special <- TRUE
-      }
-      else leg_cost[i] <- legs$price[i]
-      
-      # check for the case where a specially priced leg is accounted as an integration
-      
-      if (legs$type[i] != "caminhada" && had_special && !has_integrated && last_moto %chin% c("barca", "onibus_intermunicipal")) {
-        has_integrated <- TRUE
-      }
-      
-    }
-    
-    else {
-      
-      # if a integration exists, it can fall within 4 categories:
-      # * the integration doesn't require BU, so the current leg price is 0 (equivalent to the first
-      # expression since int_fare[leg_id] and legs$price[i] are the same)
-      # * an integration has happenned before already, in which case the full leg price is charged
-      # * an integration has not occurred and the sum of the fares of the two modes is higher than the
-      # integration fare, in which case the excess of the integration fare compared to the last motorised
-      # leg price is charged
-      # * an integration has not occurred and the sum of the fares that compose it is lower than the
-      # integration fare (some intermunicipal buses cost less than 4.50, for instance, so the sum of their
-      # fares and the municipal buses fares fall below 8.55, the integration cost), in which case the
-      # mode fare is charged and the integration is not actually accounted
-      
-      if (!int_need_bu[leg_id]) leg_cost[i] <- int_fare[leg_id] - legs$price[i]
-      
-      else if (has_integrated) leg_cost[i] <- legs$price[i]
-      
-      else {
-        
-        if (price_last_moto + legs$price[i] > int_fare[leg_id]) {
-          leg_cost[i] <- int_fare[leg_id] - price_last_moto
-          has_integrated <- TRUE
-        }
-        
-        else leg_cost[i] <- legs$price[i]
-        
-      }
-      
-    }
-    
-    # if the current leg mode is not walk, save it as the last motorised
-    # also checks if an full integration has happenned. if so, doesn't update the variables, so the price
-    # of the last motorised mode is the original price of the mode, and not 0 (the second leg price).
-    # this is important to ensure that integrations with these modes work alright.
-    # e.g. suppose we have brt-> brt -> metro.
-    # the correct leg cost is be (brt_price) -> 0 -> (metro_brt_integration - brt_price)
-    # if the variables were updated we'd have (brt_price) -> 0 -> (metro_brt_integration)
-    
-    if (legs$type[i] != "caminhada" && (is.na(int_fare[leg_id]) || int_need_bu[leg_id])){
-      last_moto <- legs$type[i]
-      price_last_moto <- leg_cost[i]
-    }
-    
-  }
-  
-  list(leg_cost = leg_cost)
-  
-}
-
-calculate_accessibility <- function(costs_df, travel_time_threshold, monetary_cost_threshold, BU = TRUE, res = 7) {
-  
-  grid_data <- readr::read_rds(paste0("./data/rio_h3_grid_res_", res, "_with_data.rds"))
-  
-  n <- nrow(costs_df)
-  costs_df <- costs_df %>% mutate(monetary_cost = ifelse(rep(BU, n), cost_with_BU, cost_without_BU))
-  
-  accessibility_to_itself <- grid_data %>% select(id, inside_opportunities = opportunities)
-  
-  grid_data <- grid_data %>% st_drop_geometry()
-  
-  accessibility_to_others <- costs_df %>% 
-    left_join(grid_data, by = c("dest_id" = "id")) %>% 
-    filter(travel_time <= travel_time_threshold, monetary_cost <= monetary_cost_threshold) %>%
-    group_by(orig_id, dest_id) %>% 
-    slice(1) %>%
-    group_by(orig_id) %>% 
-    summarise(reachable_opportunities = sum(opportunities)) %>% 
-    ungroup() %>% 
-    select(id = orig_id, reachable_opportunities)
-  
-  accessibility <- accessibility_to_itself %>% 
-    left_join(accessibility_to_others, by = "id") %>% 
-    group_by(id) %>% 
-    mutate(accessibility = sum(inside_opportunities, reachable_opportunities, na.rm = TRUE)) %>% 
-    ungroup() %>% 
-    select(id, accessibility)
-  
-  accessibility
-  
-}
