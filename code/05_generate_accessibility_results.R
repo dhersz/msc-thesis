@@ -11,8 +11,8 @@ generate_accessibility_results <- function(dep_time = NULL,
   # * read data -------------------------------------------------------------
   
   
-  # routes_info <- setDT(generate_routes_info())
-  # fare_schema <- generate_fare_schema()
+  routes_info <- setDT(generate_routes_info())
+  fare_schema <- generate_fare_schema()
   
   router_folder <- paste0("./data/", router, "_res_", res)
   
