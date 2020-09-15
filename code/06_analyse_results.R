@@ -219,22 +219,39 @@ maps_different_costs <- function(accessibility_data,
     # geom_sf(data = lines, color = "black") + 
     # geom_sf(data = stations, color = "black", size = 1) + 
     facet_wrap(~ min_wage_percent, nrow = 2) +
-    ggsn::scalebar(data = rio_border, dist = 10, dist_unit = "km",
-                   location = "bottomright", transform = TRUE, model = "WGS84",
-                   height = 0.03, border.size = 0.4, st.dist = 0.05, st.size = 3) +
+    ggsn::scalebar(
+      data = rio_border, 
+      dist = 10, 
+      dist_unit = "km",
+      location = "bottomright", 
+      transform = TRUE, 
+      model = "WGS84",
+      border.size = 0.4, 
+      st.dist = 0.05, 
+      st.size = 3
+    ) +
     coord_sf(xlim = xlim, ylim = ylim) +
-    scale_fill_viridis_c(name = text_labels$maps$legend_title, option = "inferno",
-                         breaks = seq(0, max_accessibility, max_accessibility / 3),
-                         labels = scales::label_percent(scale = 100 / total_opportunities)) +
+    scale_fill_viridis_c(
+      name = text_labels$maps$legend_title, 
+      option = "inferno",
+      breaks = seq(0, max_accessibility, max_accessibility / 3),
+      labels = scales::label_percent(scale = 100 / total_opportunities)
+    ) +
     guides(fill = guide_colorbar(title.vjust = 0.75)) +
-    theme(axis.title = element_blank(), axis.text = element_blank(),
-          axis.ticks = element_blank(), panel.grid = element_blank(),
-          panel.background = element_rect(fill = "#aadaff"),
-          legend.position = "bottom", legend.box.just = "right",
-          legend.box.spacing = unit(0 ,"points"),
-          strip.text.x = element_text(size = 13), strip.text.y = element_text(size = 13),
-          strip.background = element_rect(fill = NA),
-          plot.margin = margin(b = 0))
+    theme(
+      axis.title = element_blank(), 
+      axis.text = element_blank(),
+      axis.ticks = element_blank(), 
+      panel.grid = element_blank(),
+      panel.background = element_rect(fill = "#aadaff"),
+      legend.position = "bottom", 
+      legend.box.just = "right",
+      legend.box.spacing = unit(0 ,"points"),
+      strip.text.x = element_text(size = 13), 
+      strip.text.y = element_text(size = 13),
+      strip.background = element_rect(fill = NA),
+      plot.margin = margin(b = 0)
+    )
   
   # save plot
   
@@ -307,29 +324,62 @@ maps_reduction_different_costs <- function(accessibility_data,
     
     p <- ggplot() +
       geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
-      geom_sf(data = accessibility_data, aes_string(fill = reduction_type), color = NA) +
+      geom_sf(
+        data = accessibility_data, 
+        aes_string(fill = reduction_type), 
+        color = NA
+      ) +
       geom_sf(data = rio_border, color = "gray50", fill = NA, size = 0.3) +
-        facet_wrap(~ min_wage_percent, nrow = 2) +
-      # geom_sf(data = rapid_transit_info[["lines"]], aes(shape = Mode),
-      #         color = "gray30", show.legend = "line") +
-      # geom_sf(data = rapid_transit_info[["stations"]], aes(shape = Mode),
-      #         color = "gray30", show.legend = "point") +
-      ggsn::scalebar(data = rio_border, dist = 10, dist_unit = "km",
-                     location = "bottomright", transform = TRUE, model = "WGS84",
-                     height = 0.03, border.size = 0.4, st.dist = 0.05, st.size = 3) +
+      facet_wrap(~ min_wage_percent, nrow = 2) +
+      geom_sf(
+        data = rapid_transit_info[["lines"]], 
+        aes(shape = Mode),
+        color = "gray30", 
+        show.legend = "line"
+      ) +
+      geom_sf(
+        data = rapid_transit_info[["stations"]], 
+        aes(shape = Mode),
+        color = "gray30", 
+        show.legend = "point"
+      ) +
+      ggsn::scalebar(
+        data = rio_border, 
+        dist = 10, 
+        dist_unit = "km",
+        location = "bottomright", 
+        transform = TRUE, 
+        model = "WGS84",
+        height = 0.03, 
+        border.size = 0.4, 
+        st.dist = 0.05, 
+        st.size = 3
+      ) +
       coord_sf(xlim = xlim, ylim = ylim) +
       # scale_color_manual(name = text_labels$reduction_maps$mode_legend_title,
       #                    values = c("royalblue3", "gray30")) +
-      scale_fill_gradient(name = text_labels$reduction_maps[[access_legend_title]],
-                          low = "#efeeec", high = "red",
-                          labels = scales::label_percent(scale = 100 / denominator)) +
-      guides(shape = guide_legend(order = 1), fill = guide_colorbar(order = 2)) +
-      theme(axis.title = element_blank(), axis.text = element_blank(),
-            axis.ticks = element_blank(), panel.grid = element_blank(),
-            panel.background = element_rect(fill = "#aadaff"),
-            legend.position = "bottom", legend.box = "vertical",
-            legend.box.just = "left", strip.text.x = element_text(size = 13),
-            strip.background = element_rect(fill = NA))
+      scale_fill_gradient(
+        name = text_labels$reduction_maps[[access_legend_title]],
+        low = "#efeeec", 
+        high = "red",
+        labels = scales::label_percent(scale = 100 / denominator)
+      ) +
+      guides(
+        shape = guide_legend(order = 1), 
+        fill = guide_colorbar(order = 2)
+      ) +
+      theme(
+        axis.title = element_blank(), 
+        axis.text = element_blank(),
+        axis.ticks = element_blank(), 
+        panel.grid = element_blank(),
+        panel.background = element_rect(fill = "#aadaff"),
+        legend.position = "bottom", 
+        legend.box = "vertical",
+        legend.box.just = "left", 
+        strip.text.x = element_text(size = 13),
+        strip.background = element_rect(fill = NA)
+      )
     
     p <- lemon::reposition_legend(
       p,
