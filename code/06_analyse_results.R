@@ -87,13 +87,14 @@ analyse_results <- function(grid_data_path = NULL,
     analysis_folder <- paste0(analysis_folder, "/different_costs")
     if (!file.exists(analysis_folder)) dir.create(analysis_folder)
     
-    filtered_data <- copy(accessibility_data
-                          )[(bilhete_unico == "with") & (travel_time == tt) & (min_wage_percent %in% mwpcts)]
+    filtered_data <- accessibility_data[(bilhete_unico == "with") & 
+                                        (travel_time == tt) & 
+                                        (min_wage_percent %in% mwpcts)]
     
     text_labels <- labels_different_costs(tt, mwpcts, lang)
     
-    # maps_different_costs(filtered_data, tt, mwpcts, text_labels, analysis_folder)
-    maps_reduction_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
+    # maps_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder)
+    maps_reduction_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder)
     # boxplot_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
     # theil_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
     # average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
@@ -138,7 +139,8 @@ labels_different_costs <- function(travel_time, percentage_minimum_wage, lang) {
       ),
       "reduction_maps" = list(
         "facets_title" = paste0("Custo monetário ", ifelse(percentage_minimum_wage <= 100, paste0("<= ", percentage_minimum_wage, "% do salário mínimo"), "não considerado")),
-        "access_legend_title" = "Redução (% da acess.\nsem limite de dinheiro)",
+        "percent_reduction_legend_title" = "Redução (% da acess.\nsem limite de dinheiro)",
+        "total_reduction_legend_title" = "Redução (% do total\nde empregos)",
         "mode_legend_title" = "Modo",
         "mode_options" = c("BRT", "Metrô e trem")
       ),
@@ -189,7 +191,7 @@ maps_different_costs <- function(accessibility_data,
   # convert min_wage_percent column to factor
   
   accessibility_data[, min_wage_percent := factor(min_wage_percent, 
-                                                 levels = unique(min_wage_percent), 
+                                                 levels = mwpcts, 
                                                  labels = text_labels$maps$cost_title)]
   
   # create sf objects
@@ -236,12 +238,16 @@ maps_different_costs <- function(accessibility_data,
   # save plot
   
   ggsave(paste0(analysis_folder, "/comparative_map_tt_", tt, ".png"),
-         width = 7,
-         height = 5.5)
+         width = 9,
+         height = 5.8)
   
 }
 
-maps_reduction_different_costs <- function(grid_data, travel_time, percentage_minimum_wage, text_labels, res) {
+maps_reduction_different_costs <- function(accessibility_data, 
+                                           tt, 
+                                           mwpcts, 
+                                           text_labels, 
+                                           analysis_folder) {
  
   # read rio state and municipality shapes
   
@@ -249,62 +255,98 @@ maps_reduction_different_costs <- function(grid_data, travel_time, percentage_mi
   rio_border <- readr::read_rds("./data/rio_municipality.rds")
   
   # rapid_transit_info <- extract_rapid_transit("plotting") %>% 
-  #   purrr::map(function(i) mutate(i, Mode = factor(Mode, levels = unique(Mode), labels = text_labels$reduction_maps$mode_options)))
+  #   purrr::map(function(i) mutate(i, Mode = factor(Mode, levels = unique(Mode), 
+  #                                 labels = text_labels$reduction_maps$mode_options)))
   
-  # calculate the accessibility difference between the cases with and the one without a cost threshold
-  # then bind everything in the same dataframe to plot each case as a facet
-  # filter out the case without a cost threshold
+  # calculate the accessibility difference between the cases with and the one
+  # without a cost threshold. then filter out the case without a cost threshold
   
-  n_cases <- which(percentage_minimum_wage == 1000)
+  comparison_case <- accessibility_data[min_wage_percent == 10]
   
-  accessibility_data <- purrr::map(accessibility_data, function(i) left_join(i, st_drop_geometry(accessibility_data[[n_cases]]), by = "id")) %>% 
-    purrr::map(function(i) mutate(i, reduction = accessibility.y - accessibility.x)) %>% 
-    purrr::set_names(as.character(percentage_minimum_wage)) %>% 
-    bind_rows(.id = "percentage_minimum_wage") %>% 
-    filter(percentage_minimum_wage != "1000")
+  accessibility_data <- accessibility_data[min_wage_percent < 10
+   ][comparison_case,  on = "id", nc_accessibility := i.accessibility
+     ][, `:=`(total_reduction = nc_accessibility - accessibility,
+              percent_reduction = (nc_accessibility - accessibility) / nc_accessibility)]
+                                                  
   
-  # convert percentage_minimum_wage to factor so the facets are adequately ordered 
+  # convert min_wage_percent column to factor
   
-  accessibility_data$percentage_minimum_wage <- factor(
-    accessibility_data$percentage_minimum_wage,
-    levels = percentage_minimum_wage,
-    labels = text_labels$reduction_maps$facets_title
-  )
+  accessibility_data[, min_wage_percent := factor(min_wage_percent, 
+                                                  levels = mwpcts, 
+                                                  labels = text_labels$maps$cost_title)]
   
-  # plot settings
+  # create sf objects
   
-  rio_border <- accessibility_data %>% group_by(id) %>% slice(1) %>% ungroup() %>% summarise()
-  expanded_rio_border <- rio_border %>% st_transform(5880) %>% st_buffer(3000) %>% st_transform(st_crs(rio_border))
+  expanded_rio_border <- rio_border %>% 
+    st_transform(5880) %>% 
+    st_buffer(3000) %>% 
+    st_transform(st_crs(rio_border))
   
-  xlim <- c(st_bbox(rio_border)[1], st_bbox(rio_border)[3])
-  ylim <- c(st_bbox(expanded_rio_border)[2], st_bbox(rio_border)[4])
+  accessibility_data <- st_as_sf(accessibility_data[opportunities > 0 & population > 0])
   
-  p <- ggplot() +
-    geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
-    geom_sf(data = accessibility_data, aes(fill = reduction), color = NA) +
-      facet_wrap(~ percentage_minimum_wage, ncol = 2) +
-    geom_sf(data = rio_border, color = "gray50", fill = NA) +
-    # geom_sf(data = rapid_transit_info[["lines"]], aes(shape = Mode), color = "gray30", show.legend = "line") +
-    # geom_sf(data = rapid_transit_info[["stations"]], aes(shape = Mode), color = "gray30", show.legend = "point") +
-    ggsn::scalebar(data = rio_border, dist = 10, dist_unit = "km", location = "bottomright", transform = TRUE, model = "WGS84",
-                   height = 0.03, border.size = 0.4, st.dist = 0.05, st.size = 3) +
-    coord_sf(xlim = xlim, ylim = ylim) +
-    # scale_color_manual(name = text_labels$reduction_maps$mode_legend_title, values = c("royalblue3", "gray30")) +
-    scale_fill_gradient(name = text_labels$reduction_maps$access_legend_title, low = "#efeeec", high = "red", labels = scales::percent) +
-    guides(shape = guide_legend(order = 1), fill = guide_colorbar(order = 2)) +
-    theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(),
-          panel.grid = element_blank(), panel.background = element_rect(fill = "#aadaff"),
-          legend.position = "bottom", legend.box = "vertical", legend.box.just = "left",
-          strip.text.x = element_text(size = 13), strip.background = element_rect(fill = NA))
+  # create function with plot settings
+
+  plot_reduction <- function(type = c("percent", "total")) {
+    
+    # use different denominator for accessibility legend labels depending on 
+    # the type of reduction
+    
+    if (type == "percent") denominator <- 1
+    else denominator <- sum(accessibility_data$opportunities) / (length(mwpcts) - 1)
+    
+    # use following objects to conditionally access objects depending on type
+    
+    reduction_type <- paste0(type, "_reduction")
+    access_legend_title <- paste0(reduction_type, "_legend_title")
+    
+    # plot settings
+    
+    xlim <- c(st_bbox(rio_border)[1], st_bbox(rio_border)[3])
+    ylim <- c(st_bbox(expanded_rio_border)[2], st_bbox(rio_border)[4])
+    
+    p <- ggplot() +
+      geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
+      geom_sf(data = accessibility_data, aes_string(fill = reduction_type), color = NA) +
+      geom_sf(data = rio_border, color = "gray50", fill = NA, size = 0.3) +
+        facet_wrap(~ min_wage_percent, nrow = 2) +
+      # geom_sf(data = rapid_transit_info[["lines"]], aes(shape = Mode),
+      #         color = "gray30", show.legend = "line") +
+      # geom_sf(data = rapid_transit_info[["stations"]], aes(shape = Mode),
+      #         color = "gray30", show.legend = "point") +
+      ggsn::scalebar(data = rio_border, dist = 10, dist_unit = "km",
+                     location = "bottomright", transform = TRUE, model = "WGS84",
+                     height = 0.03, border.size = 0.4, st.dist = 0.05, st.size = 3) +
+      coord_sf(xlim = xlim, ylim = ylim) +
+      # scale_color_manual(name = text_labels$reduction_maps$mode_legend_title,
+      #                    values = c("royalblue3", "gray30")) +
+      scale_fill_gradient(name = text_labels$reduction_maps[[access_legend_title]],
+                          low = "#efeeec", high = "red",
+                          labels = scales::label_percent(scale = 100 / denominator)) +
+      guides(shape = guide_legend(order = 1), fill = guide_colorbar(order = 2)) +
+      theme(axis.title = element_blank(), axis.text = element_blank(),
+            axis.ticks = element_blank(), panel.grid = element_blank(),
+            panel.background = element_rect(fill = "#aadaff"),
+            legend.position = "bottom", legend.box = "vertical",
+            legend.box.just = "left", strip.text.x = element_text(size = 13),
+            strip.background = element_rect(fill = NA))
+    
+    p <- lemon::reposition_legend(p, position = "bottom left", panel = "panel-2-2")
+    
+    # save plot
+    
+    ggsave(paste0(analysis_folder, "/", reduction_type, "_map_tt_", tt, ".png"),
+           plot = p,
+           width = 9,
+           height = 5.8)
+    
+  }
+
+  # plot_reduction calling --------------------------------------------------
   
-  p <- lemon::reposition_legend(p, position = "bottom left", panel = "panel-2-2")
+  plot_reduction("percent")
   
-  # save plot
+  plot_reduction("total")
   
-  ggsave(paste0("./analysis/", text_labels$lang, "/different_costs/reduction_maps_tt_", travel_time, "_res_", res, ".png"),
-         plot = p,
-         width = 9,
-         height = 5.8)
   
 }
 
