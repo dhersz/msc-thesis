@@ -93,9 +93,9 @@ analyse_results <- function(grid_data_path = NULL,
     
     text_labels <- labels_different_costs(tt, mwpcts, lang)
     
-    maps_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder)
+    # maps_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder)
     # maps_reduction_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder)
-    # boxplot_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
+    boxplot_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder, n_quantiles)
     # theil_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
     # average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
     
@@ -274,7 +274,7 @@ maps_reduction_different_costs <- function(accessibility_data,
   
   accessibility_data[, min_wage_percent := factor(min_wage_percent, 
                                                   levels = mwpcts, 
-                                                  labels = text_labels$maps$cost_title)]
+                                                  labels = text_labels$reduction_maps$facets_title)]
   
   # create sf objects
   
@@ -356,76 +356,75 @@ boxplot_different_costs <- function(accessibility_data,
                                     tt, 
                                     mwpcts, 
                                     text_labels, 
-                                    analysis_folder) {
+                                    analysis_folder,
+                                    n_quantiles) {
   
-  accessibility_data <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
+  # values to be used when setting the breaks and labels
   
-  # calculate values to be used later when setting the plot's breaks and labels
+  max_accessibility   <- max(accessibility_data$accessibility)
+  total_opportunities <- sum(accessibility_data$opportunities) / length(mwpcts)
   
-  max_accessibility <- max(purrr::map_dbl(accessibility_data, function(i) max(i$accessibility)))
-  total_opportunities <- sum(grid_data$opportunities)
+  # filter out cells where population = 0 and, consequently, income_quantile = NA
   
-  # prepare the dataset to be used in the plots
+  accessibility_data <- accessibility_data[population > 0]
   
-  accessibility_data <- accessibility_data %>% 
-    purrr::map(st_drop_geometry) %>% 
-    purrr::map(function(i) left_join(i, grid_data, by = "id")) %>% 
-    purrr::map(function(i) filter(i, population > 0))
+  # calculate the palma ratio for each minimum wage percentage and create a 
+  # dataframe to plot them as annotations
   
-  # calculate the palma ratio in each case
-  
-  ratios <- accessibility_data %>% 
-    purrr::map_dbl(palma_ratio)
-  
-  # bind each distribution to the same dataframe to plot it as a facet of the same plot
-  # set names that can be used as the facet identifier
-  
-  accessibility_data <- accessibility_data %>% 
-    purrr::set_names(as.character(percentage_minimum_wage)) %>%
-    bind_rows(.id = "percentage_minimum_wage")
-  
-  # convert names to factors so the facets are adequately ordered 
-  
-  accessibility_data$percentage_minimum_wage <- factor(
-    accessibility_data$percentage_minimum_wage,
-    levels = percentage_minimum_wage,
-    labels = text_labels$boxplot$facets_title
+  ratios <- purrr::map_dbl(
+    mwpcts,
+    function(i) palma_ratio(accessibility_data[min_wage_percent == i])
   )
   
-  # create a dataframe with the palma ratios to plot them as annotations
-  
-  palma_data <- tibble::tibble(
-    percentage_minimum_wage = factor(percentage_minimum_wage,
-                                     levels = percentage_minimum_wage,
-                                     labels = text_labels$boxplot$facets_title),
+  palma_data <- data.frame(
+    min_wage_percent = factor(mwpcts,
+                              levels = mwpcts,
+                              labels = text_labels$boxplot$facets_title),
     x = 0.625,
     y = max(accessibility_data$accessibility),
     label = paste0(text_labels$boxplot$palma_ratio, format(round(ratios, digits = 4), nsmall = 4))
   )
   
+  # convert min_wage_percent column to factor
+  
+  accessibility_data[, min_wage_percent := factor(min_wage_percent, 
+                                                  levels = mwpcts, 
+                                                  labels = text_labels$boxplot$facets_title)]
+  
   # plot settings
   
-  ggplot(accessibility_data, aes(income_quantile, accessibility)) +
+  p <- ggplot(accessibility_data, aes(income_quantile, accessibility)) +
     geom_boxplot(aes(weight = population, group = income_quantile)) +
-    facet_wrap(~ percentage_minimum_wage, ncol = 2) +
+    facet_wrap(~ min_wage_percent, ncol = 2) +
     labs(x = text_labels$boxplot$x_axis, y = text_labels$boxplot$y_axis) +
-    geom_text(data = palma_data, aes(x, y, label = label, hjust = "left"), size = 4.5, color = "gray20", vjust = -0.3) +
+    geom_text(
+      data = palma_data, 
+      aes(x, y, label = label, hjust = "left"),
+      size = 4.5, 
+      color = "gray20", 
+      vjust = -0.3
+    ) +
     scale_x_continuous(breaks = 1:n_quantiles) +
     scale_y_continuous(
       limits = c(0, max_accessibility * 1.055),
       breaks = seq(0, max_accessibility, max_accessibility/3),
       labels = scales::percent_format(accuracy = 0.1, scale = 100 / total_opportunities)
     ) +
-    theme(strip.text.x = element_text(size = 13),
-          strip.background.x = element_rect(fill = NA),
-          axis.title.x = element_text(size = 12), axis.title.y = element_text(size = 12),
-          axis.text.x = element_text(size = 11), axis.text.y = element_text(size = 11),
-          panel.grid.minor = element_blank(),
-          panel.background = element_rect(fill = "gray94"))
+    theme(
+      strip.text.x = element_text(size = 13),
+      strip.background.x = element_rect(fill = NA),
+      axis.title.x = element_text(size = 12),
+      axis.title.y = element_text(size = 12),
+      axis.text.x = element_text(size = 11),
+      axis.text.y = element_text(size = 11),
+      panel.grid.minor = element_blank(),
+      panel.background = element_rect(fill = "gray94")
+    )
   
   # save plot
   
-  ggsave(paste0("./analysis/", text_labels$lang, "/different_costs/boxplot_tt_", travel_time, "_res_", res, ".png"),
+  ggsave(paste0(analysis_folder, "/boxplot_tt_", tt, ".png"),
+         plot = p,
          width = 8,
          height = 5,
          units = "in")
@@ -980,20 +979,13 @@ extract_rapid_transit <- function(use = "plotting") {
   
 }
 
-palma_ratio <- function(accessibility_data, variable = "accessibility") {
+palma_ratio <- function(data, variable = "accessibility") {
   
-  # change the desired variable column name to "variable" in order to allow calculations for any variable
+  richest_10 <- data[income_quantile == 10,
+                     .(avg_variable = weighted.mean(get(variable), population))]
   
-  accessibility_data <- accessibility_data %>% 
-    rename(variable = any_of(variable))
-  
-  richest_10 <- accessibility_data %>% 
-    filter(income_quantile == 10) %>% 
-    summarise(avg_variable = sum(variable * population) / sum(population))
-  
-  poorest_40 <- accessibility_data %>% 
-    filter(income_quantile %in% 1:4) %>% 
-    summarise(avg_variable = sum(variable * population) / sum(population))
+  poorest_40 <- data[income_quantile %in% 1:4,
+                     .(avg_variable = weighted.mean(get(variable), population))]
   
   palma_ratio <- richest_10$avg_variable / poorest_40$avg_variable
   
@@ -1264,5 +1256,153 @@ theil_index <- function(accessibility_data) {
 #   palma_ratio <- richest_10$avg_variable / poorest_40$avg_variable
 #   
 #   palma_ratio
+#   
+# }
+# 
+# 
+# 
+# 
+# theil_different_costs <- function(grid_data, travel_time, percentage_minimum_wage, text_labels, res) {
+#   
+#   # read and prepare data
+#   
+#   accessibility_data <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds"))) %>%
+#     purrr::map(st_drop_geometry) %>% 
+#     purrr::map(function(i) left_join(i, grid_data, by = "id")) %>% 
+#     purrr::map(function(i) filter(i, population > 0))
+#   
+#   # calculate the theil index and its components in each case
+#   # set names for each observation and bind them together in the same dataframe
+#   
+#   theil_data <- accessibility_data %>% 
+#     purrr::map(theil_info) %>%
+#     purrr::set_names(percentage_minimum_wage) %>%
+#     bind_rows(.id = "percentage_minimum_wage") %>% 
+#     mutate(percentage_minimum_wage = as.integer(percentage_minimum_wage))
+#   
+#   # aggregate component data and create a label_y column to place annotations within each stack
+#   
+#   theil_data <- theil_data %>% 
+#     group_by(percentage_minimum_wage, component) %>% 
+#     summarise(share = sum(share), .groups = "drop_last") %>% 
+#     arrange(desc(percentage_minimum_wage), desc(component)) %>% 
+#     mutate(label_y = cumsum(share) - share/2) %>% 
+#     ungroup()
+#   
+#   # convert component info and minimum wage percentages to factors to adequately order and stack the bars2
+#   
+#   theil_data <- theil_data %>% 
+#     mutate(
+#       component = factor(component, levels = c("between", "within"), labels = text_labels$theil$components_names),
+#       percentage_minimum_wage = factor(percentage_minimum_wage, levels = unique(percentage_minimum_wage), labels = text_labels$theil$bar_labels)
+#     )
+#   
+#   # find max total theil to resize the plot's graphic area in order to fit the annotation on top of bars
+#   
+#   max_theil_data <- theil_data %>% 
+#     group_by(percentage_minimum_wage) %>% 
+#     summarise(theil = sum(share), .groups = "drop")
+#   
+#   max_theil <- max(max_theil_data$theil)
+#   
+#   y_upper_limit <- purrr::map_dbl(max_theil + 0.05, function(i, level = 1) round(i + 5*10^(-level-1), level))
+#   
+#   # plot settings
+#   
+#   ggplot(theil_data) +
+#     geom_col(aes(percentage_minimum_wage, share, fill = component)) + 
+#     geom_text(aes(percentage_minimum_wage, label_y, label = format(round(share, digits = 4)), nsmall = 4),
+#               color = "white") +
+#     stat_summary(fun = sum,
+#                  aes(percentage_minimum_wage, share, label = format(round(..y.., digits = 4), nsmall = 4), group = percentage_minimum_wage),
+#                  geom = "text",
+#                  vjust = -0.5) +
+#     labs(x = text_labels$theil$x_axis, y = text_labels$theil$y_axis, fill = text_labels$theil$component) +
+#     coord_cartesian(ylim = c(0, y_upper_limit)) +
+#     theme(
+#       axis.title.x = element_text(size = 12),
+#       axis.text.x = element_text(size = 11, angle = 22.5, hjust = 1),
+#       axis.title.y = element_text(size = 12),
+#       axis.text.y = element_text(size = 11),
+#       legend.title = element_text(size = 12),
+#       legend.text = element_text(size = 11),
+#       panel.grid = element_blank(),
+#       panel.background = element_rect(fill = "gray94")
+#     )
+#   
+#   # save plot
+#   
+#   ggsave(paste0("./analysis/", text_labels$lang, "/different_costs/theil_tt_", travel_time, "_res_", res, ".png"),
+#          width = 7,
+#          height = 3,
+#          units = "in")
+#   
+# }
+# 
+# 
+# 
+# theil_info <- function(accessibility_data, variable = "accessibility") {
+#   
+#   # change the desired variable column name to "variable" in order to allow calculations for any variable
+#   
+#   accessibility_data <- accessibility_data %>% 
+#     rename(variable = any_of(variable)) %>%
+#     mutate(total_variable = variable * population)
+#   
+#   # calculate the between-group component
+#   # group by quantile, calculate its share of the component and save it in a list
+#   
+#   between_group_data <- accessibility_data %>% 
+#     group_by(income_quantile) %>% 
+#     summarise(
+#       population = sum(population),
+#       total_variable = sum(total_variable),
+#       .groups = "drop"
+#     ) %>% 
+#     mutate(theil_share = (total_variable / sum(total_variable)) * log((total_variable / sum(total_variable)) / (population / sum(population))))
+#   
+#   unique_quantiles <- between_group_data$income_quantile
+#   n <- length(unique_quantiles)
+#   
+#   between_group <- list(component = rep("between", n), income_quantile = unique_quantiles, share = between_group_data$theil_share)
+#   
+#   # calculate the within-group component
+#   # it is the weighted average of each group's own theil index, where accessibility is the weight
+#   
+#   within_group_share <- vector("double", length = n)
+#   
+#   for (i in seq_along(unique_quantiles)) {
+#     
+#     filtered_data <- accessibility_data %>% 
+#       filter(income_quantile == unique_quantiles[i])
+#     
+#     within_group_share[i] <- theil_index(filtered_data) * sum(filtered_data$total_variable)
+#     
+#   }
+#   
+#   within_group_share <- within_group_share / sum(accessibility_data$total_variable)
+#   
+#   within_group <- list(component = rep("within", n), income_quantile = unique_quantiles, share = within_group_share)
+#   
+#   # bind between- and within-group components lists together in a dataframe
+#   
+#   info <- bind_rows(within_group, between_group)
+#   
+#   info
+#   
+# }
+# 
+# theil_index <- function(accessibility_data) {
+#   
+#   accessibility_data <- accessibility_data %>% 
+#     filter(variable > 0) %>% 
+#     mutate(
+#       total_variable = variable * population,
+#       theil_share = (total_variable / sum(total_variable)) * log((total_variable / sum(total_variable)) / (population / sum(population)))
+#     )
+#   
+#   index <- sum(accessibility_data$theil_share)
+#   
+#   index
 #   
 # }
