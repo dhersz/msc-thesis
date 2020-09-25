@@ -48,8 +48,8 @@ generate_itinerary_details <- function(dyn = FALSE,
   router_folder <- paste0("./data/", router, "_res_", res)
   grid_data_path <- paste0(router_folder, "/grid_with_data.rds")
   
-  # clean_grid <- readr::read_rds(grid_data_path) %>%
-  #   filter(opportunities != 0 | population != 0)
+  clean_grid <- readr::read_rds(grid_data_path) %>%
+    filter(opportunities != 0 | population != 0)
   
   if (res == 8) {
     

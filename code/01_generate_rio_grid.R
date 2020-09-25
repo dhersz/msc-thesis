@@ -1,7 +1,7 @@
 library(dplyr)
 library(sf)
 
-generate_hex_grid <- function(res = 7) {
+generate_hex_grid <- function(router = "rio", res = 7) {
   
   rio_municipality <- readr::read_rds("./data/rio_municipality.rds")
   
@@ -48,6 +48,11 @@ generate_hex_grid <- function(res = 7) {
     
   }
   
-  readr::write_rds(hex_grid, stringr::str_c("./data/rio_h3_grid_res_", res, ".rds"))
+  router_folder <- paste0("./data/", router, "_res_", res)
+  if (!file.exists(router_folder)) dir.create(router_folder)
+  
+  grid_data_path <- paste0(router_folder, "/grid_raw.rds")
+  
+  readr::write_rds(hex_grid, grid_data_path)
   
 }

@@ -1,7 +1,7 @@
 library(dplyr)
 library(sf)
 
-aggregate_data <- function(res = 7) {
+aggregate_data <- function(router = "rio", res = 7) {
   
   # read census tract data (population and income) and aggregate to an sf object
   
@@ -32,7 +32,9 @@ aggregate_data <- function(res = 7) {
   
   # read given resolution hexagonal grid and aggregate data to it
   
-  hex_grid <- readr::read_rds(stringr::str_c("./data/rio_h3_grid_res_", res, ".rds"))
+  router_folder <- paste0("./data/", router, "_res_", res)
+  
+  hex_grid <- readr::read_rds(paste0(router_folder, "/grid_raw.rds"))
   hex_grid_crs <- st_crs(hex_grid)
   
   hex_grid <- hex_grid %>% st_transform(5880)
@@ -48,6 +50,8 @@ aggregate_data <- function(res = 7) {
     st_set_crs(5880) %>% 
     st_transform(hex_grid_crs)
   
-  readr::write_rds(hex_grid_with_data, stringr::str_c("./data/rio_h3_grid_res_", res, "_with_data.rds"))
+  grid_data_path <- paste0(router_folder, "/grid_with_data.rds")
+  
+  readr::write_rds(hex_grid_with_data, grid_data_path)
   
 }

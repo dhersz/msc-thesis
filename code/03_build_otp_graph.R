@@ -1,4 +1,4 @@
-build_otp_graph <- function(n = 5) {
+build_otp_graph <- function(router = "rio", mem = 5, command = "java") {
   
   valid_java_version <- opentripplanner::otp_check_java()
   
