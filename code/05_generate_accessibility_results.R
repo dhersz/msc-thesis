@@ -288,7 +288,7 @@ calculate_fare <- function(legs, fare_schema, BU = TRUE) {
 
 generate_routes_info <- function() {
   
-  fetranspor_info <- raw_routes_info("fetranspor_reduced")
+  fetranspor_info <- raw_routes_info("fetranspor_fixed_subway")
   supervia_info <- raw_routes_info("supervia")
   
   # the buses below have a specific fare integration with the subway
@@ -387,7 +387,7 @@ fare_rules_treatment <- function(fare_rules, style, routes_treated = NA) {
   # origin/destination_id = 79 refers to Teleférico do Alemão, which costs 1 BRL (fare_id = 127)
   # origin/destination_id = 78 refers to the ~usual~ SuperVia stations and is our ~default~ (4.6) (fare_id = 125)
   
-  if (style == "fetranspor_reduced") {
+  if (style == "fetranspor_fixed_subway") {
     fare_rules_treated <- fare_rules %>% 
       select(fare_id, route_id)
   } else {

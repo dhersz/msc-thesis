@@ -82,7 +82,7 @@ analyse_results <- function(grid_data_path = NULL,
   ttimes <- c(30, 60, 90, 120)
   mwpcts <- c(0.2, 0.3, 0.4, 10)
   
-  purrr::walk(ttimes, function(tt) {
+  oi <- purrr::map(ttimes, function(tt) {
     
     analysis_folder <- paste0(analysis_folder, "/different_costs")
     if (!file.exists(analysis_folder)) dir.create(analysis_folder)
@@ -93,12 +93,11 @@ analyse_results <- function(grid_data_path = NULL,
     
     text_labels <- labels_different_costs(tt, mwpcts, lang)
     
-    # maps_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder)
+    maps_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder)
     # maps_reduction_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder)
-    boxplot_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder, n_quantiles)
+    # boxplot_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder, n_quantiles)
     # theil_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
     # average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
-    
     
   })
   
@@ -185,9 +184,9 @@ maps_different_costs <- function(accessibility_data,
   rj_state   <- readr::read_rds("./data/rj_state.rds")
   rio_border <- readr::read_rds("./data/rio_municipality.rds")
   
-  # rapid_transit <- extract_rapid_transit("olar")
-  # lines       <- rapid_transit$lines
-  # stations    <- rapid_transit$stations
+  rapid_transit <- extract_rapid_transit("plotting")
+  lines       <- rapid_transit$lines
+  stations    <- rapid_transit$stations
   
   # convert min_wage_percent column to factor
   
@@ -216,8 +215,8 @@ maps_different_costs <- function(accessibility_data,
     geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
     geom_sf(data = rio_border, color = "black", fill = NA, size = 0.3) +
     geom_sf(data = accessibility_data, aes(fill = accessibility), color = NA) +
-    # geom_sf(data = lines, color = "black") + 
-    # geom_sf(data = stations, color = "black", size = 1) + 
+    geom_sf(data = lines, color = "black") +
+    geom_sf(data = stations, color = "black", size = 1) +
     facet_wrap(~ min_wage_percent, nrow = 2) +
     ggsn::scalebar(
       data = rio_border, 
@@ -285,7 +284,6 @@ maps_reduction_different_costs <- function(accessibility_data,
    ][comparison_case,  on = "id", nc_accessibility := i.accessibility
      ][, `:=`(total_reduction = nc_accessibility - accessibility,
               percent_reduction = (nc_accessibility - accessibility) / nc_accessibility)]
-                                                  
   
   # convert min_wage_percent column to factor
   
@@ -331,18 +329,18 @@ maps_reduction_different_costs <- function(accessibility_data,
       ) +
       geom_sf(data = rio_border, color = "gray50", fill = NA, size = 0.3) +
       facet_wrap(~ min_wage_percent, nrow = 2) +
-      geom_sf(
-        data = rapid_transit_info[["lines"]], 
-        aes(shape = Mode),
-        color = "gray30", 
-        show.legend = "line"
-      ) +
-      geom_sf(
-        data = rapid_transit_info[["stations"]], 
-        aes(shape = Mode),
-        color = "gray30", 
-        show.legend = "point"
-      ) +
+      # geom_sf(
+      #   data = rapid_transit_info[["lines"]], 
+      #   aes(shape = Mode),
+      #   color = "gray30", 
+      #   show.legend = "line"
+      # ) +
+      # geom_sf(
+      #   data = rapid_transit_info[["stations"]], 
+      #   aes(shape = Mode),
+      #   color = "gray30", 
+      #   show.legend = "point"
+      # ) +
       ggsn::scalebar(
         data = rio_border, 
         dist = 10, 
@@ -356,8 +354,10 @@ maps_reduction_different_costs <- function(accessibility_data,
         st.size = 3
       ) +
       coord_sf(xlim = xlim, ylim = ylim) +
-      # scale_color_manual(name = text_labels$reduction_maps$mode_legend_title,
-      #                    values = c("royalblue3", "gray30")) +
+      # scale_color_manual(
+      #   name = text_labels$reduction_maps$mode_legend_title,
+      #   values = c("royalblue3", "gray30")
+      # ) +
       scale_fill_gradient(
         name = text_labels$reduction_maps[[access_legend_title]],
         low = "#efeeec", 

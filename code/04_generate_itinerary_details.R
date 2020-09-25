@@ -29,7 +29,7 @@ generate_itinerary_details <- function(dyn = FALSE,
     date = "01-08-2020",
     time = dep_time,
     arriveBy = "FALSE",
-    numItineraries = "10"
+    numItineraries = "20"
     # ,maxWalkDistance = "2000"
     # ,maxHours = "1"
     # ,useRequestedDateTimeInMaxHours = "TRUE"
@@ -45,8 +45,11 @@ generate_itinerary_details <- function(dyn = FALSE,
   # cells with no opportunities and population are cleaned out of the dataframe
   # to speed up the requests, since they won't affect accessibility.
 
-  clean_grid <- readr::read_rds(paste0("./data/rio_h3_grid_res_", res, "_with_data.rds")) %>%
-    filter(opportunities != 0 | population != 0)
+  router_folder <- paste0("./data/", router, "_res_", res)
+  grid_data_path <- paste0(router_folder, "/grid_with_data.rds")
+  
+  # clean_grid <- readr::read_rds(grid_data_path) %>%
+  #   filter(opportunities != 0 | population != 0)
   
   if (res == 8) {
     
@@ -106,6 +109,7 @@ generate_itinerary_details <- function(dyn = FALSE,
       n_cores,
       dyn,
       dep_time,
+      router,
       res,
       .progress = TRUE
     )
@@ -153,6 +157,7 @@ get_transit_itineraries <- function(x,
                                     n_cores, 
                                     dyn, 
                                     dep_time, 
+                                    router,
                                     res) {
 
   # this function calls the two most important functions in this whole ensemble.
@@ -165,10 +170,17 @@ get_transit_itineraries <- function(x,
 
   origin_group <- origin_groups[x]
   
-  filepath <- paste0("./data/temp/itineraries_details_orig_",
-                     names(origin_group),"_res_", res, "_", dep_time, ".rds")
+  filepath <- paste0(
+    "./data/temp/itineraries_details_orig_",
+    names(origin_group),
+    "_res_", 
+    res, 
+    "_", 
+    dep_time, 
+    ".rds"
+  )
 
-  make_request(x, origin_group, od_points, parameters, n_instances, dyn) %>%
+  make_request(x, origin_group, od_points, parameters, n_instances, dyn, router) %>%
     purrr::map_dfr(extract_itinerary_details, leg_details) %>%
     readr::write_rds(filepath, compress = "gz")
 
@@ -183,11 +195,12 @@ make_request <- function(x,
                          od_points,
                          parameters,
                          n_instances,
-                         dyn) {
+                         dyn,
+                         router) {
   
   origins_pool <- od_points[origin_group[[1]], ]
 
-  request_url <- httr::parse_url(paste0("http://localhost:", 8090 + x %% n_instances, "/otp/routers/rio/plan/"))
+  request_url <- httr::parse_url(paste0("http://localhost:", 8090 + x %% n_instances, "/otp/routers/", router, "/plan/"))
 
   # iterate through origins_pool and use each entry as an origin
 
