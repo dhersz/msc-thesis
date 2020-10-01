@@ -184,9 +184,9 @@ maps_different_costs <- function(accessibility_data,
   rj_state   <- readr::read_rds("./data/rj_state.rds")
   rio_border <- readr::read_rds("./data/rio_municipality.rds")
   
-  # rapid_transit <- extract_rapid_transit("plotting")
-  # lines       <- rapid_transit$lines
-  # stations    <- rapid_transit$stations
+  rapid_transit <- extract_rapid_transit("plotting")
+  lines       <- rapid_transit$lines
+  stations    <- rapid_transit$stations
   
   # convert min_wage_percent column to factor
   
@@ -215,8 +215,8 @@ maps_different_costs <- function(accessibility_data,
     geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
     geom_sf(data = rio_border, color = "black", fill = NA, size = 0.3) +
     geom_sf(data = accessibility_data, aes(fill = accessibility), color = NA) +
-    # geom_sf(data = lines, color = "black") +
-    # geom_sf(data = stations, color = "black", size = 1) +
+    geom_sf(data = lines, color = "black", alpha = 0.5) +
+    geom_sf(data = stations, color = "black", size = 1, alpha = 0.5) +
     facet_wrap(~ min_wage_percent, nrow = 2) +
     ggsn::scalebar(
       data = rio_border, 
@@ -1108,7 +1108,6 @@ theil_index <- function(accessibility_data) {
   index
   
 }
-
 
 
 # DEPRECATED --------------------------------------------------------------
