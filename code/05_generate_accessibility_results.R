@@ -11,7 +11,7 @@ generate_accessibility_results <- function(dep_time = NULL,
   # * read data -------------------------------------------------------------
   
   
-  routes_info <- setDT(generate_routes_info())
+  routes_info <- setDT(generate_routes_info(router))
   fare_schema <- generate_fare_schema()
   
   router_folder <- paste0("./data/", router, "_res_", res)
@@ -286,10 +286,16 @@ calculate_fare <- function(legs, fare_schema, BU = TRUE) {
 # ROUTES_INFO_RELATED -----------------------------------------------------
 
 
-generate_routes_info <- function() {
+generate_routes_info <- function(router) {
   
-  fetranspor_info <- raw_routes_info("fetranspor_fixed_subway")
-  supervia_info <- raw_routes_info("supervia")
+  # find fetranspor related gtfs file name
+  filenames <- list.files(paste0("./otp/graphs/", router))
+  fetranspor_name <- filenames[grep("fetranspor", filenames)]
+  fetranspor_name <- gsub("gtfs_", "", fetranspor_name)
+  fetranspor_name <- gsub(".zip" , "", fetranspor_name)
+  
+  fetranspor_info <- raw_routes_info(router, fetranspor_name)
+  supervia_info <- raw_routes_info(router, "supervia")
   
   # the buses below have a specific fare integration with the subway
   
@@ -325,13 +331,13 @@ generate_routes_info <- function() {
   
 }
 
-raw_routes_info <- function(holder, buffer_dist = 0) {
+raw_routes_info <- function(router, holder, buffer_dist = 0) {
   
   rio <- readr::read_rds("./data/rio_municipality.rds") %>% 
     st_transform(5880) %>% 
     st_buffer(dist = buffer_dist)
   
-  zip_filepath <- stringr::str_c("./otp/graphs/rio/gtfs_", holder, ".zip")
+  zip_filepath <- paste0("./otp/graphs/", router, "/gtfs_", holder, ".zip")
   
   required_files <- c("fare_attributes.txt", "fare_rules.txt", "routes.txt", "shapes.txt", "trips.txt")
   
@@ -387,7 +393,7 @@ fare_rules_treatment <- function(fare_rules, style, routes_treated = NA) {
   # origin/destination_id = 79 refers to Teleférico do Alemão, which costs 1 BRL (fare_id = 127)
   # origin/destination_id = 78 refers to the ~usual~ SuperVia stations and is our ~default~ (4.6) (fare_id = 125)
   
-  if (style == "fetranspor_fixed_subway") {
+  if (grepl("fetranspor", style)) {
     fare_rules_treated <- fare_rules %>% 
       select(fare_id, route_id)
   } else {

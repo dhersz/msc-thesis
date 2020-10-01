@@ -94,8 +94,8 @@ analyse_results <- function(grid_data_path = NULL,
     text_labels <- labels_different_costs(tt, mwpcts, lang)
     
     maps_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder)
-    # maps_reduction_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder)
-    # boxplot_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder, n_quantiles)
+    maps_reduction_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder)
+    boxplot_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder, n_quantiles)
     # theil_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
     # average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
     
@@ -184,9 +184,9 @@ maps_different_costs <- function(accessibility_data,
   rj_state   <- readr::read_rds("./data/rj_state.rds")
   rio_border <- readr::read_rds("./data/rio_municipality.rds")
   
-  rapid_transit <- extract_rapid_transit("plotting")
-  lines       <- rapid_transit$lines
-  stations    <- rapid_transit$stations
+  # rapid_transit <- extract_rapid_transit("plotting")
+  # lines       <- rapid_transit$lines
+  # stations    <- rapid_transit$stations
   
   # convert min_wage_percent column to factor
   
@@ -215,8 +215,8 @@ maps_different_costs <- function(accessibility_data,
     geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
     geom_sf(data = rio_border, color = "black", fill = NA, size = 0.3) +
     geom_sf(data = accessibility_data, aes(fill = accessibility), color = NA) +
-    geom_sf(data = lines, color = "black") +
-    geom_sf(data = stations, color = "black", size = 1) +
+    # geom_sf(data = lines, color = "black") +
+    # geom_sf(data = stations, color = "black", size = 1) +
     facet_wrap(~ min_wage_percent, nrow = 2) +
     ggsn::scalebar(
       data = rio_border, 
