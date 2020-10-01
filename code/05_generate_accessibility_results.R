@@ -452,7 +452,7 @@ update_fares <- function(routes_info) {
     mutate(
       actual_price = ifelse(type == "barca", 6.50, NA),
       actual_price = ifelse(type %in% c("brt", "onibus_metro", "onibus_municipal"), 4.05, actual_price),
-      actual_price = ifelse(type == "metro", 4.60, actual_price),
+      actual_price = ifelse(type == "metro", 5.00, actual_price),
       actual_price = ifelse(type == "trem", 4.70, actual_price),
       actual_price = ifelse(type == "vlt", 3.80, actual_price),
       actual_price = ifelse(type %in% c("onibus_intermunicipal", "frescao_intermunicipal"), intermunicipal_fare, actual_price),
@@ -479,7 +479,7 @@ generate_fare_schema <- function() {
   fare_schema <- tibble::tribble(
     ~leg_1,                  ~leg_2,                  ~fare, ~need_bu,
     "brt",                   "brt",                   4.05,  FALSE,
-    "metro",                 "metro",                 4.60,  FALSE,
+    "metro",                 "metro",                 5.00,  FALSE,
     "trem",                  "trem",                  4.70,  FALSE,
     "onibus_municipal",      "onibus_municipal",      4.05,  TRUE,
     "onibus_municipal",      "brt",                   4.05,  TRUE,
@@ -495,8 +495,8 @@ generate_fare_schema <- function() {
     "onibus_municipal",      "onibus_intermunicipal", 8.55,  TRUE,
     "onibus_intermunicipal", "barca",                 8.55,  TRUE,
     "barca",                 "onibus_intermunicipal", 8.55,  TRUE,
-    "brt",                   "metro",                 6.80,  TRUE,
-    "metro",                 "brt",                   6.80,  TRUE,
+    "brt",                   "metro",                 7.10,  TRUE,
+    "metro",                 "brt",                   7.10,  TRUE,
     "trem",                  "metro",                 8.55,  TRUE,
     "metro",                 "trem",                  8.55,  TRUE,
     "vlt",                   "onibus_intermunicipal", 8.55,  TRUE,
