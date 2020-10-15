@@ -3,7 +3,7 @@ library(sf)
 library(data.table)
 
 generate_accessibility_results <- function(dep_time = NULL,
-                                           grid_data_path = NULL,
+                                           grid_name = "grid_with_data",
                                            n_cores = 4,
                                            res = 7,
                                            router = "rio") {
@@ -16,15 +16,10 @@ generate_accessibility_results <- function(dep_time = NULL,
   
   router_folder <- paste0("./data/", router, "_res_", res)
   
-  # read grid_data - when grid_data_path is null defaults to a specific path
+  # read grid_data
   
-  if (is.null(grid_data_path)) {
-    
-    grid_data_path <- paste0(router_folder, "/grid_with_data.rds")
-    
-  }
-  
-  grid_data <- readr::read_rds(grid_data_path) %>% st_drop_geometry() %>% setDT()
+  grid_data <- setDT(readr::read_rds(paste0(router_folder, "/", grid_name, ".rds")))
+  grid_data[, avg_income := total_income / population]
   
   # store itineraries paths in a character vector which will be followed along
   # to calculate accessibility
@@ -292,7 +287,7 @@ calculate_fare <- function(legs, fare_schema, BU = TRUE) {
 # ROUTES_INFO_RELATED -----------------------------------------------------
 
 
-generate_routes_info <- function(router) {
+generate_routes_info <- function(router = "rio") {
   
   # find fetranspor related gtfs file name
   filenames <- list.files(paste0("./otp/graphs/", router))

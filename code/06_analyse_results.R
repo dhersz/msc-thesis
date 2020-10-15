@@ -4,7 +4,7 @@ library(tmap)
 library(ggplot2)
 library(data.table)
 
-analyse_results <- function(grid_data_path = NULL,
+analyse_results <- function(grid_name = "grid_with_data",
                             router = "rio",
                             n_quantiles = 10,
                             res = 7,
@@ -27,16 +27,10 @@ analyse_results <- function(grid_data_path = NULL,
     )
   )[, .(accessibility = mean(accessibility)), keyby = .(id, bilhete_unico, travel_time, min_wage_percent)]
   
-  # read grid_data - when grid_data_path is null defaults to a specific path
+  # read grid_data
   
-  if (is.null(grid_data_path)) {
-    
-    grid_data_path <- paste0(router_folder, "/grid_with_data.rds")
-    
-  }
-  
-  grid_data <- setDT(readr::read_rds(grid_data_path)
-                     )[, avg_income := total_income / population]
+  grid_data <- setDT(readr::read_rds(paste0(router_folder, "/", grid_name, ".rds")))
+  grid_data[, avg_income := total_income / population]
   
   # classify hexagons according to their residents' avg income per capita quantile.
   # not sure why, but the values returned by wtd.quantile() seem to have some 
@@ -95,6 +89,7 @@ analyse_results <- function(grid_data_path = NULL,
     
     maps_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder)
     maps_reduction_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder)
+    # hist_reduction_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder)
     boxplot_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder, n_quantiles)
     # theil_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
     # average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
@@ -172,7 +167,6 @@ labels_different_costs <- function(t, mwpcts, lang) {
 }
 
 
-
 maps_different_costs <- function(accessibility_data, 
                                  tt, 
                                  mwpcts, 
@@ -184,9 +178,9 @@ maps_different_costs <- function(accessibility_data,
   rj_state   <- readr::read_rds("./data/rj_state.rds")
   rio_border <- readr::read_rds("./data/rio_municipality.rds")
   
-  rapid_transit <- extract_rapid_transit("plotting")
-  lines       <- rapid_transit$lines
-  stations    <- rapid_transit$stations
+  # rapid_transit <- extract_rapid_transit("plotting")
+  # lines       <- rapid_transit$lines
+  # stations    <- rapid_transit$stations
   
   # convert min_wage_percent column to factor
   
@@ -215,8 +209,8 @@ maps_different_costs <- function(accessibility_data,
     geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
     geom_sf(data = rio_border, color = "black", fill = NA, size = 0.3) +
     geom_sf(data = accessibility_data, aes(fill = accessibility), color = NA) +
-    geom_sf(data = lines, color = "black", alpha = 0.5) +
-    geom_sf(data = stations, color = "black", size = 1, alpha = 0.5) +
+    # geom_sf(data = lines, color = "black", alpha = 0.5) +
+    # geom_sf(data = stations, color = "black", size = 1, alpha = 0.5) +
     facet_wrap(~ min_wage_percent, nrow = 2) +
     ggsn::scalebar(
       data = rio_border, 
@@ -259,6 +253,7 @@ maps_different_costs <- function(accessibility_data,
          height = 5.8)
   
 }
+
 
 maps_reduction_different_costs <- function(accessibility_data, 
                                            tt, 
@@ -401,6 +396,40 @@ maps_reduction_different_costs <- function(accessibility_data,
   plot_reduction("total")
   
 }
+
+
+hist_reduction_different_costs <- function(accessibility_data, 
+                                           tt, 
+                                           mwpcts, 
+                                           text_labels, 
+                                           analysis_folder) {
+  
+  # calculate the accessibility difference between the cases with and the one
+  # without a cost threshold. then filter out the case without a cost threshold
+  
+  comparison_case <- accessibility_data[min_wage_percent == 10]
+  
+  accessibility_data <- accessibility_data[min_wage_percent < 10 & (population > 0 | opportunities > 0)
+                                           ][comparison_case,  on = "id", nc_accessibility := i.accessibility
+                                             ][, `:=`(total_reduction = nc_accessibility - accessibility,
+                                                      percent_reduction = (nc_accessibility - accessibility) / nc_accessibility)]
+  
+  # convert min_wage_percent column to factor
+  
+  accessibility_data[, min_wage_percent := factor(min_wage_percent, 
+                                                  levels = mwpcts, 
+                                                  labels = text_labels$reduction_maps$facets_title)]
+  
+  # plot settings
+  
+  p <- ggplot(accessibility_data, aes(x = percent_reduction)) +
+    geom_histogram(binwidth = 0.01, boundary = 0) +
+    facet_wrap(~ min_wage_percent, nrow = 2)
+  
+  print(p)
+  
+}
+
 
 boxplot_different_costs <- function(accessibility_data, 
                                     tt, 

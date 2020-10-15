@@ -9,6 +9,7 @@ library(sf)
 # crash, not sure why.
 
 generate_itinerary_details <- function(dyn = FALSE,
+                                       grid_name = "grid_with_data",
                                        dep_time = "08:00am",
                                        groups_size = 1,
                                        n_instances = 1,
@@ -24,6 +25,7 @@ generate_itinerary_details <- function(dyn = FALSE,
   data.table::setDTthreads(threads = n_cores)
   
   # list of parameters sent to the OTP api
+  
   parameters <- list(
     mode = "TRANSIT,WALK",
     date = "01-08-2020",
@@ -46,18 +48,18 @@ generate_itinerary_details <- function(dyn = FALSE,
   # to speed up the requests, since they won't affect accessibility.
 
   router_folder <- paste0("./data/", router, "_res_", res)
-  grid_data_path <- paste0(router_folder, "/grid_with_data.rds")
+  grid_data_path <- paste0(router_folder, "/", grid_name, ".rds")
   
-  # clean_grid <- readr::read_rds(grid_data_path) %>%
-  #   filter(opportunities != 0 | population != 0)
+  clean_grid <- readr::read_rds(grid_data_path) %>%
+    filter(opportunities != 0 | population != 0)
   
-  if (res == 8) {
-    
-    clean_grid <- readr::read_rds("../../data/acesso_oport/hex_agregados/2019/hex_agregado_rio_08_2019.rds") %>% 
-      filter(empregos_total != 0 | pop_total != 0) %>% 
-      rename(id = id_hex)
-    
-  }
+  # if (res == 8) {
+  #   
+  #   clean_grid <- readr::read_rds("../../data/acesso_oport/hex_agregados/2019/hex_agregado_rio_08_2019.rds") %>% 
+  #     filter(empregos_total != 0 | pop_total != 0) %>% 
+  #     rename(id = id_hex)
+  #   
+  # }
 
   clean_grid_cell_ids <- clean_grid$id
 
