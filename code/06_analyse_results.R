@@ -27,10 +27,25 @@ analyse_results <- function(grid_name = "grid_with_data",
     )
   )[, .(accessibility = mean(accessibility)), keyby = .(id, bilhete_unico, travel_time, min_wage_percent)]
   
-  # read grid_data
+  # read grid_data and calculate distance to closest rail/subway/brt station and 
+  # to cbd
   
-  grid_data <- setDT(readr::read_rds(paste0(router_folder, "/", grid_name, ".rds")))
-  grid_data[, avg_income := total_income / population]
+  grid_data <- readr::read_rds(paste0(router_folder, "/", grid_name, ".rds"))
+  
+  stations <- extract_rapid_transit(router)
+  
+  rail   <- stations[stations$mode == "rail", ]
+  subway <- stations[stations$mode == "subway", ]
+  brt    <- stations[stations$mode == "brt", ]
+  cbd    <- grid_data[grid_data$opportunities == max(grid_data$opportunities), ]
+  
+  dist_rail   <- st_distance(grid_data, rail) %>% matrixStats::rowMins()
+  dist_subway <- st_distance(grid_data, subway) %>% matrixStats::rowMins()
+  dist_brt    <- st_distance(grid_data, brt) %>% matrixStats::rowMins()
+  dist_cbd    <- st_distance(grid_data, cbd) %>% matrixStats::rowMins()
+  
+  grid_data <- setDT(grid_data)[, avg_income := total_income / population]
+  grid_data <- cbind(grid_data, dist_rail, dist_subway, dist_brt, dist_cbd)
   
   # classify hexagons according to their residents' avg income per capita quantile.
   # not sure why, but the values returned by wtd.quantile() seem to have some 
@@ -1037,7 +1052,7 @@ extract_rapid_transit <- function(router) {
   brt_routes   <- ft_routes_dt[grepl("^BRT", route_short_name)]$route_id
   brt_stations <- routes_to_sf(ft_folder, brt_routes, "brt", 4674)
   
-  # clean up - remove temp folders and bind all stations in the same object
+  # clean up - remove temp folders and create list with stations
   
   unlink(sp_folder, recursive = TRUE)
   unlink(ft_folder, recursive = TRUE)
