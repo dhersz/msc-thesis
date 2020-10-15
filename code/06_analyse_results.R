@@ -990,71 +990,84 @@ theil_cases_bu <- function(grid_data, travel_time, percentage_minimum_wage, text
 
 
 
-extract_rapid_transit <- function(use = "plotting") {
+extract_rapid_transit <- function(router) {
   
-  # there is two possible uses for the stations:
-  # first, to make a pretty plot. second, to check for correlation between stations' location and accessibility levels
-  # since the fetranspor's gtfs 'stops' file has a lot of duplicated brt stations, itdp's map of rapid transit in brazil
-  # is used for plotting
-  # however, any statistical analysis is made with the gtfs stations, because those are the actual stations used when 
-  # calculating the routes
+  # create folders and files paths
   
-  if (use == "plotting") {
-    
-    # return an object with lines and stations
-    
-    brt_lines <- st_read("./data/rio_brt_lines_itdp.gpkg", quiet = TRUE) %>% 
-      st_transform(4674) %>% 
-      mutate(Mode = "BRT") %>% 
-      select(Mode, Corridor, Segment, Status, geom)
-    
-    metro_rail_lines <- st_read("./data/rio_metro_rail_lines_itdp.gpkg", quiet = TRUE) %>% 
-      st_transform(4674) %>% 
-      mutate(Mode = "Metro and Rail") %>% 
-      select(Mode, Corridor, Segment, Status, geom)
-    
-    lines_rapid_transit <- rbind(brt_lines, metro_rail_lines)
-    
-    brt_stations <- st_read("./data/rio_brt_stations_itdp.gpkg", quiet = TRUE) %>%
-      st_transform(4674) %>% 
-      mutate(Mode = "BRT") %>% 
-      select(Mode, Corridor, Station, Type, Status, geom)
-    
-    metro_rail_stations <- st_read("./data/rio_metro_rail_stations_itdp.gpkg", quiet = TRUE) %>%
-      st_transform(4674) %>%
-      mutate(Mode = "Metro and Rail") %>% 
-      select(Mode, Corridor, Station, Type, Status, geom)
-    
-    stations_rapid_transit <- rbind(brt_stations, metro_rail_stations)
-    
-    list("stations" = stations_rapid_transit, "lines" = lines_rapid_transit)
-    
-  } else {
-    
-    # read each gtfs 'stops' file and convert it into a sf object
-    
-    zip_supervia <- paste0("./otp/graphs/rio/gtfs_supervia.zip")
-    
-    stops_supervia <- readr::read_csv(unz(zip_supervia, "stops.txt")) %>% 
-      mutate(Mode = "Metro and Rail") %>%
-      select(stop_id, Mode, stop_name, stop_lat, stop_lon) %>% 
-      st_as_sf(coords = c("stop_lon", "stop_lat")) %>% 
-      st_set_crs(4674)
-    
-    zip_fetranspor <- paste0("./otp/graphs/rio/gtfs_fetranspor_reduced.zip")
-    
-    stops_fetranspor <- readr::read_csv(unz(zip_fetranspor, "stops.txt")) %>% 
-      filter(!is.na(stop_code), !stringr::str_detect(stop_code, "^(3|BRS|PF|SUB)")) %>% 
-      mutate(Mode = ifelse(stringr::str_detect(stop_name, "(BRT|Terminal)"), "BRT", "Metro and Rail")) %>%
-      select(stop_id, Mode, stop_name, stop_lat, stop_lon) %>% 
-      st_as_sf(coords = c("stop_lon", "stop_lat")) %>% 
-      st_set_crs(4674)
-    
-    stops <- rbind(stops_supervia, stops_fetranspor)
-    
-    list("stations" = stops)
-    
-  }
+  temp_folder   <- tempdir()
+  sp_folder     <- paste0(temp_folder, "/supervia")
+  ft_folder     <- paste0(temp_folder, "/fetranspor")
+  router_folder <- paste0("./otp/graphs/", router)
+  
+  filenames <- list.files(router_folder)
+  
+  ft_file <- filenames[grep("fetranspor", filenames)]
+  ft_file <- paste0(router_folder, "/", ft_file)
+  
+  sp_file <- filenames[grep("supervia", filenames)]
+  sp_file <- paste0(router_folder, "/", sp_file)
+  
+  # extract required gtfs files to temp_folder
+  
+  unzip(
+    ft_file, 
+    files = c("routes.txt", "stops.txt", "trips.txt", "stop_times.txt"), 
+    exdir = ft_folder
+  )
+  
+  unzip(
+    sp_file, 
+    files = c("routes.txt", "stops.txt", "trips.txt", "stop_times.txt"), 
+    exdir = sp_folder
+  )
+  
+  # read supervia stations and create a sf with their stations
+  
+  sp_routes_dt <- fread(paste0(sp_folder, "/routes.txt"))
+  sp_routes    <- sp_routes_dt[grepl("^Ramal", route_long_name)]$route_id
+  sp_stations  <- routes_to_sf(sp_folder, sp_routes, "rail", 4674)
+  
+  # same with subway and BRT
+  
+  ft_routes_dt <- fread(paste0(ft_folder, "/routes.txt"))
+  
+  sbw_routes   <- ft_routes_dt[route_short_name %chin% c("L1/L4", "L2")]$route_id
+  sbw_stations <- routes_to_sf(ft_folder, sbw_routes, "subway", 4674)
+  
+  brt_routes   <- ft_routes_dt[grepl("^BRT", route_short_name)]$route_id
+  brt_stations <- routes_to_sf(ft_folder, brt_routes, "brt", 4674)
+  
+  # clean up - remove temp folders and bind all stations in the same object
+  
+  unlink(sp_folder, recursive = TRUE)
+  unlink(ft_folder, recursive = TRUE)
+  
+  stations <- rbind(sp_stations, sbw_stations, brt_stations)
+  
+  return(stations)
+  
+}
+
+routes_to_sf <- function(folder, routes, mode, crs) {
+  
+  trips_dt  <- fread(paste0(folder, "/trips.txt"))
+  trips_dt  <- trips_dt[route_id %in% routes]
+  
+  req_trips <- trips_dt$trip_id
+  
+  stop_times_dt <- fread(paste0(folder, "/stop_times.txt"))
+  stop_times_dt <- stop_times_dt[trip_id %chin% req_trips]
+  
+  req_stops <- unique(stop_times_dt$stop_id)
+  
+  stops_dt <- fread(paste0(folder, "/stops.txt"))
+  stops_dt <- stops_dt[stop_id %in% req_stops]
+  
+  stops_sf <- sfheaders::sf_point(stops_dt, x = "stop_lon", y = "stop_lat")
+  stops_sf <- st_set_crs(stops_sf, crs)
+  stops_sf <- cbind(stops_sf, stop_name = stops_dt$stop_name, mode = mode)
+  
+  return(stops_sf)
   
 }
 
