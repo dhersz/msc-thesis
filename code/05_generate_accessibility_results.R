@@ -39,6 +39,10 @@ generate_accessibility_results <- function(dep_time = NULL,
     itineraries_paths <- paste0(itineraries_folder, "/", itineraries)
 
   }
+  
+  
+  # * calculate accessibility -----------------------------------------------
+  
 
   # loop through each itineraries' path, calculate accessibility and save it in
   # separate folder
@@ -48,60 +52,60 @@ generate_accessibility_results <- function(dep_time = NULL,
     itineraries_details <- data.table::setDT(readr::read_rds(itineraries_paths[i]))
     
     costs <- calculate_costs(itineraries_details, routes_info, fare_schema, n_cores)
-    
-    
-    # * calculate accessibility -----------------------------------------------
-    
-    
+    setkey(costs, travel_time, cost_with_BU, cost_without_BU)
+   
     # establish costs thresholds for accessibility calculation
-    # monetary cost thresholds are specified as percentages of the minimum wage
     
-    minimum_wage_percentages <- c(0.20, 0.25, 0.30, 0.35, 0.40, 10)
+    monetary_cost_thresholds <- c(seq(from = 0, to = 15, by = 0.05), 1000)
     travel_time_thresholds   <- c(30, 60, 90, 120)
     
-    # store results in a data.table. each iterarion of pwalk adds a column to it
+    # loop over each combination of tt, mc and wt and store results in a dt
     # total accessibility is the sum of opportunities within the origin itself
-    # (column 'inside') and the opportunities of hexagons within reach
-    
-    minimum_wage <- 1045
+    # (inside_opp) and the opportunities of hexagons within reach (outside_opp)
     
     iterator <- expand.grid(
       tt = travel_time_thresholds,
-      mw = minimum_wage_percentages,
+      mc = monetary_cost_thresholds,
       wt = c("with", "without"),
       stringsAsFactors = FALSE
     )
     
-    accessibility <-  rbindlist(purrr::pmap(iterator, function(tt, mw, wt) {
-      
-      total_opportunities <- grid_data[, .(id, inside = opportunities)]
-      
-      desired_cost <- paste0("cost_", wt, "_BU")
-      
-      # the monetary cost threshold equals the amount of money spent per transit
-      # trip that, after a monthful of trips, sums up to the specified percentage
-      # of minimum wage, considering a 22 days monthly journey of work and 2 
-      # trips per day
-      
-      mc <- mw * minimum_wage / (22 * 2)
-      
-      outside <- costs[travel_time <= tt & get(desired_cost) <= mc]
-      outside <- outside[outside[, .I[1], keyby = .(orig_id, dest_id)]$V1
-                         ][grid_data, on = c(dest_id = "id"), outside := i.opportunities
-                           ][, .(outside = sum(outside)), keyby = orig_id]
-      
-      total_opportunities[outside, on = c(id = "orig_id"), outside := i.outside
-                          ][, total := rowSums(.SD, na.rm = TRUE), .SDcols = c("inside", "outside")]
-      
-      data.table(
-        id               = total_opportunities$id,
-        bilhete_unico    = wt,
-        travel_time      = tt,
-        min_wage_percent = mw,
-        accessibility    = total_opportunities$total
-      )
-      
-    }))
+    # initialise values out of loop
+    
+    total_opportunities <- grid_data[, .(id, inside_opp = opportunities)]
+    costs[grid_data, on = c(dest_id = "id"), outside_opp := i.opportunities]
+    
+    future::plan(future::multisession, workers = n_cores)
+    
+    accessibility <- rbindlist(
+      furrr::future_pmap(iterator, function(tt, mc, wt) {
+        
+        desired_cost <- paste0("cost_", wt, "_BU")
+        
+        outside <- costs[travel_time <= tt][get(desired_cost) <= mc]
+        outside <- outside[outside[, .I[1], keyby = .(orig_id, dest_id)]$V1]
+        outside <- outside[, .(outside_opp = sum(outside_opp)), keyby = orig_id]
+        
+        total_opportunities[outside, on = c(id = "orig_id"), outside_opp := i.outside_opp]
+        total_opportunities[, total := rowSums(.SD, na.rm = TRUE), .SDcols = c("inside_opp", "outside_opp")]
+        
+        result <- data.table(
+          id            = total_opportunities$id,
+          bilhete_unico = wt,
+          travel_time   = tt,
+          monetary_cost = mc,
+          accessibility = total_opportunities$total
+        )
+        
+        total_opportunities[, `:=`(outside_opp = NULL, total = NULL)]
+        
+        result
+        
+      }, 
+      .progress = TRUE)
+    )
+    
+    future::plan(future::sequential)
     
     # save accessibility results in a separate folder
     
