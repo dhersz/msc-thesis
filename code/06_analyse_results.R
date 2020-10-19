@@ -13,39 +13,31 @@ analyse_results <- function(grid_name = "grid_with_data",
   # * read and prepare data -------------------------------------------------
   
   
-  router_folder <- paste0("./data/", router, "_res_", res)
-  
-  # read accessibility for each departure time and use their average in the
-  # following analysis
-  
+  router_folder        <- paste0("./data/", router, "_res_", res)
   accessibility_folder <- paste0(router_folder, "/accessibility")
   
-  accessibility_data <- rbindlist(
-    lapply(
-      paste0(accessibility_folder, "/", list.files(accessibility_folder)),
-      function(i) fread(i)
-    )
-  )[, .(accessibility = mean(accessibility)), keyby = .(id, bilhete_unico, travel_time, min_wage_percent)]
+  accessibility_path <- paste0(accessibility_folder, "/median_accessibility.csv")
+  accessibility_data <- fread(accessibility_path)
   
   # read grid_data and calculate distance to closest rail/subway/brt station and 
   # to cbd
   
   grid_data <- readr::read_rds(paste0(router_folder, "/", grid_name, ".rds"))
   
-  stations <- extract_rapid_transit(router)
-  
-  rail   <- stations[stations$mode == "rail", ]
-  subway <- stations[stations$mode == "subway", ]
-  brt    <- stations[stations$mode == "brt", ]
-  cbd    <- grid_data[grid_data$opportunities == max(grid_data$opportunities), ]
-  
-  dist_rail   <- st_distance(grid_data, rail) %>% matrixStats::rowMins()
-  dist_subway <- st_distance(grid_data, subway) %>% matrixStats::rowMins()
-  dist_brt    <- st_distance(grid_data, brt) %>% matrixStats::rowMins()
-  dist_cbd    <- st_distance(grid_data, cbd) %>% matrixStats::rowMins()
+  # stations <- extract_rapid_transit(router)
+  # 
+  # rail   <- stations[stations$mode == "rail", ]
+  # subway <- stations[stations$mode == "subway", ]
+  # brt    <- stations[stations$mode == "brt", ]
+  # cbd    <- grid_data[grid_data$opportunities == max(grid_data$opportunities), ]
+  # 
+  # dist_rail   <- st_distance(grid_data, rail) %>% matrixStats::rowMins()
+  # dist_subway <- st_distance(grid_data, subway) %>% matrixStats::rowMins()
+  # dist_brt    <- st_distance(grid_data, brt) %>% matrixStats::rowMins()
+  # dist_cbd    <- st_distance(grid_data, cbd) %>% matrixStats::rowMins()
   
   grid_data <- setDT(grid_data)[, avg_income := total_income / population]
-  grid_data <- cbind(grid_data, dist_rail, dist_subway, dist_brt, dist_cbd)
+  # grid_data <- cbind(grid_data, dist_rail, dist_subway, dist_brt, dist_cbd)
   
   # classify hexagons according to their residents' avg income per capita quantile.
   # not sure why, but the values returned by wtd.quantile() seem to have some 
@@ -88,24 +80,24 @@ analyse_results <- function(grid_name = "grid_with_data",
   analysis_folder <- paste0(analysis_folder, "/", lang)
   if (!file.exists(analysis_folder)) dir.create(analysis_folder)
   
+  analysis_folder <- paste0(analysis_folder, "/different_costs")
+  if (!file.exists(analysis_folder)) dir.create(analysis_folder)
+  
   ttimes <- c(30, 60, 90, 120)
-  mwpcts <- c(0.2, 0.3, 0.4, 10)
+  mcosts <- c(1000, 12.8, 9.05, 5, 4.05)
   
   oi <- purrr::map(ttimes, function(tt) {
     
-    analysis_folder <- paste0(analysis_folder, "/different_costs")
-    if (!file.exists(analysis_folder)) dir.create(analysis_folder)
-    
     filtered_data <- accessibility_data[(bilhete_unico == "with") & 
                                         (travel_time == tt) & 
-                                        (min_wage_percent %in% mwpcts)]
+                                        (monetary_cost %in% mcosts)]
     
-    text_labels <- labels_different_costs(tt, mwpcts, lang)
+    text_labels <- text_labels(mcosts, lang)
     
-    maps_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder)
-    maps_reduction_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder)
-    # hist_reduction_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder)
-    boxplot_different_costs(copy(filtered_data), tt, mwpcts, text_labels, analysis_folder, n_quantiles)
+    # distribution_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    # reduction_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    # reduction_hist(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    distribution_boxplot(copy(filtered_data), tt, mcosts, text_labels, analysis_folder, n_quantiles)
     # theil_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
     # average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
     
@@ -133,42 +125,40 @@ analyse_results <- function(grid_name = "grid_with_data",
 # different monetary cost thresholds --------------------------------------
 
 
-labels_different_costs <- function(t, mwpcts, lang) {
+text_labels <- function(mcosts, lang) {
   
   # create the text labels used in the maps and graphics according to the specified language
-  
-  mwpcts <- mwpcts * 100
   
   if (lang == "pt") {
     
     text_labels <- list(
       "lang" = lang,
-      "maps" = list(
-        "facets_title" = paste0("Custo monetário ", ifelse(mwpcts <= 100, paste0("<= ", mwpcts, "% do salário mínimo"), "não considerado")),
+      "distribution_map" = list(
+        "facets_title" = ifelse(mcosts != 1000, paste0("R$ ", mcosts), "Não considerado"),
         "legend_title" = "  Empregos acessíveis (% do total)"
       ),
-      "reduction_maps" = list(
-        "facets_title" = paste0("Custo monetário ", ifelse(mwpcts <= 100, paste0("<= ", mwpcts, "% do salário mínimo"), "não considerado")),
+      "reduction_map" = list(
+        "facets_title" = ifelse(mcosts != 1000, paste0("R$ ", mcosts), "Não considerado"),
         "percent_reduction_legend_title" = "Redução (% da acess.\nsem limite de dinheiro)",
         "total_reduction_legend_title" = "Redução (% do total\nde empregos)",
         "mode_legend_title" = "Modo",
         "mode_options" = c("BRT", "Metrô e trem")
       ),
       "boxplot" = list(
-        "facets_title" = paste0("Custo monetário ", ifelse(mwpcts <= 100, paste0("<= ", mwpcts, "% do salário mínimo"), "não considerado")),
+        "facets_title" = paste0("Custo monetário ", ifelse(mcosts <= 100, paste0("<= ", mcosts, "% do salário mínimo"), "não considerado")),
         "palma_ratio" = "Razão de Palma: ",
         "y_axis" = "Empregos acessíveis (% do total)",
         "x_axis" = "Decil de renda"
       ),
       "theil" = list(
-        "bar_labels" = ifelse(mwpcts <= 100, paste0(mwpcts, "% do sal. mín."), "Não considerado"),
+        "bar_labels" = ifelse(mcosts <= 100, paste0(mcosts, "% do sal. mín."), "Não considerado"),
         "y_axis" = "Índice de Theil",
         "x_axis" = "Valor limite de custo",
         "component" = "Componente",
         "components_names" = c("Entregrupos", "Intragrupos")
       ),
       "average_access" = list(
-        "facets_title" = paste0("Custo ", ifelse(mwpcts <= 100, paste0("<= ", mwpcts, "% sal. mín."), "não consid.")),
+        "facets_title" = paste0("Custo ", ifelse(mcosts <= 100, paste0("<= ", mcosts, "% sal. mín."), "não consid.")),
         "y_axis" = "Acessibilidade média\n(% do total de empregos)",
         "x_axis" = "Decil de renda"
       )
@@ -182,11 +172,11 @@ labels_different_costs <- function(t, mwpcts, lang) {
 }
 
 
-maps_different_costs <- function(accessibility_data, 
-                                 tt, 
-                                 mwpcts, 
-                                 text_labels, 
-                                 analysis_folder) {
+distribution_map <- function(accessibility_data, 
+                             tt, 
+                             mcosts, 
+                             text_labels, 
+                             analysis_folder) {
   
   # read rio state and municipality shapes
   
@@ -199,9 +189,9 @@ maps_different_costs <- function(accessibility_data,
   
   # convert min_wage_percent column to factor
   
-  accessibility_data[, min_wage_percent := factor(min_wage_percent, 
-                                                 levels = mwpcts, 
-                                                 labels = text_labels$maps$facets_title)]
+  accessibility_data[, monetary_cost := factor(monetary_cost, 
+                                               levels = mcosts, 
+                                               labels = text_labels$distribution_map$facets_title)]
   
   # create sf objects
 
@@ -218,7 +208,7 @@ maps_different_costs <- function(accessibility_data,
   ylim <- c(st_bbox(expanded_rio_border)[2], st_bbox(rio_border)[4])
   
   max_accessibility <- max(accessibility_data$accessibility)
-  total_opportunities <- sum(accessibility_data$opportunities) / length(mwpcts)
+  total_opportunities <- sum(accessibility_data$opportunities) / length(mcosts)
   
   p <- ggplot() +
     geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
@@ -226,7 +216,7 @@ maps_different_costs <- function(accessibility_data,
     geom_sf(data = accessibility_data, aes(fill = accessibility), color = NA) +
     # geom_sf(data = lines, color = "black", alpha = 0.5) +
     # geom_sf(data = stations, color = "black", size = 1, alpha = 0.5) +
-    facet_wrap(~ min_wage_percent, nrow = 2) +
+    facet_wrap(~ monetary_cost, ncol = 2) +
     ggsn::scalebar(
       data = rio_border, 
       dist = 10, 
@@ -240,7 +230,7 @@ maps_different_costs <- function(accessibility_data,
     ) +
     coord_sf(xlim = xlim, ylim = ylim) +
     scale_fill_viridis_c(
-      name = text_labels$maps$legend_title, 
+      name = text_labels$distribution_map$legend_title, 
       option = "inferno",
       breaks = seq(0, max_accessibility, max_accessibility / 3),
       labels = scales::label_percent(scale = 100 / total_opportunities)
@@ -263,18 +253,18 @@ maps_different_costs <- function(accessibility_data,
   
   # save plot
   
-  ggsave(paste0(analysis_folder, "/comparative_map_tt_", tt, ".png"),
+  ggsave(paste0(analysis_folder, "/distribution_map_tt_", tt, ".png"),
          width = 9,
          height = 5.8)
   
 }
 
 
-maps_reduction_different_costs <- function(accessibility_data, 
-                                           tt, 
-                                           mwpcts, 
-                                           text_labels, 
-                                           analysis_folder) {
+reduction_map <- function(accessibility_data, 
+                          tt, 
+                          mcosts, 
+                          text_labels, 
+                          analysis_folder) {
  
   # read rio state and municipality shapes
   
@@ -288,18 +278,18 @@ maps_reduction_different_costs <- function(accessibility_data,
   # calculate the accessibility difference between the cases with and the one
   # without a cost threshold. then filter out the case without a cost threshold
   
-  comparison_case <- accessibility_data[min_wage_percent == 10]
+  comparison_case <- accessibility_data[monetary_cost == 1000]
   
-  accessibility_data <- accessibility_data[min_wage_percent < 10
+  accessibility_data <- accessibility_data[monetary_cost != 1000
    ][comparison_case,  on = "id", nc_accessibility := i.accessibility
      ][, `:=`(total_reduction = nc_accessibility - accessibility,
               percent_reduction = (nc_accessibility - accessibility) / nc_accessibility)]
   
   # convert min_wage_percent column to factor
   
-  accessibility_data[, min_wage_percent := factor(min_wage_percent, 
-                                                  levels = mwpcts, 
-                                                  labels = text_labels$reduction_maps$facets_title)]
+  accessibility_data[, monetary_cost := factor(monetary_cost, 
+                                               levels = mcosts, 
+                                               labels = text_labels$reduction_map$facets_title)]
   
   # create sf objects
   
@@ -318,7 +308,7 @@ maps_reduction_different_costs <- function(accessibility_data,
     # the type of reduction
     
     if (type == "percent") denominator <- 1
-    else denominator <- sum(accessibility_data$opportunities) / (length(mwpcts) - 1)
+    else denominator <- sum(accessibility_data$opportunities) / (length(mcosts) - 1)
     
     # use following objects to conditionally access objects depending on type
     
@@ -338,7 +328,7 @@ maps_reduction_different_costs <- function(accessibility_data,
         color = NA
       ) +
       geom_sf(data = rio_border, color = "gray50", fill = NA, size = 0.3) +
-      facet_wrap(~ min_wage_percent, nrow = 2) +
+      facet_wrap(~ monetary_cost, ncol = 2) +
       # geom_sf(
       #   data = rapid_transit_info[["lines"]], 
       #   aes(shape = Mode),
@@ -369,7 +359,7 @@ maps_reduction_different_costs <- function(accessibility_data,
       #   values = c("royalblue3", "gray30")
       # ) +
       scale_fill_gradient(
-        name = text_labels$reduction_maps[[access_legend_title]],
+        name = text_labels$reduction_map[[access_legend_title]],
         low = "#efeeec", 
         high = "red",
         labels = scales::label_percent(scale = 100 / denominator)
@@ -413,50 +403,50 @@ maps_reduction_different_costs <- function(accessibility_data,
 }
 
 
-hist_reduction_different_costs <- function(accessibility_data, 
-                                           tt, 
-                                           mwpcts, 
-                                           text_labels, 
-                                           analysis_folder) {
+reduction_hist <- function(accessibility_data, 
+                           tt, 
+                           mcosts, 
+                           text_labels, 
+                           analysis_folder) {
   
   # calculate the accessibility difference between the cases with and the one
   # without a cost threshold. then filter out the case without a cost threshold
   
-  comparison_case <- accessibility_data[min_wage_percent == 10]
+  comparison_case <- accessibility_data[monetary_cost == 1000]
   
-  accessibility_data <- accessibility_data[min_wage_percent < 10 & (population > 0 | opportunities > 0)
+  accessibility_data <- accessibility_data[monetary_cost < 1000 & (population > 0 | opportunities > 0)
                                            ][comparison_case,  on = "id", nc_accessibility := i.accessibility
                                              ][, `:=`(total_reduction = nc_accessibility - accessibility,
                                                       percent_reduction = (nc_accessibility - accessibility) / nc_accessibility)]
   
   # convert min_wage_percent column to factor
   
-  accessibility_data[, min_wage_percent := factor(min_wage_percent, 
-                                                  levels = mwpcts, 
-                                                  labels = text_labels$reduction_maps$facets_title)]
+  accessibility_data[, monetary_cost := factor(monetary_cost, 
+                                               levels = mcosts, 
+                                               labels = text_labels$reduction_map$facets_title)]
   
   # plot settings
   
   p <- ggplot(accessibility_data, aes(x = percent_reduction)) +
     geom_histogram(binwidth = 0.01, boundary = 0) +
-    facet_wrap(~ min_wage_percent, nrow = 2)
+    facet_wrap(~ monetary_cost, ncol = 2)
   
   print(p)
   
 }
 
 
-boxplot_different_costs <- function(accessibility_data, 
-                                    tt, 
-                                    mwpcts, 
-                                    text_labels, 
-                                    analysis_folder,
-                                    n_quantiles) {
+distribution_boxplot <- function(accessibility_data, 
+                                 tt, 
+                                 mcosts, 
+                                 text_labels, 
+                                 analysis_folder,
+                                 n_quantiles) {
   
   # values to be used when setting the breaks and labels
   
   max_accessibility   <- max(accessibility_data$accessibility)
-  total_opportunities <- sum(accessibility_data$opportunities) / length(mwpcts)
+  total_opportunities <- sum(accessibility_data$opportunities) / length(mcosts)
   
   # filter out cells where population = 0 and, consequently, income_quantile = NA
   
@@ -466,30 +456,30 @@ boxplot_different_costs <- function(accessibility_data,
   # dataframe to plot them as annotations
   
   ratios <- purrr::map_dbl(
-    mwpcts,
-    function(i) palma_ratio(accessibility_data[min_wage_percent == i])
+    mcosts,
+    function(i) palma_ratio(accessibility_data[monetary_cost == i])
   )
   
   palma_data <- data.frame(
-    min_wage_percent = factor(mwpcts,
-                              levels = mwpcts,
-                              labels = text_labels$boxplot$facets_title),
+    monetary_cost = factor(mcosts,
+                           levels = mcosts,
+                           labels = text_labels$boxplot$facets_title),
     x = 0.625,
     y = max(accessibility_data$accessibility),
     label = paste0(text_labels$boxplot$palma_ratio, format(round(ratios, digits = 4), nsmall = 4))
   )
   
-  # convert min_wage_percent column to factor
+  # convert monetary_cost column to factor
   
-  accessibility_data[, min_wage_percent := factor(min_wage_percent, 
-                                                  levels = mwpcts, 
-                                                  labels = text_labels$boxplot$facets_title)]
+  accessibility_data[, monetary_cost := factor(monetary_cost, 
+                                               levels = mcosts, 
+                                               labels = text_labels$boxplot$facets_title)]
   
   # plot settings
   
   p <- ggplot(accessibility_data, aes(income_quantile, accessibility)) +
     geom_boxplot(aes(weight = population, group = income_quantile)) +
-    facet_wrap(~ min_wage_percent, ncol = 2) +
+    facet_wrap(~ monetary_cost, ncol = 2) +
     labs(x = text_labels$boxplot$x_axis, y = text_labels$boxplot$y_axis) +
     geom_text(
       data = palma_data, 
@@ -517,7 +507,7 @@ boxplot_different_costs <- function(accessibility_data,
   
   # save plot
   
-  ggsave(paste0(analysis_folder, "/boxplot_tt_", tt, ".png"),
+  ggsave(paste0(analysis_folder, "/distribution_boxplot_tt_", tt, ".png"),
          plot = p,
          width = 8,
          height = 5,
