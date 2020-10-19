@@ -16,6 +16,9 @@ generate_accessibility_results <- function(dep_time = NULL,
   
   router_folder <- paste0("./data/", router, "_res_", res)
   
+  accessibility_folder <- paste0(router_folder, "/accessibility")
+  if (!file.exists(accessibility_folder)) dir.create(accessibility_folder)
+  
   # read grid_data
   
   grid_data <- setDT(readr::read_rds(paste0(router_folder, "/", grid_name, ".rds")))
@@ -109,54 +112,19 @@ generate_accessibility_results <- function(dep_time = NULL,
     
     future::plan(future::sequential)
     
-    # save accessibility results in a separate folder
-    
-    accessibility_folder <- paste0(router_folder, "/accessibility")
-    
-    if (!file.exists(accessibility_folder)) dir.create(accessibility_folder)
-    
+    # save results in a separate folder
+
     dep_time <- stringr::str_extract(itineraries_paths[i], "\\d{4}(am|pm)")
     
     fwrite(accessibility, paste0(accessibility_folder, "/accessibility_", dep_time, ".csv"))
     
   }
   
-}
-
-
-calculate_costs <- function(itineraries_details, routes_info, fare_schema, n_cores) {
+  # calculate median accessibility and save it
   
-  # join routes_info based on route_id, then nest legs details from each
-  # origin into a data.table
+  median_accessibility <- calculate_median_accessibility(router, res)
   
-  legs <- data.table::copy(itineraries_details
-  )[, route_id := as.integer(fifelse(is.na(route_id), "0", stringr::str_extract(route_id, "\\d+$")))
-    ][routes_info, on = "route_id", `:=`(type = i.type, price = i.price, price_bu = i.price_bu)
-      ][, .(orig_id, leg_id, type, price, price_bu)
-        ][, .(legs = list(.SD)), by = orig_id]
-  
-  # calculate the monetary cost of each leg and save it as a data.table
-  
-  leg_cost_with_BU <- furrr::future_map(legs$legs, calculate_fare, fare_schema, BU = TRUE, .progress = TRUE)
-  leg_cost_with_BU <- data.table::rbindlist(leg_cost_with_BU)
-  data.table::setnames(leg_cost_with_BU, "leg_cost", "leg_cost_with_BU")
-  
-  leg_cost_without_BU <- furrr::future_map(legs$legs, calculate_fare, fare_schema, BU = FALSE, .progress = TRUE)
-  leg_cost_without_BU <- data.table::rbindlist(leg_cost_without_BU)
-  data.table::setnames(leg_cost_without_BU, "leg_cost", "leg_cost_without_BU")
-  
-  # bind monetary cost data.table to itineraries_details and calculate total
-  # cost (travel time and monetary) for each itinerary
-  
-  costs <- cbind(itineraries_details, leg_cost_with_BU, leg_cost_without_BU
-  )[, travel_time := as.numeric(lubridate::as.duration(itinerary_end_time - itinerary_start_time), "minutes")
-    ][, 
-      .(travel_time = mean(travel_time), 
-        cost_with_BU = sum(leg_cost_with_BU), 
-        cost_without_BU = sum(leg_cost_without_BU)), 
-      by = .(orig_id, dest_id, it_id)]
-  
-  return(costs)
+  fwrite(median_accessibility, paste0(accessibility_folder, "/median_accessibility.csv"))
   
 }
 
@@ -282,6 +250,64 @@ calculate_fare <- function(legs, fare_schema, BU = TRUE) {
   }
   
   list(leg_cost = leg_cost)
+  
+}
+
+
+calculate_costs <- function(itineraries_details, routes_info, fare_schema, n_cores) {
+  
+  # join routes_info based on route_id, then nest legs details from each
+  # origin into a data.table
+  
+  legs <- data.table::copy(itineraries_details
+  )[, route_id := as.integer(fifelse(is.na(route_id), "0", stringr::str_extract(route_id, "\\d+$")))
+    ][routes_info, on = "route_id", `:=`(type = i.type, price = i.price, price_bu = i.price_bu)
+      ][, .(orig_id, leg_id, type, price, price_bu)
+        ][, .(legs = list(.SD)), by = orig_id]
+  
+  # calculate the monetary cost of each leg and save it as a data.table
+  
+  leg_cost_with_BU <- furrr::future_map(legs$legs, calculate_fare, fare_schema, BU = TRUE, .progress = TRUE)
+  leg_cost_with_BU <- data.table::rbindlist(leg_cost_with_BU)
+  data.table::setnames(leg_cost_with_BU, "leg_cost", "leg_cost_with_BU")
+  
+  leg_cost_without_BU <- furrr::future_map(legs$legs, calculate_fare, fare_schema, BU = FALSE, .progress = TRUE)
+  leg_cost_without_BU <- data.table::rbindlist(leg_cost_without_BU)
+  data.table::setnames(leg_cost_without_BU, "leg_cost", "leg_cost_without_BU")
+  
+  # bind monetary cost data.table to itineraries_details and calculate total
+  # cost (travel time and monetary) for each itinerary
+  
+  costs <- cbind(itineraries_details, leg_cost_with_BU, leg_cost_without_BU
+  )[, travel_time := as.numeric(lubridate::as.duration(itinerary_end_time - itinerary_start_time), "minutes")
+    ][, 
+      .(travel_time = mean(travel_time), 
+        cost_with_BU = sum(leg_cost_with_BU), 
+        cost_without_BU = sum(leg_cost_without_BU)), 
+      by = .(orig_id, dest_id, it_id)]
+  
+  return(costs)
+  
+}
+
+
+calculate_median_accessibility <- function(router, res) {
+  
+  router_folder        <- paste0("./data/", router, "_res_", res)
+  accessibility_folder <- paste0(router_folder, "/accessibility")
+  
+  accessibility_data <- rbindlist(
+    lapply(
+      paste0(accessibility_folder, "/", list.files(accessibility_folder)),
+      function(i) fread(i)
+    )
+  )
+  
+  accessibility_data <- accessibility_data[, 
+                                           .(accessibility = median(accessibility)), 
+                                           keyby = .(id, bilhete_unico, travel_time, monetary_cost)]
+  
+  return(accessibility_data)
   
 }
 
