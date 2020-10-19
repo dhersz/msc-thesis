@@ -70,7 +70,6 @@ analyse_results <- function(grid_name = "grid_with_data",
                           income_quantile = i.income_quantile, 
                           geometry = i.geometry)]
   
-  
   # * different costs analysis ----------------------------------------------
 
   
@@ -86,7 +85,7 @@ analyse_results <- function(grid_name = "grid_with_data",
   ttimes <- c(30, 60, 90, 120)
   mcosts <- c(1000, 12.8, 9.05, 5, 4.05)
   
-  oi <- purrr::map(ttimes, function(tt) {
+  purrr::walk(ttimes, function(tt) {
     
     filtered_data <- accessibility_data[(bilhete_unico == "with") & 
                                         (travel_time == tt) & 
@@ -97,11 +96,13 @@ analyse_results <- function(grid_name = "grid_with_data",
     # distribution_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
     # reduction_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
     # reduction_hist(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
-    distribution_boxplot(copy(filtered_data), tt, mcosts, text_labels, analysis_folder, n_quantiles)
+    # distribution_boxplot(copy(filtered_data), tt, mcosts, text_labels, analysis_folder, n_quantiles)
     # theil_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
     # average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
     
   })
+  
+  across_palma(copy(accessibility_data), analysis_folder)
   
   # second analysis: effect of BU fare policy
   # create visualisations comparing accessibility at a specific combination of time travel and cost thresholds
@@ -515,23 +516,25 @@ distribution_boxplot <- function(accessibility_data,
   
 }
 
-theil_different_costs <- function(grid_data, travel_time, percentage_minimum_wage, text_labels, res) {
+distribution_theil <- function(access_data, 
+                               tt, 
+                               mcosts, 
+                               text_labels, 
+                               analysis_folder) {
   
-  # read and prepare data
-  
-  accessibility_data <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds"))) %>%
-    purrr::map(st_drop_geometry) %>% 
-    purrr::map(function(i) left_join(i, grid_data, by = "id")) %>% 
-    purrr::map(function(i) filter(i, population > 0))
+  access_data <- access_data[population > 0][, geometry := NULL]
   
   # calculate the theil index and its components in each case
   # set names for each observation and bind them together in the same dataframe
   
-  theil_data <- accessibility_data %>% 
-    purrr::map(theil_info) %>%
-    purrr::set_names(percentage_minimum_wage) %>%
-    bind_rows(.id = "percentage_minimum_wage") %>% 
-    mutate(percentage_minimum_wage = as.integer(percentage_minimum_wage))
+  access_data <- access_data[, .(data = list(.SD)), keyby = .(bilhete_unico, travel_time, monetary_cost)]
+  
+  theil_data <- setNames(
+    lapply(access_data$data, function(i) theil_info(copy(i))),
+    mcosts
+  )
+  
+  theil_data <- rbindlist(theil_data, idcol = "monetary_cost")
   
   # aggregate component data and create a label_y column to place annotations within each stack
   
@@ -670,6 +673,32 @@ average_access_different_costs <- function(grid_data, travel_time, percentage_mi
          width = 9,
          height = 2.5,
          units = "in")
+  
+}
+
+across_palma <- function(access_data, analysis_folder) {
+  
+  # drop large unnecessary columns and filter data
+  
+  access_data[, geometry := NULL]
+  access_data <- access_data[population > 0][monetary_cost != 1000]
+  
+  # calculate the ratio in each case
+  
+  access_data <- access_data[, .(data = list(.SD)), keyby = .(bilhete_unico, travel_time, monetary_cost)]
+  
+  ratios <- purrr::map_dbl(access_data$data, palma_ratio)
+  
+  access_data <- cbind(access_data, palma_ratio = ratios)[, data := NULL]
+  
+  # cast travel time to factor to create a discrete plot legend
+  
+  access_data[, travel_time := as.factor(travel_time)]
+  
+  # plot settings
+  
+  ggplot(access_data) + 
+    geom_line(aes(monetary_cost, palma_ratio, group = travel_time, color = travel_time))
   
 }
 
@@ -1086,11 +1115,83 @@ palma_ratio <- function(data, variable = "accessibility") {
   
   palma_ratio <- richest_10$avg_variable / poorest_40$avg_variable
   
-  palma_ratio
+  return(palma_ratio)
   
 }
 
-theil_info <- function(accessibility_data, variable = "accessibility") {
+theil_info <- function(access_data) {
+  
+  unique_quantiles <- unique(access_data$income_quantile)
+  unique_quantiles <- unique_quantiles[! is.na(unique_quantiles)]
+  unique_quantiles <- unique_quantiles[order(unique_quantiles)]
+  n <- length(unique_quantiles)
+  
+  # change the desired variable column name to "variable" in order to allow calculations for any variable
+  
+  access_data[, variable := get(variable)]
+  access_data[, total_variable := variable * population]
+  
+  # calculate the between-group component
+  # group by quantile, calculate its share of the component and save it in a list
+  
+  between_group_data <- access_data[, 
+                                    .(population = sum(population), 
+                                      total_variable = sum(total_variable)), 
+                                    keyby = income_quantile]
+
+  between_group_data[, theil_share := (total_variable / sum(total_variable)) * log((total_variable / sum(total_variable)) / (population / sum(population)))]
+  
+  between_group <- data.table(
+    component = rep("between", n), 
+    income_quantile = unique_quantiles, 
+    share = between_group_data$theil_share
+  )
+  
+  # calculate the within-group component
+  # it is the weighted average of each group's own theil index, where accessibility is the weight
+  
+  within_group_share <- purrr::map_dbl(
+    unique_quantiles, 
+    function(i) {
+      filtered_data <- access_data[income_quantile == i]
+      share <- theil_index(filtered_data) * sum(filtered_data$total_variable) / sum(access_data$total_variable)
+    }
+  )
+  
+  within_group <- data.table(
+    component = rep("within", n), 
+    income_quantile = unique_quantiles, 
+    share = within_group_share
+  )
+  
+  # bind between- and within-group components lists together in a dataframe
+  
+  info <- rbindlist(list(within_group, between_group))
+  
+  info
+  
+}
+
+theil_index <- function(accessibility_data) {
+  
+  accessibility_data <- accessibility_data %>% 
+    filter(variable > 0) %>% 
+    mutate(
+      total_variable = variable * population,
+      theil_share = (total_variable / sum(total_variable)) * log((total_variable / sum(total_variable)) / (population / sum(population)))
+    )
+  
+  index <- sum(accessibility_data$theil_share)
+  
+  index
+  
+}
+
+
+
+##### DEPRECATED
+
+theil_info_old <- function(accessibility_data, variable = "accessibility") {
   
   # change the desired variable column name to "variable" in order to allow calculations for any variable
   
@@ -1138,20 +1239,5 @@ theil_info <- function(accessibility_data, variable = "accessibility") {
   info <- bind_rows(within_group, between_group)
   
   info
-  
-}
-
-theil_index <- function(accessibility_data) {
-  
-  accessibility_data <- accessibility_data %>% 
-    filter(variable > 0) %>% 
-    mutate(
-      total_variable = variable * population,
-      theil_share = (total_variable / sum(total_variable)) * log((total_variable / sum(total_variable)) / (population / sum(population)))
-    )
-  
-  index <- sum(accessibility_data$theil_share)
-  
-  index
   
 }
