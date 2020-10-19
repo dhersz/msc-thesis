@@ -51,8 +51,12 @@ generate_accessibility_results <- function(dep_time = NULL,
     
     itineraries_details <- data.table::setDT(readr::read_rds(itineraries_paths[i]))
     
+    future::plan(future::multisession, workers = n_cores)
+    
     costs <- calculate_costs(itineraries_details, routes_info, fare_schema, n_cores)
     setkey(costs, travel_time, cost_with_BU, cost_without_BU)
+    
+    rm(itineraries_details)
    
     # establish costs thresholds for accessibility calculation
     
@@ -74,8 +78,6 @@ generate_accessibility_results <- function(dep_time = NULL,
     
     total_opportunities <- grid_data[, .(id, inside_opp = opportunities)]
     costs[grid_data, on = c(dest_id = "id"), outside_opp := i.opportunities]
-    
-    future::plan(future::multisession, workers = n_cores)
     
     accessibility <- rbindlist(
       furrr::future_pmap(iterator, function(tt, mc, wt) {
@@ -135,8 +137,6 @@ calculate_costs <- function(itineraries_details, routes_info, fare_schema, n_cor
   
   # calculate the monetary cost of each leg and save it as a data.table
   
-  future::plan(future::multisession, workers = n_cores)
-  
   leg_cost_with_BU <- furrr::future_map(legs$legs, calculate_fare, fare_schema, BU = TRUE, .progress = TRUE)
   leg_cost_with_BU <- data.table::rbindlist(leg_cost_with_BU)
   data.table::setnames(leg_cost_with_BU, "leg_cost", "leg_cost_with_BU")
@@ -144,8 +144,6 @@ calculate_costs <- function(itineraries_details, routes_info, fare_schema, n_cor
   leg_cost_without_BU <- furrr::future_map(legs$legs, calculate_fare, fare_schema, BU = FALSE, .progress = TRUE)
   leg_cost_without_BU <- data.table::rbindlist(leg_cost_without_BU)
   data.table::setnames(leg_cost_without_BU, "leg_cost", "leg_cost_without_BU")
-  
-  future::plan(future::sequential)
   
   # bind monetary cost data.table to itineraries_details and calculate total
   # cost (travel time and monetary) for each itinerary
