@@ -138,7 +138,7 @@ generate_itinerary_details <- function(dyn = FALSE,
   
   furrr::future_map(temp_files_path, readr::read_rds) %>%
     data.table::rbindlist(fill = TRUE) %>%
-    tidy_itineraries(leg_details, res, walking_only) %>%
+    tidy_itineraries(leg_details, res, walking_only, subfolder_path, dep_time) %>%
     readr::write_rds(itineraries_path, compress = "gz")
 
   # close multisession workers by switching plan
@@ -299,7 +299,7 @@ extract_itinerary_details <- function(itineraries_list, leg_details) {
 
 
 
-tidy_itineraries <- function(itineraries_details, leg_details, res, walking_only) {
+tidy_itineraries <- function(itineraries_details, leg_details, res, walking_only, subfolder_path, dep_time) {
 
   # select itinerary-level columns and place to the left of leg-level columns
   # convert names from camelCase to snake_case
@@ -316,7 +316,7 @@ tidy_itineraries <- function(itineraries_details, leg_details, res, walking_only
       vars(ends_with("time")),
       list(~ lubridate::as_datetime(as.double(.) / 1000, tz = "America/Sao_Paulo"))
     ) %>%
-    select_unique_itineraries(res)
+    select_unique_itineraries(res, walking_only, subfolder_path, dep_time)
   
   if (walking_only) {
     
@@ -330,7 +330,7 @@ tidy_itineraries <- function(itineraries_details, leg_details, res, walking_only
 
 
 
-select_unique_itineraries <- function(itineraries_details, res) {
+select_unique_itineraries <- function(itineraries_details, res, walking_only, subfolder_path, dep_time) {
 
   # sometimes OTP returns multiple identical itineraries for each OD pair, but at different times
   # this issue gets more relevant when you increase the numItineraries parameter sent in request
@@ -345,11 +345,17 @@ select_unique_itineraries <- function(itineraries_details, res) {
   #### e.g. mutate(temp = map(data, function(i) select(i, -leg_start_time, -leg_end_time)))
 
   # first save errors in another file
+  
+  errors_path <- ifelse(
+    walking_only,
+    paste0(subfolder_path, "/walking_itineraries_errors.rds"),
+    paste0(subfolder_path, "/itineraries_", dep_time, "_errors.rds")
+  )
 
   errors <- itineraries_details %>%
-    filter(!is.na(error_id)) %>%
+    filter(! is.na(error_id)) %>%
     select(orig_id, dest_id, error_id, error_msg) %>%
-    readr::write_rds(stringr::str_c("./data/itineraries_details_res_", res, "_errors.rds"))
+    readr::write_rds(errors_path, compress = "gz")
 
   # filter out errors, select relevant columns and nest each itinerary's legs details in a df
 
