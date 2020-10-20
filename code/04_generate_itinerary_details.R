@@ -15,7 +15,8 @@ generate_itinerary_details <- function(dyn = FALSE,
                                        n_instances = 1,
                                        n_cores = 3L,
                                        res = 7,
-                                       router = "rio") {
+                                       router = "rio",
+                                       walking_only = FALSE) {
 
   # set data.table options
   
@@ -37,6 +38,8 @@ generate_itinerary_details <- function(dyn = FALSE,
     # ,useRequestedDateTimeInMaxHours = "TRUE"
   )
   
+  if (walking_only) parameters$mode <- "WALK"
+  
   # replace ':' in dep_time to later use it in the files names
   dep_time <- gsub(":", "", dep_time)
 
@@ -52,14 +55,6 @@ generate_itinerary_details <- function(dyn = FALSE,
   
   clean_grid <- readr::read_rds(grid_data_path) %>%
     filter(opportunities != 0 | population != 0)
-  
-  # if (res == 8) {
-  #   
-  #   clean_grid <- readr::read_rds("../../data/acesso_oport/hex_agregados/2019/hex_agregado_rio_08_2019.rds") %>% 
-  #     filter(empregos_total != 0 | pop_total != 0) %>% 
-  #     rename(id = id_hex)
-  #   
-  # }
 
   clean_grid_cell_ids <- clean_grid$id
 
@@ -128,17 +123,23 @@ generate_itinerary_details <- function(dyn = FALSE,
   folder_path <- paste0("./data/", router, "_res_", res)
   if (!file.exists(folder_path)) dir.create(folder_path)
   
-  subfolder_path <- paste0("./data/", router, "_res_", res, "/itineraries")
+  subfolder_path <- paste0(folder_path, "/itineraries")
   if (!file.exists(subfolder_path)) dir.create(subfolder_path)
   
   temp_files_path <- paste0("./data/temp/itineraries_details_orig_",
                             names(origin_groups),"_res_", res, "_", dep_time,
                             ".rds")
   
+  itineraries_path <- ifelse(
+    walking_only,
+    paste0(subfolder_path, "/walking_itineraries.rds"),
+    paste0(subfolder_path, "/itineraries_", dep_time, ".rds")
+  )
+  
   furrr::future_map(temp_files_path, readr::read_rds) %>%
     data.table::rbindlist(fill = TRUE) %>%
     tidy_itineraries(leg_details, res) %>%
-    readr::write_rds(paste0(subfolder_path, "/itineraries_", dep_time, ".rds"), compress = "gz")
+    readr::write_rds(itineraries_path, compress = "gz")
 
   # close multisession workers by switching plan
   future::plan(future::sequential)
