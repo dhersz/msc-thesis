@@ -46,13 +46,26 @@ generate_accessibility_results <- function(dep_time = NULL,
   
   # * calculate accessibility -----------------------------------------------
   
+  
+  # read walking-only itineraries, which will be bound to the transit itineraries
+  
+  walking_itineraries_path <- paste0(itineraries_folder, "/walking_itineraries.rds")
+  
+  if (! file.exists(walking_itineraries_path)) {
+    
+    stop("Please calculate walking itineraries first!")
+    
+  }
+  
+  walking_itineraries <- setDT(readr::read_rds(walking_itineraries_path))
 
   # loop through each itineraries' path, calculate accessibility and save it in
   # separate folder
   
   for (i in seq_along(itineraries_paths)) {
     
-    itineraries_details <- data.table::setDT(readr::read_rds(itineraries_paths[i]))
+    itineraries_details <- setDT(readr::read_rds(itineraries_paths[i]))
+    itineraries_details <- rbind(itineraries_details, walking_itineraries)
     
     future::plan(future::multisession, workers = n_cores)
     

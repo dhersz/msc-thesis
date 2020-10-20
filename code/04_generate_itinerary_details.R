@@ -138,7 +138,7 @@ generate_itinerary_details <- function(dyn = FALSE,
   
   furrr::future_map(temp_files_path, readr::read_rds) %>%
     data.table::rbindlist(fill = TRUE) %>%
-    tidy_itineraries(leg_details, res) %>%
+    tidy_itineraries(leg_details, res, walking_only) %>%
     readr::write_rds(itineraries_path, compress = "gz")
 
   # close multisession workers by switching plan
@@ -299,7 +299,7 @@ extract_itinerary_details <- function(itineraries_list, leg_details) {
 
 
 
-tidy_itineraries <- function(itineraries_details, leg_details, res){
+tidy_itineraries <- function(itineraries_details, leg_details, res, walking_only) {
 
   # select itinerary-level columns and place to the left of leg-level columns
   # convert names from camelCase to snake_case
@@ -317,6 +317,12 @@ tidy_itineraries <- function(itineraries_details, leg_details, res){
       list(~ lubridate::as_datetime(as.double(.) / 1000, tz = "America/Sao_Paulo"))
     ) %>%
     select_unique_itineraries(res)
+  
+  if (walking_only) {
+    
+    itineraries_details <- itineraries_details %>% mutate(it_id = 200)
+    
+  } 
 
   itineraries_details
 
