@@ -29,7 +29,7 @@ generate_accessibility_results <- function(dep_time = NULL,
 
   itineraries_folder <- paste0(router_folder, "/itineraries")
 
-  if (!is.null(dep_time)) {
+  if (! is.null(dep_time)) {
 
     dep_time <- gsub(":", "", dep_time)
 
@@ -38,8 +38,12 @@ generate_accessibility_results <- function(dep_time = NULL,
   } else {
 
     itineraries <- list.files(itineraries_folder)
+    
+    itineraries_errors  <- grepl("errors", itineraries)
+    itineraries_walking <- grepl("walking", itineraries)
+    itineraries_desired <- itineraries[(! itineraries_errors) & (! itineraries_walking)]
 
-    itineraries_paths <- paste0(itineraries_folder, "/", itineraries)
+    itineraries_paths <- paste0(itineraries_folder, "/", itineraries_desired)
 
   }
   
