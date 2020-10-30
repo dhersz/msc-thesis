@@ -83,7 +83,7 @@ analyse_results <- function(grid_name = "grid_with_data",
   if (!file.exists(analysis_folder)) dir.create(analysis_folder)
   
   ttimes <- c(30, 60, 90, 120)
-  mcosts <- c(1000, 12.8, 9.05, 5, 4.05)
+  mcosts <- c(1000, 12.8, 9.05, 5, 4.05, 0)
   
   purrr::walk(ttimes, function(tt) {
     
@@ -93,11 +93,11 @@ analyse_results <- function(grid_name = "grid_with_data",
     
     text_labels <- text_labels_generator(mcosts, lang)
     
-    # distribution_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
-    # reduction_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
-    # reduction_hist(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
-    # distribution_boxplot(copy(filtered_data), tt, mcosts, text_labels, analysis_folder, n_quantiles)
-    # distribution_theil(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    distribution_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    reduction_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    reduction_hist(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    distribution_boxplot(copy(filtered_data), tt, mcosts, text_labels, analysis_folder, n_quantiles)
+    distribution_theil(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
     # average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
     
   })
@@ -1211,6 +1211,60 @@ theil_index <- function(accessibility_data) {
   index <- sum(accessibility_data$theil_share)
   
   index
+  
+}
+
+calculate_distance_to_transit <- function(grid_name, router, res, n_cores) {
+  
+  router_folder <- paste0("./data/", router, "_res_", res)
+  grid_data     <- readr::read_rds(paste0(router_folder, "/", grid_name, ".rds"))
+  
+  # specify destinations (stations and cbd)
+  
+  cbd <- grid_data[grid_data$opportunities == max(grid_data$opportunities),] %>% 
+    select(id, geometry) %>% 
+    mutate(id = "cbd_") %>% 
+    st_transform(5880) %>% 
+    st_centroid() %>% 
+    st_transform(4674)
+
+  stations <- extract_rapid_transit(router) %>% 
+    mutate(id = paste0(mode, "_", stop_name)) %>% 
+    select(id, geometry)
+  
+  dests <- rbind(cbd, stations)
+  
+  # specify origins (all cells)
+  
+  origs <- grid_data %>% 
+    st_transform(5880) %>% 
+    st_centroid() %>% 
+    st_transform(4674) %>% 
+    select(id, geometry)
+  
+  # calculate distance using r5r travel_time_matrix
+  
+  network_path <- paste0("./r5/graphs/", router)
+  r5r_core     <- r5r::setup_r5(network_path)
+  
+  walk_speed <- 3.6
+  
+  ttm <- r5r::travel_time_matrix(
+    r5r_core,
+    origins = origs,
+    destinations = dests,
+    mode = "WALK",
+    departure_datetime = as.POSIXct("08-01-2020 08:00:00", format = "%d-%m-%Y %H:%M:%S"),
+    time_window = 1,
+    percentiles = 50,
+    max_walk_dist = Inf,
+    max_trip_duration = 2000,
+    walk_speed = walk_speed,
+    n_threads = n_cores,
+    verbose = FALSE
+  )
+  
+  ttm[, distance_km := (travel_time / 60) * walk_speed]
   
 }
 
