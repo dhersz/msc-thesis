@@ -91,18 +91,24 @@ analyse_results <- function(grid_name = "grid_with_data",
                                         (travel_time == tt) & 
                                         (monetary_cost %in% mcosts)]
     
-    text_labels <- text_labels(mcosts, lang)
+    text_labels <- text_labels_generator(mcosts, lang)
     
     # distribution_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
     # reduction_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
     # reduction_hist(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
     # distribution_boxplot(copy(filtered_data), tt, mcosts, text_labels, analysis_folder, n_quantiles)
-    # theil_different_costs(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
+    # distribution_theil(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
     # average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
     
   })
   
-  across_palma(copy(accessibility_data), analysis_folder)
+
+  # * all costs/times analysis ----------------------------------------------
+  
+  
+  analysis_folder <- paste0(router_folder, "/analysis/", lang)
+  
+  across_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with")
   
   # second analysis: effect of BU fare policy
   # create visualisations comparing accessibility at a specific combination of time travel and cost thresholds
@@ -126,7 +132,7 @@ analyse_results <- function(grid_name = "grid_with_data",
 # different monetary cost thresholds --------------------------------------
 
 
-text_labels <- function(mcosts, lang) {
+text_labels_generator <- function(mcosts, lang) {
   
   # create the text labels used in the maps and graphics according to the specified language
   
@@ -146,13 +152,13 @@ text_labels <- function(mcosts, lang) {
         "mode_options" = c("BRT", "Metrô e trem")
       ),
       "boxplot" = list(
-        "facets_title" = paste0("Custo monetário ", ifelse(mcosts <= 100, paste0("<= ", mcosts, "% do salário mínimo"), "não considerado")),
+        "facets_title" = ifelse(mcosts != 1000, paste0("R$ ", mcosts), "Não considerado"),
         "palma_ratio" = "Razão de Palma: ",
         "y_axis" = "Empregos acessíveis (% do total)",
         "x_axis" = "Decil de renda"
       ),
       "theil" = list(
-        "bar_labels" = ifelse(mcosts <= 100, paste0(mcosts, "% do sal. mín."), "Não considerado"),
+        "bar_labels" = ifelse(mcosts != 1000, paste0("R$ ", mcosts), "Não considerado"),
         "y_axis" = "Índice de Theil",
         "x_axis" = "Valor limite de custo",
         "component" = "Componente",
@@ -487,7 +493,7 @@ distribution_boxplot <- function(accessibility_data,
       aes(x, y, label = label, hjust = "left"),
       size = 4.5, 
       color = "gray20", 
-      vjust = -0.3
+      vjust = 0.2
     ) +
     scale_x_continuous(breaks = 1:n_quantiles) +
     scale_y_continuous(
@@ -531,49 +537,63 @@ distribution_theil <- function(access_data,
   
   theil_data <- setNames(
     lapply(access_data$data, function(i) theil_info(copy(i))),
-    mcosts
+    access_data$monetary_cost
   )
   
   theil_data <- rbindlist(theil_data, idcol = "monetary_cost")
   
-  # aggregate component data and create a label_y column to place annotations within each stack
+  # aggregate component data and create a label_y column to place annotations 
+  # within each stack
   
-  theil_data <- theil_data %>% 
-    group_by(percentage_minimum_wage, component) %>% 
-    summarise(share = sum(share), .groups = "drop_last") %>% 
-    arrange(desc(percentage_minimum_wage), desc(component)) %>% 
-    mutate(label_y = cumsum(share) - share/2) %>% 
-    ungroup()
+  theil_data <- theil_data[, .(share = sum(share)), by = .(monetary_cost, component)]
+  theil_data <- theil_data[order(-monetary_cost, -component)]
+  theil_data[, label_y := cumsum(share) - share / 2, by = monetary_cost]
   
-  # convert component info and minimum wage percentages to factors to adequately order and stack the bars2
+  # convert component info and monetary cost to factors
   
-  theil_data <- theil_data %>% 
-    mutate(
-      component = factor(component, levels = c("between", "within"), labels = text_labels$theil$components_names),
-      percentage_minimum_wage = factor(percentage_minimum_wage, levels = unique(percentage_minimum_wage), labels = text_labels$theil$bar_labels)
-    )
+  theil_data[, 
+             `:=`(component = factor(component, levels = c("between", "within"), labels = text_labels$theil$components_names),
+                  monetary_cost = factor(monetary_cost, levels = mcosts, labels = text_labels$theil$bar_labels))]
   
-  # find max total theil to resize the plot's graphic area in order to fit the annotation on top of bars
+  # find max total theil to resize the plot's graphic area in order to fit the
+  # annotation on top of bars
   
-  max_theil_data <- theil_data %>% 
-    group_by(percentage_minimum_wage) %>% 
-    summarise(theil = sum(share), .groups = "drop")
+  max_theil_data <- theil_data[, .(theil = sum(share)), by = monetary_cost]
+  max_theil      <- max(max_theil_data$theil)
   
-  max_theil <- max(max_theil_data$theil)
-  
-  y_upper_limit <- purrr::map_dbl(max_theil + 0.05, function(i, level = 1) round(i + 5*10^(-level-1), level))
+  y_upper_limit <- purrr::map_dbl(
+    max_theil + 0.05, 
+    function(i, level = 1) round(i + 5 * 10 ^ (-level-1), level)
+  )
   
   # plot settings
   
-  ggplot(theil_data) +
-    geom_col(aes(percentage_minimum_wage, share, fill = component)) + 
-    geom_text(aes(percentage_minimum_wage, label_y, label = format(round(share, digits = 4)), nsmall = 4),
-              color = "white") +
-    stat_summary(fun = sum,
-                 aes(percentage_minimum_wage, share, label = format(round(..y.., digits = 4), nsmall = 4), group = percentage_minimum_wage),
-                 geom = "text",
-                 vjust = -0.5) +
-    labs(x = text_labels$theil$x_axis, y = text_labels$theil$y_axis, fill = text_labels$theil$component) +
+  p <- ggplot(theil_data) +
+    geom_col(aes(monetary_cost, share, fill = component)) + 
+    geom_text(
+      aes(
+        monetary_cost, 
+        label_y, 
+        label = format(round(share, digits = 4)), nsmall = 4
+      ),
+      color = "white"
+    ) +
+    stat_summary(
+      fun = sum,
+      aes(
+        monetary_cost, 
+        share, 
+        label = format(round(..y.., digits = 4), nsmall = 4), 
+        group = monetary_cost
+      ),
+      geom = "text",
+      vjust = -0.5
+    ) +
+    labs(
+      x = text_labels$theil$x_axis,
+      y = text_labels$theil$y_axis,
+      fill = text_labels$theil$component
+    ) +
     coord_cartesian(ylim = c(0, y_upper_limit)) +
     theme(
       axis.title.x = element_text(size = 12),
@@ -588,7 +608,8 @@ distribution_theil <- function(access_data,
   
   # save plot
   
-  ggsave(paste0("./analysis/", text_labels$lang, "/different_costs/theil_tt_", travel_time, "_res_", res, ".png"),
+  ggsave(paste0(analysis_folder, "/distribution_theil_tt_", tt, ".png"),
+         plot = p,
          width = 7,
          height = 3,
          units = "in")
@@ -676,12 +697,12 @@ average_access_different_costs <- function(grid_data, travel_time, percentage_mi
   
 }
 
-across_palma <- function(access_data, analysis_folder) {
+across_palma <- function(access_data, text_labels, analysis_folder, bu) {
   
   # drop large unnecessary columns and filter data
   
   access_data[, geometry := NULL]
-  access_data <- access_data[population > 0][monetary_cost != 1000]
+  access_data <- access_data[population > 0][monetary_cost != 1000][bilhete_unico == bu]
   
   # calculate the ratio in each case
   
@@ -697,8 +718,14 @@ across_palma <- function(access_data, analysis_folder) {
   
   # plot settings
   
-  ggplot(access_data) + 
-    geom_line(aes(monetary_cost, palma_ratio, group = travel_time, color = travel_time))
+  p <- ggplot(access_data) + 
+    geom_step(aes(monetary_cost, palma_ratio, group = travel_time, color = travel_time))
+  
+  ggsave(paste0(analysis_folder, "/palma_across_times_", bu, ".png"),
+         plot = p,
+         width = 7,
+         height = 3,
+         units = "in")
   
 }
 
@@ -1119,7 +1146,7 @@ palma_ratio <- function(data, variable = "accessibility") {
   
 }
 
-theil_info <- function(access_data) {
+theil_info <- function(access_data, variable = "accessibility") {
   
   unique_quantiles <- unique(access_data$income_quantile)
   unique_quantiles <- unique_quantiles[! is.na(unique_quantiles)]
