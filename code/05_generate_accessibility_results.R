@@ -78,13 +78,11 @@ generate_accessibility_results <- function(dep_time = NULL,
     setkey(costs, travel_time, cost_with_BU, cost_without_BU)
     
     rm(itineraries_details)
-    
-    return(costs)
    
     # establish costs thresholds for accessibility calculation
     
     monetary_cost_thresholds <- c(seq(from = 0, to = 15, by = 0.05), 1000)
-    travel_time_thresholds   <- c(30, 60, 90, 120)
+    travel_time_thresholds   <- 1:120
     
     # loop over each combination of tt, mc and wt and store results in a dt
     # total accessibility is the sum of opportunities within the origin itself
