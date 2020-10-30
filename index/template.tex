@@ -1,0 +1,88 @@
+$if(english)$
+  \documentclass[english,$doc_type$,numbers]{coppe}
+$else$
+  \documentclass[$doc_type$,numbers]{coppe}
+$endif$
+
+\usepackage{amsmath,amssymb}
+\usepackage{hyperref}
+\usepackage{longtable}
+\usepackage{booktabs}
+
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+
+\makelosymbols
+\makeloabbreviations
+
+$if(highlighting-macros)$
+$highlighting-macros$
+$endif$
+
+\begin{document}
+
+  \title{$title$}
+  \foreigntitle{$foreigntitle$}
+  $for(author)$
+  \author{$author.name$}{$author.surname$}
+  $endfor$
+
+
+  $for(advisor)$
+  \advisor{$advisor.title$}{$advisor.name$}{$advisor.surname$}{$advisor.degree$}
+  $endfor$
+
+
+  $for(examiner)$
+  \examiner{$examiner.title$}{$examiner.name$}{$examiner.degree$}
+  $endfor$
+  \department{$department$}
+  \date{$date_month$}{$date_year$}
+
+  $for(keyword)$
+  \keyword{$keyword$}
+  $endfor$
+
+  \maketitle
+
+  \frontmatter
+  \dedication{$dedication$}
+
+  $for(thanks)$
+  \chapter*{$thanks.title$}
+  $thanks.text$
+  $endfor$
+
+ \begin{abstract}
+$abstract$
+ \end{abstract}
+
+  \begin{foreignabstract}
+$foreignabstract$
+  \end{foreignabstract}
+
+  \tableofcontents
+$if(listoffigures)$
+  \listoffigures
+$endif$
+
+$if(listoftables)$
+  \listoftables
+$endif$
+  \printlosymbols
+  \printloabbreviations
+
+  \mainmatter
+
+  $body$
+
+  \backmatter
+  \bibliographystyle{coppe-unsrt}
+  \bibliography{example}
+
+  %\appendix
+  %\chapter{Algumas Demonstra{\c c}\~oes}
+\end{document}
+%% 
+%%
+%% End of file `example.tex'.
