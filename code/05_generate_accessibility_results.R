@@ -136,7 +136,11 @@ generate_accessibility_results <- function(dep_time = NULL,
 
     dep_time <- stringr::str_extract(itineraries_paths[i], "\\d{4}(am|pm)")
     
-    fwrite(accessibility, paste0(accessibility_folder, "/accessibility_", dep_time, ".csv"))
+    readr::write_rds(
+      accessibility,
+      paste0(accessibility_folder, "/accessibility_", dep_time, ".rds"), 
+      compress = "gz"
+    )
     
   }
   
@@ -144,7 +148,11 @@ generate_accessibility_results <- function(dep_time = NULL,
   
   median_accessibility <- calculate_median_accessibility(router, res)
   
-  fwrite(median_accessibility, paste0(accessibility_folder, "/median_accessibility.csv"))
+  readr::write_rds(
+    median_accessibility,
+    paste0(accessibility_folder, "/median_accessibility.rds"), 
+    compress = "gz"
+  )
   
 }
 
@@ -323,12 +331,10 @@ calculate_median_accessibility <- function(router, res) {
   router_folder        <- paste0("./data/", router, "_res_", res)
   accessibility_folder <- paste0(router_folder, "/accessibility")
   
-  accessibility_data <- rbindlist(
-    lapply(
-      paste0(accessibility_folder, "/", list.files(accessibility_folder)),
-      function(i) fread(i)
-    )
-  )
+  accessibility_files <- list.files(accessibility_folder)
+  accessibility_files <- accessibility_files[! grepl("median_accessibility.csv", list.files(accessibility_folder))]
+  
+  accessibility_data <- rbindlist(lapply(accessibility_files, readr::read_rds))
   
   accessibility_data <- accessibility_data[, 
                                            .(accessibility = median(accessibility)), 
