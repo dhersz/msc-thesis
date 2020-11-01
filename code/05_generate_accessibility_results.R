@@ -78,6 +78,7 @@ generate_accessibility_results <- function(dep_time = NULL,
     setkey(costs, travel_time, cost_with_BU, cost_without_BU)
     
     rm(itineraries_details)
+    gc()
    
     # establish costs thresholds for accessibility calculation
     
@@ -130,6 +131,9 @@ generate_accessibility_results <- function(dep_time = NULL,
       .progress = TRUE)
     )
     
+    rm(costs)
+    gc()
+    
     future::plan(future::sequential)
     
     # save results in a separate folder
@@ -142,6 +146,9 @@ generate_accessibility_results <- function(dep_time = NULL,
       compress = "gz"
     )
     
+    rm(accessibility)
+    gc()
+    
   }
   
   # calculate median accessibility and save it
@@ -153,6 +160,9 @@ generate_accessibility_results <- function(dep_time = NULL,
     paste0(accessibility_folder, "/median_accessibility.rds"), 
     compress = "gz"
   )
+  
+  rm(median_accessibility)
+  gc()
   
 }
 
@@ -332,9 +342,13 @@ calculate_median_accessibility <- function(router, res) {
   accessibility_folder <- paste0(router_folder, "/accessibility")
   
   accessibility_files <- list.files(accessibility_folder)
-  accessibility_files <- accessibility_files[! grepl("median_accessibility.csv", list.files(accessibility_folder))]
+  accessibility_files <- accessibility_files[! grepl("median_accessibility.rds", list.files(accessibility_folder))]
   
-  accessibility_data <- rbindlist(lapply(accessibility_files, readr::read_rds))
+  accessibility_data <- rbindlist(
+    lapply(
+      paste0(accessibility_folder, "/", accessibility_files), 
+      readr::read_rds)
+  )
   
   accessibility_data <- accessibility_data[, 
                                            .(accessibility = median(accessibility)), 
