@@ -8,7 +8,8 @@ analyse_results <- function(grid_name = "grid_with_data",
                             router = "rio",
                             n_quantiles = 10,
                             res = 7,
-                            lang = "pt") {
+                            lang = "pt",
+                            n_cores = 4) {
   
   # * read and prepare data -------------------------------------------------
   
@@ -16,28 +17,35 @@ analyse_results <- function(grid_name = "grid_with_data",
   router_folder        <- paste0("./data/", router, "_res_", res)
   accessibility_folder <- paste0(router_folder, "/accessibility")
   
-  accessibility_path <- paste0(accessibility_folder, "/median_accessibility.csv")
-  accessibility_data <- fread(accessibility_path)
+  accessibility_path <- paste0(accessibility_folder, "/median_accessibility.rds")
+  accessibility_data <- readr::read_rds(accessibility_path)
   
   # read grid_data and calculate distance to closest rail/subway/brt station and 
   # to cbd
   
   grid_data <- readr::read_rds(paste0(router_folder, "/", grid_name, ".rds"))
   
-  # stations <- extract_rapid_transit(router)
-  # 
-  # rail   <- stations[stations$mode == "rail", ]
-  # subway <- stations[stations$mode == "subway", ]
-  # brt    <- stations[stations$mode == "brt", ]
-  # cbd    <- grid_data[grid_data$opportunities == max(grid_data$opportunities), ]
-  # 
-  # dist_rail   <- st_distance(grid_data, rail) %>% matrixStats::rowMins()
-  # dist_subway <- st_distance(grid_data, subway) %>% matrixStats::rowMins()
-  # dist_brt    <- st_distance(grid_data, brt) %>% matrixStats::rowMins()
-  # dist_cbd    <- st_distance(grid_data, cbd) %>% matrixStats::rowMins()
+  distance_to_transit_path <- paste0(router_folder, "/distance_to_transit.rds")
+  
+  if (! file.exists(distance_to_transit_path)) {
+    
+    distance_to_transit <- calculate_distance_to_transit(
+      grid_data,
+      router,
+      n_cores
+    )
+    
+    readr::write_rds(distance_to_transit, distance_to_transit_path)
+    
+  } else {
+    
+    distance_to_transit <- readr::read_rds(distance_to_transit_path)
+    
+  }
   
   grid_data <- setDT(grid_data)[, avg_income := total_income / population]
-  # grid_data <- cbind(grid_data, dist_rail, dist_subway, dist_brt, dist_cbd)
+  grid_data <- distance_to_transit[grid_data, on = c(fromId = "id")]
+  grid_data[, `:=`(id = fromId, fromId = NULL)]
   
   # classify hexagons according to their residents' avg income per capita quantile.
   # not sure why, but the values returned by wtd.quantile() seem to have some 
@@ -69,6 +77,7 @@ analyse_results <- function(grid_name = "grid_with_data",
                           opportunities = i.opportunities,
                           income_quantile = i.income_quantile, 
                           geometry = i.geometry)]
+  
   
   # * different costs analysis ----------------------------------------------
 
@@ -697,7 +706,40 @@ average_access_different_costs <- function(grid_data, travel_time, percentage_mi
   
 }
 
-across_palma <- function(access_data, text_labels, analysis_folder, bu) {
+across_time_palma <- function(access_data, text_labels, analysis_folder, bu) {
+  
+  # drop large unnecessary columns and filter data
+  
+  access_data[, geometry := NULL]
+  access_data <- access_data[population > 0][monetary_cost != 1000][bilhete_unico == bu]
+  
+  # calculate the ratio in each case
+  
+  access_data <- access_data[, .(data = list(.SD)), keyby = .(bilhete_unico, travel_time, monetary_cost)]
+  
+  ratios <- purrr::map_dbl(access_data$data, palma_ratio)
+  
+  access_data <- cbind(access_data, palma_ratio = ratios)[, data := NULL]
+  
+  # cast travel time to factor to create a discrete plot legend
+  
+  access_data[, travel_time := as.factor(travel_time)]
+  
+  # plot settings
+  
+  p <- ggplot(access_data) + 
+    geom_step(aes(monetary_cost, palma_ratio, group = travel_time, color = travel_time))
+  
+  ggsave(paste0(analysis_folder, "/palma_across_times_", bu, ".png"),
+         plot = p,
+         width = 7,
+         height = 3,
+         units = "in")
+  
+}
+
+
+across_cost_palma <- function(access_data, text_labels, analysis_folder, bu) {
   
   # drop large unnecessary columns and filter data
   
@@ -1050,6 +1092,66 @@ theil_cases_bu <- function(grid_data, travel_time, percentage_minimum_wage, text
 
 
 
+calculate_distance_to_transit <- function(grid_data, router, n_cores) {
+  
+  # specify destinations (stations and cbd)
+  
+  cbd <- grid_data[grid_data$opportunities == max(grid_data$opportunities),] %>% 
+    select(id, geometry) %>% 
+    mutate(id = "cbd_") %>% 
+    st_transform(5880) %>% 
+    st_centroid() %>% 
+    st_transform(4674)
+  
+  stations <- extract_rapid_transit(router) %>% 
+    mutate(id = paste0(mode, "_", stop_name)) %>% 
+    select(id, geometry)
+  
+  dests <- rbind(cbd, stations)
+  
+  # specify origins (all cells)
+  
+  origs <- grid_data %>% 
+    st_transform(5880) %>% 
+    st_centroid() %>% 
+    st_transform(4674) %>% 
+    select(id, geometry)
+  
+  # calculate distance using r5r travel_time_matrix
+  
+  network_path <- paste0("./r5/graphs/", router)
+  r5r_core     <- r5r::setup_r5(network_path)
+  
+  walk_speed <- 3.6
+  
+  ttm <- r5r::travel_time_matrix(
+    r5r_core,
+    origins = origs,
+    destinations = dests,
+    mode = "WALK",
+    departure_datetime = as.POSIXct("08-01-2020 08:00:00", format = "%d-%m-%Y %H:%M:%S"),
+    time_window = 1,
+    percentiles = 50,
+    max_walk_dist = Inf,
+    max_trip_duration = 2000,
+    walk_speed = walk_speed,
+    n_threads = n_cores,
+    verbose = FALSE
+  )
+  
+  ttm[, distance_km := (travel_time / 60) * walk_speed]
+  ttm[, dest := stringr::str_extract(toId, "^[a-z]+")]
+  ttm <- ttm[, .(smallest_dist = min(distance_km)), keyby = .(fromId, dest)]
+  ttm <- dcast(ttm, fromId ~ dest, value.var = "smallest_dist")
+  
+  dests <- names(ttm)[! grepl("fromId", names(ttm))]
+  setnames(ttm, old = dests, new = paste0("dist_to_", dests))
+  
+  return(ttm)
+  
+}
+
+
 
 extract_rapid_transit <- function(router) {
   
@@ -1213,62 +1315,6 @@ theil_index <- function(accessibility_data) {
   index
   
 }
-
-calculate_distance_to_transit <- function(grid_name, router, res, n_cores) {
-  
-  router_folder <- paste0("./data/", router, "_res_", res)
-  grid_data     <- readr::read_rds(paste0(router_folder, "/", grid_name, ".rds"))
-  
-  # specify destinations (stations and cbd)
-  
-  cbd <- grid_data[grid_data$opportunities == max(grid_data$opportunities),] %>% 
-    select(id, geometry) %>% 
-    mutate(id = "cbd_") %>% 
-    st_transform(5880) %>% 
-    st_centroid() %>% 
-    st_transform(4674)
-
-  stations <- extract_rapid_transit(router) %>% 
-    mutate(id = paste0(mode, "_", stop_name)) %>% 
-    select(id, geometry)
-  
-  dests <- rbind(cbd, stations)
-  
-  # specify origins (all cells)
-  
-  origs <- grid_data %>% 
-    st_transform(5880) %>% 
-    st_centroid() %>% 
-    st_transform(4674) %>% 
-    select(id, geometry)
-  
-  # calculate distance using r5r travel_time_matrix
-  
-  network_path <- paste0("./r5/graphs/", router)
-  r5r_core     <- r5r::setup_r5(network_path)
-  
-  walk_speed <- 3.6
-  
-  ttm <- r5r::travel_time_matrix(
-    r5r_core,
-    origins = origs,
-    destinations = dests,
-    mode = "WALK",
-    departure_datetime = as.POSIXct("08-01-2020 08:00:00", format = "%d-%m-%Y %H:%M:%S"),
-    time_window = 1,
-    percentiles = 50,
-    max_walk_dist = Inf,
-    max_trip_duration = 2000,
-    walk_speed = walk_speed,
-    n_threads = n_cores,
-    verbose = FALSE
-  )
-  
-  ttm[, distance_km := (travel_time / 60) * walk_speed]
-  
-}
-
-
 
 ##### DEPRECATED
 
