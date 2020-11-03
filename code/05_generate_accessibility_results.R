@@ -85,16 +85,26 @@ generate_accessibility_results <- function(dep_time = NULL,
     monetary_cost_thresholds <- c(seq(from = 0, to = 15, by = 0.05), 1000)
     travel_time_thresholds   <- 1:120
     
-    # loop over each combination of tt, mc and wt and store results in a dt
+    # loop over different combinations of tt, mc and wt and store results in a dt
     # total accessibility is the sum of opportunities within the origin itself
     # (inside_opp) and the opportunities of hexagons within reach (outside_opp)
     
-    iterator <- expand.grid(
-      tt = travel_time_thresholds,
+    specific_tt_all_mc <- expand.grid(
+      tt = c(30, 60, 90, 120),
       mc = monetary_cost_thresholds,
       wt = c("with", "without"),
       stringsAsFactors = FALSE
     )
+    
+    specific_mc_all_tt <- expand.grid(
+      tt = travel_time_thresholds,
+      mc = c(0, 4.05, 5, 9.05, 12.8, 1000),
+      wt = c("with", "without"),
+      stringsAsFactors = FALSE
+    )
+    
+    iterator <- setDT(rbind(specific_tt_all_mc, specific_mc_all_tt))
+    iterator <- unique(iterator)
     
     # initialise values out of loop
     
@@ -347,7 +357,8 @@ calculate_median_accessibility <- function(router, res) {
   accessibility_data <- rbindlist(
     lapply(
       paste0(accessibility_folder, "/", accessibility_files), 
-      readr::read_rds)
+      readr::read_rds
+    )
   )
   
   accessibility_data <- accessibility_data[, 
