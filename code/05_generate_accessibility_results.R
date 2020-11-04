@@ -98,7 +98,7 @@ generate_accessibility_results <- function(dep_time = NULL,
     
     specific_mc_all_tt <- expand.grid(
       tt = travel_time_thresholds,
-      mc = c(0, 4.05, 5, 9.05, 12.8, 1000),
+      mc = c(0, 4.05, 4.7, 5, 9.05, 12.8, 1000),
       wt = c("with", "without"),
       stringsAsFactors = FALSE
     )
