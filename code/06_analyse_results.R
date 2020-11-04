@@ -102,11 +102,11 @@ analyse_results <- function(grid_name = "grid_with_data",
     
     text_labels <- text_labels_generator(mcosts, lang)
     
-    distribution_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
-    reduction_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
-    reduction_hist(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
-    distribution_boxplot(copy(filtered_data), tt, mcosts, text_labels, analysis_folder, n_quantiles)
-    distribution_theil(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    # distribution_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    # reduction_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    # reduction_hist(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    # distribution_boxplot(copy(filtered_data), tt, mcosts, text_labels, analysis_folder, n_quantiles)
+    # distribution_theil(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
     # average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
     
   })
@@ -117,9 +117,13 @@ analyse_results <- function(grid_name = "grid_with_data",
   
   analysis_folder <- paste0(router_folder, "/analysis/", lang)
   
-  across_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with")
+  across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = c(30, 60, 90, 120))
+  across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = c(0, 4.05, 4.7, 5, 9.05, 12.8, 1000))
   
-  # second analysis: effect of BU fare policy
+
+  # * efects of bilhete unico analysis --------------------------------------
+
+  
   # create visualisations comparing accessibility at a specific combination of time travel and cost thresholds
   
   percentage_minimum_wage <- c(20, 30, 40)
@@ -145,29 +149,32 @@ text_labels_generator <- function(mcosts, lang) {
   
   # create the text labels used in the maps and graphics according to the specified language
   
+  mcosts <- format(mcosts, nsmall = 2)
+  mcosts <- stringr::str_replace(mcosts, " +", "")
+  
   if (lang == "pt") {
     
     text_labels <- list(
       "lang" = lang,
       "distribution_map" = list(
-        "facets_title" = ifelse(mcosts != 1000, paste0("R$ ", mcosts), "Não considerado"),
+        "facets_title" = ifelse(mcosts != 1000, paste0("R$ ", format(mcosts, nsmall = 2)), "Não considerado"),
         "legend_title" = "  Empregos acessíveis (% do total)"
       ),
       "reduction_map" = list(
-        "facets_title" = ifelse(mcosts != 1000, paste0("R$ ", mcosts), "Não considerado"),
+        "facets_title" = ifelse(mcosts != 1000, paste0("R$ ", format(mcosts, nsmall = 2)), "Não considerado"),
         "percent_reduction_legend_title" = "Redução (% da acess.\nsem limite de dinheiro)",
         "total_reduction_legend_title" = "Redução (% do total\nde empregos)",
         "mode_legend_title" = "Modo",
         "mode_options" = c("BRT", "Metrô e trem")
       ),
       "boxplot" = list(
-        "facets_title" = ifelse(mcosts != 1000, paste0("R$ ", mcosts), "Não considerado"),
+        "facets_title" = ifelse(mcosts != 1000, paste0("R$ ", format(mcosts, nsmall = 2)), "Não considerado"),
         "palma_ratio" = "Razão de Palma: ",
         "y_axis" = "Empregos acessíveis (% do total)",
         "x_axis" = "Decil de renda"
       ),
       "theil" = list(
-        "bar_labels" = ifelse(mcosts != 1000, paste0("R$ ", mcosts), "Não considerado"),
+        "bar_labels" = ifelse(mcosts != 1000, paste0("R$ ", format(mcosts, nsmall = 2)), "Não considerado"),
         "y_axis" = "Índice de Theil",
         "x_axis" = "Valor limite de custo",
         "component" = "Componente",
@@ -706,12 +713,12 @@ average_access_different_costs <- function(grid_data, travel_time, percentage_mi
   
 }
 
-across_time_palma <- function(access_data, text_labels, analysis_folder, bu) {
+across_cost_palma <- function(access_data, text_labels, analysis_folder, bu, tt) {
   
   # drop large unnecessary columns and filter data
   
   access_data[, geometry := NULL]
-  access_data <- access_data[population > 0][monetary_cost != 1000][bilhete_unico == bu]
+  access_data <- access_data[population > 0][monetary_cost != 1000][bilhete_unico == bu][travel_time %in% tt]
   
   # calculate the ratio in each case
   
@@ -730,7 +737,7 @@ across_time_palma <- function(access_data, text_labels, analysis_folder, bu) {
   p <- ggplot(access_data) + 
     geom_step(aes(monetary_cost, palma_ratio, group = travel_time, color = travel_time))
   
-  ggsave(paste0(analysis_folder, "/palma_across_times_", bu, ".png"),
+  ggsave(paste0(analysis_folder, "/palma_across_costs_", bu, ".png"),
          plot = p,
          width = 7,
          height = 3,
@@ -739,12 +746,12 @@ across_time_palma <- function(access_data, text_labels, analysis_folder, bu) {
 }
 
 
-across_cost_palma <- function(access_data, text_labels, analysis_folder, bu) {
+across_time_palma <- function(access_data, text_labels, analysis_folder, bu, mc) {
   
   # drop large unnecessary columns and filter data
   
   access_data[, geometry := NULL]
-  access_data <- access_data[population > 0][monetary_cost != 1000][bilhete_unico == bu]
+  access_data <- access_data[population > 0][bilhete_unico == bu][monetary_cost %in% mc]
   
   # calculate the ratio in each case
   
@@ -756,12 +763,12 @@ across_cost_palma <- function(access_data, text_labels, analysis_folder, bu) {
   
   # cast travel time to factor to create a discrete plot legend
   
-  access_data[, travel_time := as.factor(travel_time)]
+  access_data[, monetary_cost := as.factor(monetary_cost)]
   
   # plot settings
   
   p <- ggplot(access_data) + 
-    geom_step(aes(monetary_cost, palma_ratio, group = travel_time, color = travel_time))
+    geom_step(aes(travel_time, palma_ratio, group = monetary_cost, color = monetary_cost))
   
   ggsave(paste0(analysis_folder, "/palma_across_times_", bu, ".png"),
          plot = p,
