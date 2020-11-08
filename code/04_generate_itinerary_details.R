@@ -146,6 +146,9 @@ generate_itinerary_details <- function(dyn = FALSE,
 
   # delete the temporary folder
   # unlink("./data/temp", recursive = TRUE)
+  
+  stop_otp()
+  gc()
 
 }
 
