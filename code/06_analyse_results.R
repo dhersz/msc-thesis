@@ -92,7 +92,7 @@ analyse_results <- function(grid_name = "grid_with_data",
   if (!file.exists(analysis_folder)) dir.create(analysis_folder)
   
   ttimes <- c(30, 60, 90, 120)
-  mcosts <- c(1000, 12.8, 9.05, 5, 4.05, 0)
+  mcosts <- c(1000, 12.8, 9.05, 5, 4.7, 4.05, 0)
   
   purrr::walk(ttimes, function(tt) {
     
@@ -102,11 +102,11 @@ analyse_results <- function(grid_name = "grid_with_data",
     
     text_labels <- text_labels_generator(mcosts, lang)
     
-    # distribution_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
-    # reduction_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
-    # reduction_hist(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
-    # distribution_boxplot(copy(filtered_data), tt, mcosts, text_labels, analysis_folder, n_quantiles)
-    # distribution_theil(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    distribution_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    reduction_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    reduction_hist(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    distribution_boxplot(copy(filtered_data), tt, mcosts, text_labels, analysis_folder, n_quantiles)
+    distribution_theil(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
     # average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
     
   })
