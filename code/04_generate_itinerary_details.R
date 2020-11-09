@@ -116,10 +116,6 @@ generate_itinerary_details <- function(dyn = FALSE,
   # everything together. then tidy the resulting dataframe (format columns,
   # arrange rows, etc) and save it in a separate folder
 
-  # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
-  # IMPORTANT: tidy_itineraries() removes errors rows _/
-  # _/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
-
   folder_path <- paste0("./data/", router, "_res_", res)
   if (!file.exists(folder_path)) dir.create(folder_path)
   
@@ -148,7 +144,7 @@ generate_itinerary_details <- function(dyn = FALSE,
   # unlink("./data/temp", recursive = TRUE)
   
   stop_otp()
-  gc()
+  invisible(gc())
 
 }
 

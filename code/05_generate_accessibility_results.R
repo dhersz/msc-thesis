@@ -147,6 +147,8 @@ generate_accessibility_results <- function(dep_time = NULL,
     future::plan(future::sequential)
     
     # save results in a separate folder
+    
+    setkey(accessibility, id, bilhete_unico, travel_time, monetary_cost)
 
     dep_time <- stringr::str_extract(itineraries_paths[i], "\\d{4}(am|pm)")
     
@@ -172,7 +174,7 @@ generate_accessibility_results <- function(dep_time = NULL,
   )
   
   rm(median_accessibility)
-  gc()
+  invisible(gc())
   
 }
 
