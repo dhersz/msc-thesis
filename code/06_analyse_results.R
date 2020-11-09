@@ -104,9 +104,9 @@ analyse_results <- function(grid_name = "grid_with_data",
     
     distribution_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
     reduction_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
-    reduction_hist(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
-    distribution_boxplot(copy(filtered_data), tt, mcosts, text_labels, analysis_folder, n_quantiles)
-    distribution_theil(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    # reduction_hist(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    # distribution_boxplot(copy(filtered_data), tt, mcosts, text_labels, analysis_folder, n_quantiles)
+    # distribution_theil(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
     # average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
     
   })
@@ -117,9 +117,9 @@ analyse_results <- function(grid_name = "grid_with_data",
   
   analysis_folder <- paste0(router_folder, "/analysis/", lang)
   
-  across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = c(30, 60, 90, 120))
-  across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = c(0, 4.05, 4.7, 5, 9.05, 12.8, 1000))
-  
+  # across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = c(30, 60, 90, 120))
+  # across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = c(0, 4.05, 4.7, 5, 9.05, 12.8, 1000))
+  # 
 
   # * efects of bilhete unico analysis --------------------------------------
 
@@ -137,6 +137,46 @@ analyse_results <- function(grid_name = "grid_with_data",
     # boxplot_increase_cases_bu(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
     # theil_cases_bu(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
      
+  }
+  
+}
+
+
+theme_thesis <- function(style = c("map", "graphic")) {
+  
+  
+  if (style == "map") {
+    
+    theme(
+      axis.title = element_blank(), 
+      axis.text = element_blank(),
+      axis.ticks = element_blank(), 
+      panel.grid = element_blank(),
+      strip.text.x = element_text(size = 13), 
+      strip.text.y = element_text(size = 13),
+      strip.background = element_rect(fill = NA),
+      panel.background = element_rect(fill = "#aadaff"),
+      
+      legend.position = "bottom", 
+      legend.box.just = "right",
+      legend.box.spacing = unit(0 ,"points"),
+      
+      plot.margin = margin(b = 0)
+    )
+    
+  } else if (style == "graphic") {
+    
+    theme(
+      strip.text.x = element_text(size = 13),
+      strip.background.x = element_rect(fill = NA),
+      axis.title.x = element_text(size = 12),
+      axis.title.y = element_text(size = 12),
+      axis.text.x = element_text(size = 11),
+      axis.text.y = element_text(size = 11),
+      panel.grid.minor = element_blank(),
+      panel.background = element_rect(fill = "gray94")
+    )
+    
   }
   
 }
@@ -259,18 +299,11 @@ distribution_map <- function(accessibility_data,
       labels = scales::label_percent(scale = 100 / total_opportunities)
     ) +
     guides(fill = guide_colorbar(title.vjust = 0.75)) +
+    theme_thesis("map") +
     theme(
-      axis.title = element_blank(), 
-      axis.text = element_blank(),
-      axis.ticks = element_blank(), 
-      panel.grid = element_blank(),
-      panel.background = element_rect(fill = "#aadaff"),
       legend.position = "bottom", 
       legend.box.just = "right",
       legend.box.spacing = unit(0 ,"points"),
-      strip.text.x = element_text(size = 13), 
-      strip.text.y = element_text(size = 13),
-      strip.background = element_rect(fill = NA),
       plot.margin = margin(b = 0)
     )
   
@@ -391,17 +424,11 @@ reduction_map <- function(accessibility_data,
         shape = guide_legend(order = 1), 
         fill = guide_colorbar(order = 2)
       ) +
+      theme_thesis("map") +
       theme(
-        axis.title = element_blank(), 
-        axis.text = element_blank(),
-        axis.ticks = element_blank(), 
-        panel.grid = element_blank(),
-        panel.background = element_rect(fill = "#aadaff"),
         legend.position = "bottom", 
         legend.box = "vertical",
         legend.box.just = "left", 
-        strip.text.x = element_text(size = 13),
-        strip.background = element_rect(fill = NA)
       )
     
     p <- lemon::reposition_legend(
@@ -517,16 +544,7 @@ distribution_boxplot <- function(accessibility_data,
       breaks = seq(0, max_accessibility, max_accessibility/3),
       labels = scales::percent_format(accuracy = 0.1, scale = 100 / total_opportunities)
     ) +
-    theme(
-      strip.text.x = element_text(size = 13),
-      strip.background.x = element_rect(fill = NA),
-      axis.title.x = element_text(size = 12),
-      axis.title.y = element_text(size = 12),
-      axis.text.x = element_text(size = 11),
-      axis.text.y = element_text(size = 11),
-      panel.grid.minor = element_blank(),
-      panel.background = element_rect(fill = "gray94")
-    )
+    theme_thesis("graphic")
   
   # save plot
   
@@ -611,15 +629,10 @@ distribution_theil <- function(access_data,
       fill = text_labels$theil$component
     ) +
     coord_cartesian(ylim = c(0, y_upper_limit)) +
+    theme_thesis("graphic") +
     theme(
-      axis.title.x = element_text(size = 12),
-      axis.text.x = element_text(size = 11, angle = 22.5, hjust = 1),
-      axis.title.y = element_text(size = 12),
-      axis.text.y = element_text(size = 11),
-      legend.title = element_text(size = 12),
-      legend.text = element_text(size = 11),
-      panel.grid = element_blank(),
-      panel.background = element_rect(fill = "gray94")
+      axis.text.x = element_text(angle = 22.5, hjust = 1),
+      panel.grid = element_blank()
     )
   
   # save plot
@@ -779,320 +792,318 @@ across_time_palma <- function(access_data, text_labels, analysis_folder, bu, mc)
 }
 
 
-###########################
-# DIFFERENT FARE POLICIES #
-###########################
+# effects of BU (commented out for now) -----------------------------------
 
 
-labels_cases_bu <- function(travel_time, percentage_minimum_wage, lang) {
-  
-  # create the text labels used in the maps and graphics according to the specified language
-  
-  if (lang == "pt") {
-    
-    text_labels <- list(
-      "lang" = lang,
-      "maps" = list(
-        "cost_title" = paste0("Custo <= ", percentage_minimum_wage, "% do sal. mín."),
-        "fare_title" = c("Sem Bilhete Único", "Com Bilhete Único"),
-        "legend_title" = "Empregos acessíveis (% do total)"
-      ),
-      "increase_maps" = list(
-        "facets_title" = paste0("Custo monetário <= ", percentage_minimum_wage, "% do salário mínimo"),
-        "legend_title" = "Aumento de acessibilidade\n(% do total de empregos)"
-        # "mode_legend_title" = "Modo",
-        # "mode_options" = c("BRT", "Metrô e trem")
-      ),
-      "boxplot_difference" = list(
-        "facets_title" = paste0("Custo <= ", percentage_minimum_wage, "% do sal. mín."),
-        "palma_ratio" = "Razão de Palma: ",
-        "y_axis" = "Aumento de acess. (% total de empregos)",
-        "x_axis" = "Decil de renda"
-      ),
-      "theil" = list(
-        "bar_labels" = paste0(percentage_minimum_wage, "% do sal. mín."),
-        "y_axis" = "Índice de Theil",
-        "x_axis" = "Valor limite de custo",
-        "component" = "Componente",
-        "components_names" = c("Entregrupos", "Intragrupos")
-      ),
-      "between_group" = list(
-        "facets_title" = paste0("Custo monetário ", ifelse(percentage_minimum_wage <= 100, paste0("<= ", percentage_minimum_wage, "% do salário mínimo"), "não considerado")),
-        "y_axis" = "Participação",
-        "x_axis" = "Decil de renda"
-      )
-    )
-    
-    
-  }
-  
-  text_labels
-  
-}
-
-maps_cases_bu <- function(grid_data, travel_time, percentage_minimum_wage, text_labels, res) {
-  
-  # create objects used to read the desired files
-  
-  without_with <- rep(c("without", "with"), length(percentage_minimum_wage))
-  percentage_minimum_wage <- rep(percentage_minimum_wage, 2)
-  
-  # read data (the mutate before the bind_rows is due to a strange behaviour with bind_rows when .id is not NULL and sf objects...
-  # without the random mutate first the function won't work)
-  
-  rj_state <- readr::read_rds("./data/rj_state.rds")
-  
-  accessibility_data <- purrr::map2(without_with, percentage_minimum_wage, function(i, j) readr::read_rds(paste0("./results/", i, "_bu_tt_", travel_time, "_mc_", j, "_res_", res, ".rds"))) %>% 
-    purrr::map(function(i) mutate(i, bilhete_unico = "temp")) %>% 
-    bind_rows(.id = "case") %>% 
-    mutate(
-      case = as.numeric(case),
-      bilhete_unico = without_with[case],
-      percentage_minimum_wage = percentage_minimum_wage[case]
-    )
-  
-  # convert bilhete_unico and percentage_minimum_wage columns to factors to order the facets
-  
-  accessibility_data <- accessibility_data %>% 
-    mutate(
-      bilhete_unico = factor(bilhete_unico, levels = unique(without_with), labels = text_labels$maps$fare_title),
-      percentage_minimum_wage = factor(percentage_minimum_wage, levels = unique(percentage_minimum_wage), labels = text_labels$maps$cost_title)
-    )
-  
-  # plot settings
-  
-  rio_border <- accessibility_data %>% group_by(id) %>% slice(1) %>% ungroup() %>% summarise()
-  expanded_rio_border <- rio_border %>% st_transform(5880) %>% st_buffer(3000) %>% st_transform(st_crs(rio_border))
-  
-  xlim <- c(st_bbox(rio_border)[1], st_bbox(rio_border)[3])
-  ylim <- c(st_bbox(expanded_rio_border)[2], st_bbox(rio_border)[4])
-  
-  max_accessibility <- max(accessibility_data$accessibility)
-  total_opportunities <- sum(grid_data$opportunities)
-  
-  p <- ggplot() +
-    geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
-    geom_sf(data = accessibility_data, aes(fill = accessibility), color = NA) +
-      facet_grid(percentage_minimum_wage ~ bilhete_unico, switch = "y") +
-    geom_sf(data = rio_border, color = "black", fill = NA) +
-    ggsn::scalebar(data = rio_border, dist = 10, dist_unit = "km", location = "bottomright", transform = TRUE, model = "WGS84",
-                   height = 0.03, border.size = 0.4, st.dist = 0.05, st.size = 3) +
-    coord_sf(xlim = xlim, ylim = ylim) +
-    scale_fill_viridis_c(name = text_labels$maps$legend_title, option = "inferno", breaks = seq(0, max_accessibility, max_accessibility / 3),
-                         labels = scales::label_percent(scale = 100 / total_opportunities)) +
-    guides(fill = guide_colorbar(title.vjust = 0.75)) +
-    theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(),
-          panel.grid = element_blank(), panel.background = element_rect(fill = "#aadaff"),
-          legend.position = "bottom", legend.box.just = "right", legend.box.spacing = unit(0 ,"points"),
-          strip.text.x = element_text(size = 13), strip.text.y = element_text(size = 13), strip.background = element_rect(fill = NA),
-          plot.margin = margin(b = 0))
-
-  # save plot
-  
-  ggsave(paste0("./analysis/", text_labels$lang, "/cases_bu/comparative_map_tt_", travel_time, "_res_", res, ".png"),
-         width = 9,
-         height = 8.3)
-}
-
-maps_increase_cases_bu <- function(grid_data, travel_time, percentage_minimum_wage, text_labels, res) {
-  
-  # read data
-  
-  rj_state <- readr::read_rds("./data/rj_state.rds")
-  
-  accessibility_with_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
-  accessibility_without_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/without_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
-  
-  # calculate the accessibility difference between the cases with and without bilhete único
-  # then bind everything in the same dataframe with adequate names, later converted to factors
-  
-  accessibility_data <- purrr::map(seq_along(percentage_minimum_wage), function(i) left_join(accessibility_with_bu[[i]], st_drop_geometry(accessibility_without_bu[[i]]), by = "id")) %>%
-    purrr::map(function(i) mutate(i, increase = accessibility.x - accessibility.y)) %>% 
-    purrr::set_names(as.character(percentage_minimum_wage)) %>% 
-    bind_rows(.id = "percentage_minimum_wage") %>% 
-    mutate(percentage_minimum_wage = factor(percentage_minimum_wage, levels = unique(percentage_minimum_wage), labels = text_labels$increase_maps$facets_title))
-  
-  # plot settings
-  
-  rio_border <- accessibility_data %>% group_by(id) %>% slice(1) %>% ungroup() %>% summarise()
-  expanded_rio_border <- rio_border %>% st_transform(5880) %>% st_buffer(3000) %>% st_transform(st_crs(rio_border))
-  
-  xlim <- c(st_bbox(rio_border)[1], st_bbox(rio_border)[3])
-  ylim <- c(st_bbox(expanded_rio_border)[2], st_bbox(rio_border)[4])
-
-  max_increase <- max(accessibility_data$increase)
-  total_opportunities <- sum(grid_data$opportunities)
-  
-  p <- ggplot() +
-    geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
-    geom_sf(data = accessibility_data, aes(fill = increase), color = NA) +
-      facet_wrap(~ percentage_minimum_wage, nrow = 2) +
-    geom_sf(data = rio_border, color = "gray50", fill = NA) +
-    ggsn::scalebar(data = rio_border, dist = 10, dist_unit = "km", location = "bottomright", transform = TRUE, model = "WGS84",
-                   height = 0.03, border.size = 0.4, st.dist = 0.05, st.size = 3) +
-    coord_sf(xlim = xlim, ylim = ylim) +
-    scale_fill_gradient(name = text_labels$increase_maps$legend_title, low = "#efeeec", high = "red",
-                        breaks = seq(0, max_increase, max_increase / 3), labels = scales::label_percent(scale = 100 / total_opportunities)) +
-    theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(),
-          panel.grid = element_blank(), panel.background = element_rect(fill = "#aadaff"),
-          legend.position = "bottom", legend.box.just = "left",
-          strip.text.x = element_text(size = 13), strip.background = element_rect(fill = NA))
-  
-  p <- lemon::reposition_legend(p, position = "bottom left", panel = "panel-2-2")
-  
-  # save plot
-  
-  ggsave(paste0("./analysis/", text_labels$lang, "/cases_bu/increase_map_tt_", travel_time, "_res_", res, ".png"),
-         plot = p,
-         width = 9,
-         height = 5.8)
-}
-
-boxplot_increase_cases_bu <- function(grid_data, travel_time, percentage_minimum_wage, text_labels, res) {
-  
-  # read data
-  
-  accessibility_with_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
-  accessibility_without_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/without_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
-  
-  # calculate the accessibility difference between the cases with and without bilhete único
-
-  accessibility_data <- purrr::map(seq_along(percentage_minimum_wage), function(i) left_join(accessibility_with_bu[[i]], st_drop_geometry(accessibility_without_bu[[i]]), by = "id")) %>%
-    purrr::map(function(i) mutate(i, increase = accessibility.x - accessibility.y)) %>% 
-    purrr::map(st_drop_geometry)
-  
-  # prepare the dataset to be used in the plots
-  
-  accessibility_data <- accessibility_data %>% 
-    purrr::map(function(i) left_join(i, grid_data, by = "id")) %>% 
-    purrr::map(function(i) filter(i, population > 0))
-  
-  # calculate the palma ratio in each case
-  
-  ratios <- accessibility_data %>%
-    purrr::map_dbl(palma_ratio, variable = "increase")
-  
-  # bind each distribution to the same dataframe to plot it as a facet of the same plot
-  # then convert id to factors to ensure adequate facet order 
-  
-  accessibility_data <- accessibility_data %>% 
-    purrr::set_names(as.character(percentage_minimum_wage)) %>%
-    bind_rows(.id = "percentage_minimum_wage") %>% 
-    mutate(percentage_minimum_wage = factor(percentage_minimum_wage, levels = unique(percentage_minimum_wage), labels = text_labels$boxplot_difference$facets_title))
-  
-  # create a dataframe with the palma ratios to plot them as annotations
-  
-  palma_data <- tibble::tibble(
-    percentage_minimum_wage = factor(percentage_minimum_wage, levels = percentage_minimum_wage, labels = text_labels$boxplot_difference$facets_title),
-    x = 0.625,
-    y = max(accessibility_data$increase),
-    label = paste0(text_labels$boxplot_difference$palma_ratio, format(round(ratios, digits = 4), nsmall = 4))
-  )
-  
-  # plot settings
-  
-  max_increase <- max(accessibility_data$increase)
-  total_opportunities <- sum(grid_data$opportunities)
-  
-  ggplot(accessibility_data, aes(income_quantile, increase)) +
-    geom_boxplot(aes(weight = population)) +
-    facet_wrap(~ percentage_minimum_wage, nrow = 1) +
-    labs(x = text_labels$boxplot$x_axis, y = text_labels$boxplot$y_axis) +
-    geom_text(data = palma_data, aes(x, y, label = label, hjust = "left"), size = 4.5) +
-    scale_y_continuous(
-      limits = c(0, max_increase),
-      breaks = seq(0, max_increase, max_increase / 3),
-      labels = scales::percent_format(scale = 100 / total_opportunities)
-    ) +
-    theme(
-      strip.text.x = element_text(size = 13),
-      axis.title.x = element_text(size = 12),
-      axis.text.x = element_text(size = 11),
-      axis.title.y = element_text(size = 12),
-      axis.text.y = element_text(size = 11)
-    )
-  
-  # save plot
-  
-  ggsave(paste0("./analysis/", text_labels$lang, "/cases_bu/boxplot_increase_tt_", travel_time, "_res_", res, ".png"),
-         width = 9,
-         height = 3.5,
-         units = "in")
-  
-}
-
-theil_cases_bu <- function(grid_data, travel_time, percentage_minimum_wage, text_labels, res) {
-  
-  # read data
-  
-  accessibility_with_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
-  accessibility_without_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/without_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
-  
-  # calculate the accessibility difference between the cases with and without bilhete único and join grid_data
-  
-  accessibility_data <- purrr::map(seq_along(percentage_minimum_wage), function(i) left_join(accessibility_with_bu[[i]], st_drop_geometry(accessibility_without_bu[[i]]), by = "id")) %>%
-    purrr::map(function(i) mutate(i, increase = accessibility.x - accessibility.y)) %>% 
-    purrr::map(st_drop_geometry) %>% 
-    purrr::map(function(i) left_join(i, grid_data, by = "id")) %>% 
-    purrr::map(function(i) filter(i, population > 0))
-  
-  # calculate the theil index and its components in each case
-  # set names for each observation and bind them together in the same dataframe
-  
-  theil_data <- accessibility_data %>% 
-    purrr::map(theil_info, variable = "increase")%>%
-    purrr::set_names(as.character(percentage_minimum_wage)) %>%
-    bind_rows(.id = "percentage_minimum_wage")
-  
-  # prepare dataframe to plot and create a label_y column to place annotations within each stack
-  # convert component info and minimum wage percentages to factors
-  
-  theil_data <- theil_data %>% 
-    group_by(percentage_minimum_wage, component) %>% 
-    summarise(share = sum(share), .groups = "drop_last") %>% 
-    arrange(percentage_minimum_wage, desc(component)) %>% 
-    mutate(label_y = cumsum(share) - share/2) %>% 
-    ungroup() %>% 
-    mutate(
-      component = factor(component, levels = c("between", "within"), labels = text_labels$theil$components_names),
-      percentage_minimum_wage = factor(percentage_minimum_wage, unique(percentage_minimum_wage), text_labels$theil$bar_labels)
-    )
-  
-  # find max total theil to resize the plot's graphic area in order to fit the annotation on top of bars
-  
-  max_theil_data <- theil_data %>% 
-    group_by(percentage_minimum_wage) %>% 
-    summarise(theil = sum(share), .groups = "drop")
-  
-  max_theil <- max(max_theil_data$theil)
-  
-  y_upper_limit <- purrr::map_dbl(max_theil + 0.05, function(i, level = 1) round(i + 5*10^(-level-1), level))
-  
-  # plot settings
-  
-  ggplot(theil_data) +
-    geom_col(aes(percentage_minimum_wage, share, fill = component)) + 
-    geom_text(aes(percentage_minimum_wage, label_y, label = format(round(share, digits = 4)), nsmall = 4), color = "white") +
-    stat_summary(fun = sum, aes(percentage_minimum_wage, share, label = format(round(..y.., digits = 4), nsmall = 4), group = percentage_minimum_wage), geom = "text", vjust = -0.5) +
-    labs(x = text_labels$theil$x_axis, y = text_labels$theil$y_axis, fill = text_labels$theil$component) +
-    coord_cartesian(ylim = c(0, y_upper_limit)) +
-    theme(
-      axis.title.x = element_text(size = 12),
-      axis.text.x = element_text(size = 11, angle = 22.5, hjust = 1),
-      axis.title.y = element_text(size = 12),
-      axis.text.y = element_text(size = 11),
-      legend.title = element_text(size = 12),
-      legend.text = element_text(size = 11),
-    )
-  
-  # save plot
-  
-  ggsave(paste0("./analysis/", text_labels$lang, "/cases_bu/theil_components_tt_", travel_time, "_res_", res, ".png"),
-         width = 7,
-         height = 3,
-         units = "in")
-  
-}
+# labels_cases_bu <- function(travel_time, percentage_minimum_wage, lang) {
+#   
+#   # create the text labels used in the maps and graphics according to the specified language
+#   
+#   if (lang == "pt") {
+#     
+#     text_labels <- list(
+#       "lang" = lang,
+#       "maps" = list(
+#         "cost_title" = paste0("Custo <= ", percentage_minimum_wage, "% do sal. mín."),
+#         "fare_title" = c("Sem Bilhete Único", "Com Bilhete Único"),
+#         "legend_title" = "Empregos acessíveis (% do total)"
+#       ),
+#       "increase_maps" = list(
+#         "facets_title" = paste0("Custo monetário <= ", percentage_minimum_wage, "% do salário mínimo"),
+#         "legend_title" = "Aumento de acessibilidade\n(% do total de empregos)"
+#         # "mode_legend_title" = "Modo",
+#         # "mode_options" = c("BRT", "Metrô e trem")
+#       ),
+#       "boxplot_difference" = list(
+#         "facets_title" = paste0("Custo <= ", percentage_minimum_wage, "% do sal. mín."),
+#         "palma_ratio" = "Razão de Palma: ",
+#         "y_axis" = "Aumento de acess. (% total de empregos)",
+#         "x_axis" = "Decil de renda"
+#       ),
+#       "theil" = list(
+#         "bar_labels" = paste0(percentage_minimum_wage, "% do sal. mín."),
+#         "y_axis" = "Índice de Theil",
+#         "x_axis" = "Valor limite de custo",
+#         "component" = "Componente",
+#         "components_names" = c("Entregrupos", "Intragrupos")
+#       ),
+#       "between_group" = list(
+#         "facets_title" = paste0("Custo monetário ", ifelse(percentage_minimum_wage <= 100, paste0("<= ", percentage_minimum_wage, "% do salário mínimo"), "não considerado")),
+#         "y_axis" = "Participação",
+#         "x_axis" = "Decil de renda"
+#       )
+#     )
+#     
+#     
+#   }
+#   
+#   text_labels
+#   
+# }
+# 
+# maps_cases_bu <- function(grid_data, travel_time, percentage_minimum_wage, text_labels, res) {
+#   
+#   # create objects used to read the desired files
+#   
+#   without_with <- rep(c("without", "with"), length(percentage_minimum_wage))
+#   percentage_minimum_wage <- rep(percentage_minimum_wage, 2)
+#   
+#   # read data (the mutate before the bind_rows is due to a strange behaviour with bind_rows when .id is not NULL and sf objects...
+#   # without the random mutate first the function won't work)
+#   
+#   rj_state <- readr::read_rds("./data/rj_state.rds")
+#   
+#   accessibility_data <- purrr::map2(without_with, percentage_minimum_wage, function(i, j) readr::read_rds(paste0("./results/", i, "_bu_tt_", travel_time, "_mc_", j, "_res_", res, ".rds"))) %>% 
+#     purrr::map(function(i) mutate(i, bilhete_unico = "temp")) %>% 
+#     bind_rows(.id = "case") %>% 
+#     mutate(
+#       case = as.numeric(case),
+#       bilhete_unico = without_with[case],
+#       percentage_minimum_wage = percentage_minimum_wage[case]
+#     )
+#   
+#   # convert bilhete_unico and percentage_minimum_wage columns to factors to order the facets
+#   
+#   accessibility_data <- accessibility_data %>% 
+#     mutate(
+#       bilhete_unico = factor(bilhete_unico, levels = unique(without_with), labels = text_labels$maps$fare_title),
+#       percentage_minimum_wage = factor(percentage_minimum_wage, levels = unique(percentage_minimum_wage), labels = text_labels$maps$cost_title)
+#     )
+#   
+#   # plot settings
+#   
+#   rio_border <- accessibility_data %>% group_by(id) %>% slice(1) %>% ungroup() %>% summarise()
+#   expanded_rio_border <- rio_border %>% st_transform(5880) %>% st_buffer(3000) %>% st_transform(st_crs(rio_border))
+#   
+#   xlim <- c(st_bbox(rio_border)[1], st_bbox(rio_border)[3])
+#   ylim <- c(st_bbox(expanded_rio_border)[2], st_bbox(rio_border)[4])
+#   
+#   max_accessibility <- max(accessibility_data$accessibility)
+#   total_opportunities <- sum(grid_data$opportunities)
+#   
+#   p <- ggplot() +
+#     geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
+#     geom_sf(data = accessibility_data, aes(fill = accessibility), color = NA) +
+#       facet_grid(percentage_minimum_wage ~ bilhete_unico, switch = "y") +
+#     geom_sf(data = rio_border, color = "black", fill = NA) +
+#     ggsn::scalebar(data = rio_border, dist = 10, dist_unit = "km", location = "bottomright", transform = TRUE, model = "WGS84",
+#                    height = 0.03, border.size = 0.4, st.dist = 0.05, st.size = 3) +
+#     coord_sf(xlim = xlim, ylim = ylim) +
+#     scale_fill_viridis_c(name = text_labels$maps$legend_title, option = "inferno", breaks = seq(0, max_accessibility, max_accessibility / 3),
+#                          labels = scales::label_percent(scale = 100 / total_opportunities)) +
+#     guides(fill = guide_colorbar(title.vjust = 0.75)) +
+#     theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(),
+#           panel.grid = element_blank(), panel.background = element_rect(fill = "#aadaff"),
+#           legend.position = "bottom", legend.box.just = "right", legend.box.spacing = unit(0 ,"points"),
+#           strip.text.x = element_text(size = 13), strip.text.y = element_text(size = 13), strip.background = element_rect(fill = NA),
+#           plot.margin = margin(b = 0))
+# 
+#   # save plot
+#   
+#   ggsave(paste0("./analysis/", text_labels$lang, "/cases_bu/comparative_map_tt_", travel_time, "_res_", res, ".png"),
+#          width = 9,
+#          height = 8.3)
+# }
+# 
+# maps_increase_cases_bu <- function(grid_data, travel_time, percentage_minimum_wage, text_labels, res) {
+#   
+#   # read data
+#   
+#   rj_state <- readr::read_rds("./data/rj_state.rds")
+#   
+#   accessibility_with_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
+#   accessibility_without_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/without_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
+#   
+#   # calculate the accessibility difference between the cases with and without bilhete único
+#   # then bind everything in the same dataframe with adequate names, later converted to factors
+#   
+#   accessibility_data <- purrr::map(seq_along(percentage_minimum_wage), function(i) left_join(accessibility_with_bu[[i]], st_drop_geometry(accessibility_without_bu[[i]]), by = "id")) %>%
+#     purrr::map(function(i) mutate(i, increase = accessibility.x - accessibility.y)) %>% 
+#     purrr::set_names(as.character(percentage_minimum_wage)) %>% 
+#     bind_rows(.id = "percentage_minimum_wage") %>% 
+#     mutate(percentage_minimum_wage = factor(percentage_minimum_wage, levels = unique(percentage_minimum_wage), labels = text_labels$increase_maps$facets_title))
+#   
+#   # plot settings
+#   
+#   rio_border <- accessibility_data %>% group_by(id) %>% slice(1) %>% ungroup() %>% summarise()
+#   expanded_rio_border <- rio_border %>% st_transform(5880) %>% st_buffer(3000) %>% st_transform(st_crs(rio_border))
+#   
+#   xlim <- c(st_bbox(rio_border)[1], st_bbox(rio_border)[3])
+#   ylim <- c(st_bbox(expanded_rio_border)[2], st_bbox(rio_border)[4])
+# 
+#   max_increase <- max(accessibility_data$increase)
+#   total_opportunities <- sum(grid_data$opportunities)
+#   
+#   p <- ggplot() +
+#     geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
+#     geom_sf(data = accessibility_data, aes(fill = increase), color = NA) +
+#       facet_wrap(~ percentage_minimum_wage, nrow = 2) +
+#     geom_sf(data = rio_border, color = "gray50", fill = NA) +
+#     ggsn::scalebar(data = rio_border, dist = 10, dist_unit = "km", location = "bottomright", transform = TRUE, model = "WGS84",
+#                    height = 0.03, border.size = 0.4, st.dist = 0.05, st.size = 3) +
+#     coord_sf(xlim = xlim, ylim = ylim) +
+#     scale_fill_gradient(name = text_labels$increase_maps$legend_title, low = "#efeeec", high = "red",
+#                         breaks = seq(0, max_increase, max_increase / 3), labels = scales::label_percent(scale = 100 / total_opportunities)) +
+#     theme(axis.title = element_blank(), axis.text = element_blank(), axis.ticks = element_blank(),
+#           panel.grid = element_blank(), panel.background = element_rect(fill = "#aadaff"),
+#           legend.position = "bottom", legend.box.just = "left",
+#           strip.text.x = element_text(size = 13), strip.background = element_rect(fill = NA))
+#   
+#   p <- lemon::reposition_legend(p, position = "bottom left", panel = "panel-2-2")
+#   
+#   # save plot
+#   
+#   ggsave(paste0("./analysis/", text_labels$lang, "/cases_bu/increase_map_tt_", travel_time, "_res_", res, ".png"),
+#          plot = p,
+#          width = 9,
+#          height = 5.8)
+# }
+# 
+# boxplot_increase_cases_bu <- function(grid_data, travel_time, percentage_minimum_wage, text_labels, res) {
+#   
+#   # read data
+#   
+#   accessibility_with_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
+#   accessibility_without_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/without_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
+#   
+#   # calculate the accessibility difference between the cases with and without bilhete único
+# 
+#   accessibility_data <- purrr::map(seq_along(percentage_minimum_wage), function(i) left_join(accessibility_with_bu[[i]], st_drop_geometry(accessibility_without_bu[[i]]), by = "id")) %>%
+#     purrr::map(function(i) mutate(i, increase = accessibility.x - accessibility.y)) %>% 
+#     purrr::map(st_drop_geometry)
+#   
+#   # prepare the dataset to be used in the plots
+#   
+#   accessibility_data <- accessibility_data %>% 
+#     purrr::map(function(i) left_join(i, grid_data, by = "id")) %>% 
+#     purrr::map(function(i) filter(i, population > 0))
+#   
+#   # calculate the palma ratio in each case
+#   
+#   ratios <- accessibility_data %>%
+#     purrr::map_dbl(palma_ratio, variable = "increase")
+#   
+#   # bind each distribution to the same dataframe to plot it as a facet of the same plot
+#   # then convert id to factors to ensure adequate facet order 
+#   
+#   accessibility_data <- accessibility_data %>% 
+#     purrr::set_names(as.character(percentage_minimum_wage)) %>%
+#     bind_rows(.id = "percentage_minimum_wage") %>% 
+#     mutate(percentage_minimum_wage = factor(percentage_minimum_wage, levels = unique(percentage_minimum_wage), labels = text_labels$boxplot_difference$facets_title))
+#   
+#   # create a dataframe with the palma ratios to plot them as annotations
+#   
+#   palma_data <- tibble::tibble(
+#     percentage_minimum_wage = factor(percentage_minimum_wage, levels = percentage_minimum_wage, labels = text_labels$boxplot_difference$facets_title),
+#     x = 0.625,
+#     y = max(accessibility_data$increase),
+#     label = paste0(text_labels$boxplot_difference$palma_ratio, format(round(ratios, digits = 4), nsmall = 4))
+#   )
+#   
+#   # plot settings
+#   
+#   max_increase <- max(accessibility_data$increase)
+#   total_opportunities <- sum(grid_data$opportunities)
+#   
+#   ggplot(accessibility_data, aes(income_quantile, increase)) +
+#     geom_boxplot(aes(weight = population)) +
+#     facet_wrap(~ percentage_minimum_wage, nrow = 1) +
+#     labs(x = text_labels$boxplot$x_axis, y = text_labels$boxplot$y_axis) +
+#     geom_text(data = palma_data, aes(x, y, label = label, hjust = "left"), size = 4.5) +
+#     scale_y_continuous(
+#       limits = c(0, max_increase),
+#       breaks = seq(0, max_increase, max_increase / 3),
+#       labels = scales::percent_format(scale = 100 / total_opportunities)
+#     ) +
+#     theme(
+#       strip.text.x = element_text(size = 13),
+#       axis.title.x = element_text(size = 12),
+#       axis.text.x = element_text(size = 11),
+#       axis.title.y = element_text(size = 12),
+#       axis.text.y = element_text(size = 11)
+#     )
+#   
+#   # save plot
+#   
+#   ggsave(paste0("./analysis/", text_labels$lang, "/cases_bu/boxplot_increase_tt_", travel_time, "_res_", res, ".png"),
+#          width = 9,
+#          height = 3.5,
+#          units = "in")
+#   
+# }
+# 
+# theil_cases_bu <- function(grid_data, travel_time, percentage_minimum_wage, text_labels, res) {
+#   
+#   # read data
+#   
+#   accessibility_with_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/with_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
+#   accessibility_without_bu <- purrr::map(percentage_minimum_wage, function(i) readr::read_rds(paste0("./results/without_bu_tt_", travel_time, "_mc_", i, "_res_", res, ".rds")))
+#   
+#   # calculate the accessibility difference between the cases with and without bilhete único and join grid_data
+#   
+#   accessibility_data <- purrr::map(seq_along(percentage_minimum_wage), function(i) left_join(accessibility_with_bu[[i]], st_drop_geometry(accessibility_without_bu[[i]]), by = "id")) %>%
+#     purrr::map(function(i) mutate(i, increase = accessibility.x - accessibility.y)) %>% 
+#     purrr::map(st_drop_geometry) %>% 
+#     purrr::map(function(i) left_join(i, grid_data, by = "id")) %>% 
+#     purrr::map(function(i) filter(i, population > 0))
+#   
+#   # calculate the theil index and its components in each case
+#   # set names for each observation and bind them together in the same dataframe
+#   
+#   theil_data <- accessibility_data %>% 
+#     purrr::map(theil_info, variable = "increase")%>%
+#     purrr::set_names(as.character(percentage_minimum_wage)) %>%
+#     bind_rows(.id = "percentage_minimum_wage")
+#   
+#   # prepare dataframe to plot and create a label_y column to place annotations within each stack
+#   # convert component info and minimum wage percentages to factors
+#   
+#   theil_data <- theil_data %>% 
+#     group_by(percentage_minimum_wage, component) %>% 
+#     summarise(share = sum(share), .groups = "drop_last") %>% 
+#     arrange(percentage_minimum_wage, desc(component)) %>% 
+#     mutate(label_y = cumsum(share) - share/2) %>% 
+#     ungroup() %>% 
+#     mutate(
+#       component = factor(component, levels = c("between", "within"), labels = text_labels$theil$components_names),
+#       percentage_minimum_wage = factor(percentage_minimum_wage, unique(percentage_minimum_wage), text_labels$theil$bar_labels)
+#     )
+#   
+#   # find max total theil to resize the plot's graphic area in order to fit the annotation on top of bars
+#   
+#   max_theil_data <- theil_data %>% 
+#     group_by(percentage_minimum_wage) %>% 
+#     summarise(theil = sum(share), .groups = "drop")
+#   
+#   max_theil <- max(max_theil_data$theil)
+#   
+#   y_upper_limit <- purrr::map_dbl(max_theil + 0.05, function(i, level = 1) round(i + 5*10^(-level-1), level))
+#   
+#   # plot settings
+#   
+#   ggplot(theil_data) +
+#     geom_col(aes(percentage_minimum_wage, share, fill = component)) + 
+#     geom_text(aes(percentage_minimum_wage, label_y, label = format(round(share, digits = 4)), nsmall = 4), color = "white") +
+#     stat_summary(fun = sum, aes(percentage_minimum_wage, share, label = format(round(..y.., digits = 4), nsmall = 4), group = percentage_minimum_wage), geom = "text", vjust = -0.5) +
+#     labs(x = text_labels$theil$x_axis, y = text_labels$theil$y_axis, fill = text_labels$theil$component) +
+#     coord_cartesian(ylim = c(0, y_upper_limit)) +
+#     theme(
+#       axis.title.x = element_text(size = 12),
+#       axis.text.x = element_text(size = 11, angle = 22.5, hjust = 1),
+#       axis.title.y = element_text(size = 12),
+#       axis.text.y = element_text(size = 11),
+#       legend.title = element_text(size = 12),
+#       legend.text = element_text(size = 11),
+#     )
+#   
+#   # save plot
+#   
+#   ggsave(paste0("./analysis/", text_labels$lang, "/cases_bu/theil_components_tt_", travel_time, "_res_", res, ".png"),
+#          width = 7,
+#          height = 3,
+#          units = "in")
+#   
+# }
 
 
 # support functions -------------------------------------------------------
