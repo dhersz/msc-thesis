@@ -122,8 +122,10 @@ analyse_results <- function(grid_name = "grid_with_data",
   
   # across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
   # across_cost_theil(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
+  # across_cost_comps(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
   # across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
-  across_time_theil(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
+  # across_time_theil(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
+  across_time_comps(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
   
   # * efects of bilhete unico analysis --------------------------------------
 
@@ -857,6 +859,118 @@ across_time_theil <- function(access_data, text_labels, analysis_folder, bu, mc)
   
   ggsave(
     paste0(analysis_folder, "/theil_across_times_", bu, ".png"),
+    plot = p,
+    width = 7,
+    height = 3,
+    units = "in"
+  )
+  
+}
+
+
+across_cost_comps <- function(access_data, text_labels, analysis_folder, bu, tt) {
+  
+  # drop large unnecessary columns and filter data
+  
+  access_data[, `:=`(geometry = NULL)]
+  access_data <- access_data[population > 0][monetary_cost != 1000][bilhete_unico == bu][travel_time %in% tt]
+  
+  # calculate the ratio in each case
+  
+  access_data <- access_data[, .(data = list(.SD)), keyby = .(bilhete_unico, travel_time, monetary_cost)]
+  components  <- lapply(
+    access_data$data, 
+    function(i) {
+      theil <- theil_info(copy(i))[, .(share = sum(share)), keyby = .(component)]
+      comps <- data.table(between = theil$share[1], within = theil$share[2])
+    }
+  )
+  components  <- rbindlist(components)
+  access_data <- cbind(access_data[, data := NULL], components)
+  access_data <- data.table::melt(
+    access_data,
+    id = c("bilhete_unico", "travel_time", "monetary_cost"),
+    measure = c("between", "within"),
+    variable.name = "component",
+    value.name = "share"
+  )
+  
+  # cast travel time to factor to create a discrete plot legend
+  
+  access_data[, travel_time := as.factor(travel_time)]
+  
+  # plot settings
+  
+  p <- ggplot(access_data) + 
+    geom_step(
+      aes(
+        monetary_cost, 
+        share, 
+        group = interaction(component, travel_time), 
+        color = travel_time,
+        linetype = component
+      )
+    )
+  
+  ggsave(
+    paste0(analysis_folder, "/comps_across_costs_", bu, ".png"),
+    plot = p,
+    width = 7,
+    height = 3,
+    units = "in"
+  )
+  
+}
+
+
+across_time_comps <- function(access_data, text_labels, analysis_folder, bu, mc) {
+  
+  # drop large unnecessary columns and filter data
+  
+  access_data[, `:=`(geometry = NULL)]
+  access_data <- access_data[population > 0][bilhete_unico == bu][monetary_cost %in% mc]
+  
+  # calculate the ratio in each case
+  
+  access_data <- access_data[, .(data = list(.SD)), keyby = .(bilhete_unico, travel_time, monetary_cost)]
+  
+  components <- lapply(
+    access_data$data, 
+    function(i) {
+      theil <- theil_info(copy(i))[, .(share = sum(share)), keyby = .(component)]
+      comps <- data.table(between = theil$share[1], within = theil$share[2])
+    }
+  )
+  
+  components  <- rbindlist(components)
+  access_data <- cbind(access_data[, data := NULL], components)
+  access_data <- data.table::melt(
+    access_data,
+    id = c("bilhete_unico", "travel_time", "monetary_cost"),
+    measure = c("between", "within"),
+    variable.name = "component",
+    value.name = "share"
+  )
+  
+  # cast travel time to factor to create a discrete plot legend
+  
+  access_data[, monetary_cost := as.factor(monetary_cost)]
+  
+  # plot settings
+  
+  p <- ggplot(access_data) + 
+    geom_step(
+      aes(
+        travel_time, 
+        share, 
+        group = interaction(component, monetary_cost), 
+        color = monetary_cost,
+        linetype = component
+      )
+    )
+  
+  ggsave(
+    paste0(analysis_folder, "/comps_across_times_", bu, ".png"),
     plot = p,
     width = 7,
     height = 3,
