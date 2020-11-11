@@ -102,8 +102,8 @@ analyse_results <- function(grid_name = "grid_with_data",
     
     text_labels <- text_labels_generator(mcosts, lang)
     
-    distribution_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
-    reduction_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    # distribution_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    # reduction_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
     # reduction_hist(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
     # distribution_boxplot(copy(filtered_data), tt, mcosts, text_labels, analysis_folder, n_quantiles)
     # distribution_theil(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
@@ -117,10 +117,16 @@ analyse_results <- function(grid_name = "grid_with_data",
   
   analysis_folder <- paste0(router_folder, "/analysis/", lang)
   
-  # across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = c(30, 60, 90, 120))
-  # across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = c(0, 4.05, 4.7, 5, 9.05, 12.8, 1000))
+  ttimes <- c(30, 60, 90, 120)
+  mcosts <- c(1000, 12.8, 9.05, 5, 4.7, 4.05, 0)
+  
+  # across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
+  z <- across_cost_theil(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
+  # across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
   # 
 
+  return(z)
+  
   # * efects of bilhete unico analysis --------------------------------------
 
   
@@ -726,6 +732,8 @@ average_access_different_costs <- function(grid_data, travel_time, percentage_mi
   
 }
 
+
+
 across_cost_palma <- function(access_data, text_labels, analysis_folder, bu, tt) {
   
   # drop large unnecessary columns and filter data
@@ -759,6 +767,7 @@ across_cost_palma <- function(access_data, text_labels, analysis_folder, bu, tt)
 }
 
 
+
 across_time_palma <- function(access_data, text_labels, analysis_folder, bu, mc) {
   
   # drop large unnecessary columns and filter data
@@ -784,6 +793,42 @@ across_time_palma <- function(access_data, text_labels, analysis_folder, bu, mc)
     geom_step(aes(travel_time, palma_ratio, group = monetary_cost, color = monetary_cost))
   
   ggsave(paste0(analysis_folder, "/palma_across_times_", bu, ".png"),
+         plot = p,
+         width = 7,
+         height = 3,
+         units = "in")
+  
+}
+
+
+
+across_cost_theil <- function(access_data, text_labels, analysis_folder, bu, tt) {
+  
+  # drop large unnecessary columns and filter data
+  
+  access_data[, geometry := NULL]
+  access_data <- access_data[population > 0][monetary_cost != 1000][bilhete_unico == bu][travel_time %in% tt]
+  
+  # calculate the ratio in each case
+  
+  access_data <- access_data[, .(data = list(.SD)), keyby = .(bilhete_unico, travel_time, monetary_cost)]
+  
+  return(access_data)
+  
+  theil <- purrr::map_dbl(access_data$data, function(i) sum(theil_info(i)$share))
+  
+  access_data <- cbind(access_data, theil_index = theil)[, data := NULL]
+  
+  # cast travel time to factor to create a discrete plot legend
+  
+  access_data[, travel_time := as.factor(travel_time)]
+  
+  # plot settings
+  
+  p <- ggplot(access_data) + 
+    geom_step(aes(monetary_cost, palma_ratio, group = travel_time, color = travel_time))
+  
+  ggsave(paste0(analysis_folder, "/palma_across_costs_", bu, ".png"),
          plot = p,
          width = 7,
          height = 3,
@@ -1275,13 +1320,13 @@ theil_info <- function(access_data, variable = "accessibility") {
   
   # change the desired variable column name to "variable" in order to allow calculations for any variable
   
-  access_data[, variable := get(variable)]
+  access_data[, variable := get(..variable)]
   access_data[, total_variable := variable * population]
   
   # calculate the between-group component
   # group by quantile, calculate its share of the component and save it in a list
   
-  between_group_data <- access_data[, 
+  between_group_data <- access_data[variable > 0, 
                                     .(population = sum(population), 
                                       total_variable = sum(total_variable)), 
                                     keyby = income_quantile]
@@ -1300,7 +1345,7 @@ theil_info <- function(access_data, variable = "accessibility") {
   within_group_share <- purrr::map_dbl(
     unique_quantiles, 
     function(i) {
-      filtered_data <- access_data[income_quantile == i]
+      filtered_data <- copy(access_data)[income_quantile == i]
       share <- theil_index(filtered_data) * sum(filtered_data$total_variable) / sum(access_data$total_variable)
     }
   )
@@ -1319,16 +1364,18 @@ theil_info <- function(access_data, variable = "accessibility") {
   
 }
 
-theil_index <- function(accessibility_data) {
+theil_index <- function(access_data) {
   
-  accessibility_data <- accessibility_data %>% 
+  # variable > 0 prevents log(0) which is NaN
+  
+  access_data <- access_data %>% 
     filter(variable > 0) %>% 
     mutate(
       total_variable = variable * population,
       theil_share = (total_variable / sum(total_variable)) * log((total_variable / sum(total_variable)) / (population / sum(population)))
     )
   
-  index <- sum(accessibility_data$theil_share)
+  index <- sum(access_data$theil_share)
   
   index
   
