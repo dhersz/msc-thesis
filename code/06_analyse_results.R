@@ -121,11 +121,9 @@ analyse_results <- function(grid_name = "grid_with_data",
   mcosts <- c(1000, 12.8, 9.05, 5, 4.7, 4.05, 0)
   
   # across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
-  z <- across_cost_theil(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
+  # across_cost_theil(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
   # across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
-  # 
-
-  return(z)
+  across_time_theil(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
   
   # * efects of bilhete unico analysis --------------------------------------
 
@@ -806,17 +804,13 @@ across_cost_theil <- function(access_data, text_labels, analysis_folder, bu, tt)
   
   # drop large unnecessary columns and filter data
   
-  access_data[, geometry := NULL]
+  access_data[, `:=`(geometry = NULL, variable = accessibility, accessibility = NULL)]
   access_data <- access_data[population > 0][monetary_cost != 1000][bilhete_unico == bu][travel_time %in% tt]
   
   # calculate the ratio in each case
   
   access_data <- access_data[, .(data = list(.SD)), keyby = .(bilhete_unico, travel_time, monetary_cost)]
-  
-  return(access_data)
-  
-  theil <- purrr::map_dbl(access_data$data, function(i) sum(theil_info(i)$share))
-  
+  theil       <- purrr::map_dbl(access_data$data, theil_index)
   access_data <- cbind(access_data, theil_index = theil)[, data := NULL]
   
   # cast travel time to factor to create a discrete plot legend
@@ -826,13 +820,48 @@ across_cost_theil <- function(access_data, text_labels, analysis_folder, bu, tt)
   # plot settings
   
   p <- ggplot(access_data) + 
-    geom_step(aes(monetary_cost, palma_ratio, group = travel_time, color = travel_time))
+    geom_step(aes(monetary_cost, theil_index, group = travel_time, color = travel_time))
   
-  ggsave(paste0(analysis_folder, "/palma_across_costs_", bu, ".png"),
-         plot = p,
-         width = 7,
-         height = 3,
-         units = "in")
+  ggsave(
+    paste0(analysis_folder, "/theil_across_costs_", bu, ".png"),
+    plot = p,
+    width = 7,
+    height = 3,
+    units = "in"
+  )
+  
+}
+
+
+across_time_theil <- function(access_data, text_labels, analysis_folder, bu, mc) {
+  
+  # drop large unnecessary columns and filter data
+  
+  access_data[, `:=`(geometry = NULL, variable = accessibility, accessibility = NULL)]
+  access_data <- access_data[population > 0][bilhete_unico == bu][monetary_cost %in% mc]
+  
+  # calculate the ratio in each case
+  
+  access_data <- access_data[, .(data = list(.SD)), keyby = .(bilhete_unico, travel_time, monetary_cost)]
+  theil       <- purrr::map_dbl(access_data$data, theil_index)
+  access_data <- cbind(access_data, theil_index = theil)[, data := NULL]
+  
+  # cast travel time to factor to create a discrete plot legend
+  
+  access_data[, monetary_cost := as.factor(monetary_cost)]
+  
+  # plot settings
+  
+  p <- ggplot(access_data) + 
+    geom_step(aes(travel_time, theil_index, group = monetary_cost, color = monetary_cost))
+  
+  ggsave(
+    paste0(analysis_folder, "/theil_across_times_", bu, ".png"),
+    plot = p,
+    width = 7,
+    height = 3,
+    units = "in"
+  )
   
 }
 
