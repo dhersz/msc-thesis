@@ -78,6 +78,11 @@ analyse_results <- function(grid_name = "grid_with_data",
                           income_quantile = i.income_quantile, 
                           geometry = i.geometry)]
   
+  ttimes <- c(30, 60, 90, 120)
+  mcosts <- c(1000, 12.8, 9.05, 5, 4.7, 4.05, 0)
+  
+  text_labels <- text_labels_generator(mcosts, lang)
+  
   
   # * different costs analysis ----------------------------------------------
 
@@ -91,16 +96,11 @@ analyse_results <- function(grid_name = "grid_with_data",
   analysis_folder <- paste0(analysis_folder, "/different_costs")
   if (!file.exists(analysis_folder)) dir.create(analysis_folder)
   
-  ttimes <- c(30, 60, 90, 120)
-  mcosts <- c(1000, 12.8, 9.05, 5, 4.7, 4.05, 0)
-  
   purrr::walk(ttimes, function(tt) {
     
     filtered_data <- accessibility_data[(bilhete_unico == "with") & 
                                         (travel_time == tt) & 
                                         (monetary_cost %in% mcosts)]
-    
-    text_labels <- text_labels_generator(mcosts, lang)
     
     # distribution_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
     # reduction_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
@@ -117,15 +117,13 @@ analyse_results <- function(grid_name = "grid_with_data",
   
   analysis_folder <- paste0(router_folder, "/analysis/", lang)
   
-  ttimes <- c(30, 60, 90, 120)
-  mcosts <- c(1000, 12.8, 9.05, 5, 4.7, 4.05, 0)
-  
   # across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
   # across_cost_theil(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
   # across_cost_comps(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
   # across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
   # across_time_theil(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
   across_time_comps(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
+  
   
   # * efects of bilhete unico analysis --------------------------------------
 
@@ -230,6 +228,40 @@ text_labels_generator <- function(mcosts, lang) {
         "facets_title" = paste0("Custo ", ifelse(mcosts <= 100, paste0("<= ", mcosts, "% sal. mín."), "não consid.")),
         "y_axis" = "Acessibilidade média\n(% do total de empregos)",
         "x_axis" = "Decil de renda"
+      ),
+      "across_cost_palma" = list(
+        "legend_title" = "Tempo de\nviagem (min.)",
+        "y_axis" = "Razão de Palma",
+        "x_axis" = "Custo monetário (R$)"
+      ),
+      "across_time_palma" = list(
+        "legend_title" = "Custo\nmonetário",
+        "y_axis" = "Razão de Palma",
+        "x_axis" = "Tempo de viagem (min.)"
+      ),
+      "across_cost_theil" = list(
+        "legend_title" = "Tempo de\nviagem (min.)",
+        "y_axis" = "Índice de Theil",
+        "x_axis" = "Custo monetário (R$)"
+      ),
+      "across_time_theil" = list(
+        "legend_title" = "Custo\nmonetário",
+        "y_axis" = "Índice de Theil",
+        "x_axis" = "Tempo de viagem (min.)"
+      ),
+      "across_cost_comps" = list(
+        "color_title" = "Tempo de\nviagem (min.)",
+        "lntp_title" = "Componente",
+        "y_axis" = "Índice de Theil",
+        "x_axis" = "Custo monetário (R$)",
+        "components" = list(Entregrupos = "between", Intragrupos = "within")
+      ),
+      "across_time_comps" = list(
+        "color_title" = "Custo\nmonetário",
+        "lntp_title" = "Componente",
+        "y_axis" = "Índice de Theil",
+        "x_axis" = "Tempo de viagem (min.)",
+        "components" = list(Entregrupos = "between", Intragrupos = "within")
       )
     )
     
@@ -744,9 +776,7 @@ across_cost_palma <- function(access_data, text_labels, analysis_folder, bu, tt)
   # calculate the ratio in each case
   
   access_data <- access_data[, .(data = list(.SD)), keyby = .(bilhete_unico, travel_time, monetary_cost)]
-  
-  ratios <- purrr::map_dbl(access_data$data, palma_ratio)
-  
+  ratios      <- purrr::map_dbl(access_data$data, palma_ratio)
   access_data <- cbind(access_data, palma_ratio = ratios)[, data := NULL]
   
   # cast travel time to factor to create a discrete plot legend
@@ -756,13 +786,23 @@ across_cost_palma <- function(access_data, text_labels, analysis_folder, bu, tt)
   # plot settings
   
   p <- ggplot(access_data) + 
-    geom_step(aes(monetary_cost, palma_ratio, group = travel_time, color = travel_time))
+    geom_step(
+      aes(monetary_cost, palma_ratio, group = travel_time, color = travel_time)
+    ) +
+    labs(
+      x     = text_labels$across_cost_palma$x_axis, 
+      y     = text_labels$across_cost_palma$y_axis,
+      color = text_labels$across_cost_palma$legend_title
+    ) +
+    theme_thesis("graphic")
   
-  ggsave(paste0(analysis_folder, "/palma_across_costs_", bu, ".png"),
-         plot = p,
-         width = 7,
-         height = 3,
-         units = "in")
+  ggsave(
+    paste0(analysis_folder, "/palma_across_costs_", bu, ".png"),
+    plot = p,
+    width = 7,
+    height = 3,
+    units = "in"
+  )
   
 }
 
@@ -778,25 +818,51 @@ across_time_palma <- function(access_data, text_labels, analysis_folder, bu, mc)
   # calculate the ratio in each case
   
   access_data <- access_data[, .(data = list(.SD)), keyby = .(bilhete_unico, travel_time, monetary_cost)]
-  
-  ratios <- purrr::map_dbl(access_data$data, palma_ratio)
-  
+  ratios      <- purrr::map_dbl(access_data$data, palma_ratio)
   access_data <- cbind(access_data, palma_ratio = ratios)[, data := NULL]
   
   # cast travel time to factor to create a discrete plot legend
   
   access_data[, monetary_cost := as.factor(monetary_cost)]
   
+  levels(access_data$monetary_cost) <- ifelse(
+    levels(access_data$monetary_cost) == "1000",
+    "Sem restrição",
+    paste0(
+      "R$ ", 
+      stringr::str_replace(
+        format(as.numeric(levels(access_data$monetary_cost)), nsmall = 2), 
+        " +", 
+        ""
+      )
+    )
+  )
+  
   # plot settings
   
   p <- ggplot(access_data) + 
-    geom_step(aes(travel_time, palma_ratio, group = monetary_cost, color = monetary_cost))
+    geom_step(
+      aes(
+        travel_time, 
+        palma_ratio, 
+        group = monetary_cost, 
+        color = monetary_cost
+      )
+    ) +
+    labs(
+      x     = text_labels$across_time_palma$x_axis, 
+      y     = text_labels$across_time_palma$y_axis,
+      color = text_labels$across_time_palma$legend_title
+    ) +
+    theme_thesis("graphic")
   
-  ggsave(paste0(analysis_folder, "/palma_across_times_", bu, ".png"),
-         plot = p,
-         width = 7,
-         height = 3,
-         units = "in")
+  ggsave(
+    paste0(analysis_folder, "/palma_across_times_", bu, ".png"),
+    plot = p,
+    width = 7,
+    height = 3,
+    units = "in"
+  )
   
 }
 
@@ -822,7 +888,15 @@ across_cost_theil <- function(access_data, text_labels, analysis_folder, bu, tt)
   # plot settings
   
   p <- ggplot(access_data) + 
-    geom_step(aes(monetary_cost, theil_index, group = travel_time, color = travel_time))
+    geom_step(
+      aes(monetary_cost, theil_index, group = travel_time, color = travel_time)
+    ) +
+    labs(
+      x     = text_labels$across_cost_theil$x_axis, 
+      y     = text_labels$across_cost_theil$y_axis,
+      color = text_labels$across_cost_theil$legend_title
+    ) +
+    theme_thesis("graphic")
   
   ggsave(
     paste0(analysis_folder, "/theil_across_costs_", bu, ".png"),
@@ -852,10 +926,36 @@ across_time_theil <- function(access_data, text_labels, analysis_folder, bu, mc)
   
   access_data[, monetary_cost := as.factor(monetary_cost)]
   
+  levels(access_data$monetary_cost) <- ifelse(
+    levels(access_data$monetary_cost) == "1000",
+    "Sem restrição",
+    paste0(
+      "R$ ", 
+      stringr::str_replace(
+        format(as.numeric(levels(access_data$monetary_cost)), nsmall = 2), 
+        " +", 
+        ""
+      )
+    )
+  )
+  
   # plot settings
   
   p <- ggplot(access_data) + 
-    geom_step(aes(travel_time, theil_index, group = monetary_cost, color = monetary_cost))
+    geom_step(
+      aes(
+        travel_time, 
+        theil_index, 
+        group = monetary_cost, 
+        color = monetary_cost
+      )
+    ) +
+    labs(
+      x     = text_labels$across_time_theil$x_axis, 
+      y     = text_labels$across_time_theil$y_axis,
+      color = text_labels$across_time_theil$legend_title
+    ) +
+    theme_thesis("graphic")
   
   ggsave(
     paste0(analysis_folder, "/theil_across_times_", bu, ".png"),
@@ -899,6 +999,12 @@ across_cost_comps <- function(access_data, text_labels, analysis_folder, bu, tt)
   
   access_data[, travel_time := as.factor(travel_time)]
   
+  # cast components to factor to change labels
+  
+  access_data[, component := as.factor(component)]
+  
+  levels(access_data$component) <- text_labels$across_cost_comps$components
+  
   # plot settings
   
   p <- ggplot(access_data) + 
@@ -910,7 +1016,14 @@ across_cost_comps <- function(access_data, text_labels, analysis_folder, bu, tt)
         color = travel_time,
         linetype = component
       )
-    )
+    ) +
+    labs(
+      x        = text_labels$across_cost_comps$x_axis, 
+      y        = text_labels$across_cost_comps$y_axis,
+      color    = text_labels$across_cost_comps$color_title,
+      linetype = text_labels$across_cost_comps$lntp_title
+    ) +
+    theme_thesis("graphic")
   
   ggsave(
     paste0(analysis_folder, "/comps_across_costs_", bu, ".png"),
@@ -956,6 +1069,25 @@ across_time_comps <- function(access_data, text_labels, analysis_folder, bu, mc)
   
   access_data[, monetary_cost := as.factor(monetary_cost)]
   
+  levels(access_data$monetary_cost) <- ifelse(
+    levels(access_data$monetary_cost) == "1000",
+    "Sem restrição",
+    paste0(
+      "R$ ", 
+      stringr::str_replace(
+        format(as.numeric(levels(access_data$monetary_cost)), nsmall = 2), 
+        " +", 
+        ""
+      )
+    )
+  )
+  
+  # cast components to factor to change labels
+  
+  access_data[, component := as.factor(component)]
+  
+  levels(access_data$component) <- text_labels$across_cost_comps$components
+  
   # plot settings
   
   p <- ggplot(access_data) + 
@@ -967,13 +1099,20 @@ across_time_comps <- function(access_data, text_labels, analysis_folder, bu, mc)
         color = monetary_cost,
         linetype = component
       )
-    )
+    ) +
+    labs(
+      x        = text_labels$across_time_comps$x_axis, 
+      y        = text_labels$across_time_comps$y_axis,
+      color    = text_labels$across_time_comps$color_title,
+      linetype = text_labels$across_time_comps$lntp_title
+    ) +
+    theme_thesis("graphic")
   
   ggsave(
     paste0(analysis_folder, "/comps_across_times_", bu, ".png"),
     plot = p,
     width = 7,
-    height = 3,
+    height = 4,
     units = "in"
   )
   
