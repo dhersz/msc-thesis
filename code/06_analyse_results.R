@@ -102,11 +102,11 @@ analyse_results <- function(grid_name = "grid_with_data",
                                         (travel_time == tt) & 
                                         (monetary_cost %in% mcosts)]
     
-    # distribution_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
-    # reduction_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
-    # reduction_hist(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
-    # distribution_boxplot(copy(filtered_data), tt, mcosts, text_labels, analysis_folder, n_quantiles)
-    # distribution_theil(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    distribution_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    reduction_map(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    reduction_hist(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
+    distribution_boxplot(copy(filtered_data), tt, mcosts, text_labels, analysis_folder, n_quantiles)
+    distribution_theil(copy(filtered_data), tt, mcosts, text_labels, analysis_folder)
     # average_access_different_costs(grid_data, travel_time[i], percentage_minimum_wage, n_quantiles, text_labels, res)
     
   })
@@ -117,11 +117,11 @@ analyse_results <- function(grid_name = "grid_with_data",
   
   analysis_folder <- paste0(router_folder, "/analysis/", lang)
   
-  # across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
-  # across_cost_theil(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
-  # across_cost_comps(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
-  # across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
-  # across_time_theil(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
+  across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
+  across_cost_theil(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
+  across_cost_comps(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
+  across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
+  across_time_theil(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
   across_time_comps(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
   
   

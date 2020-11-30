@@ -2,7 +2,12 @@
 .Rproj.user
 /data/itineraries_details*
 /data/rio_h3*
-/data/rio_*/
+/data/rio_fixed_*/
+/data/rio_no_inter_res_6/
+/data/rio_no_inter_res_8/accessibility/
+/data/rio_no_inter_res_8/itineraries/
+/data/rio_old/
+/data/rio_res_*/
 /data/temp
 /data/temp_itineraries_list.rds
 /img
