@@ -1,6 +1,5 @@
 library(dplyr)
 library(sf)
-library(tmap)
 library(ggplot2)
 library(data.table)
 
