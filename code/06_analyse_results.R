@@ -159,11 +159,9 @@ theme_thesis <- function(style = c("map", "graphic")) {
       strip.text.y = element_text(size = 13),
       strip.background = element_rect(fill = NA),
       panel.background = element_rect(fill = "#aadaff"),
-      
       legend.position = "bottom", 
       legend.box.just = "right",
       legend.box.spacing = unit(0 ,"points"),
-      
       plot.margin = margin(b = 0)
     )
     
