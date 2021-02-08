@@ -78,9 +78,16 @@ analyse_results <- function(grid_name = "grid_with_data",
                           geometry = i.geometry)]
   
   ttimes <- c(30, 60, 90, 120)
-  mcosts <- c(1000, 12.8, 9.05, 5, 4.7, 4.05, 0)
+  mcosts <- c(0, 4.05, 4.7, 5, 7.1, 8.75, 1000)
   
-  text_labels <- text_labels_generator(mcosts, lang)
+  text_labels <- text_labels_generator(mcosts, ttimes, lang)
+  
+  # figures dimensions and resolution
+  
+  dpi <- 600
+  min_width <- 7
+  max_width <- 13 
+  dim_unit <- "cm"
   
   
   # * different costs analysis ----------------------------------------------
@@ -116,18 +123,16 @@ analyse_results <- function(grid_name = "grid_with_data",
   
   analysis_folder <- paste0(router_folder, "/analysis/", lang)
   
-  ttimes <- c(30, 60, 90, 120)
-  
-  across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
+  across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes, max_width, dpi, dim_unit)
   # across_cost_theil(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
   # across_cost_comps(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
   
-  mcosts <- c(1000, 8.75, 7.1, 5, 4.7, 4.05, 0)
-  
-  # across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
+  across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts, max_width, dpi, dim_unit)
   # across_time_theil(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
   # across_time_comps(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
   
+  all_thresholds_maps(copy(accessibility_data), ttimes, mcosts, bu = "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
+
   
   # * efects of bilhete unico analysis --------------------------------------
 
@@ -160,13 +165,14 @@ theme_thesis <- function(style = c("map", "graphic")) {
       axis.text = element_blank(),
       axis.ticks = element_blank(), 
       panel.grid = element_blank(),
-      strip.text.x = element_text(size = 13), 
-      strip.text.y = element_text(size = 13),
+      strip.text.x = element_text(size = 11), 
+      strip.text.y = element_text(size = 11),
       strip.background = element_rect(fill = NA),
       panel.background = element_rect(fill = "#aadaff"),
       legend.position = "bottom", 
       legend.box.just = "right",
       legend.box.spacing = unit(0 ,"points"),
+      legend.title = element_text(size = 10, hjust = 1),
       plot.margin = margin(b = 0)
     )
     
@@ -177,8 +183,9 @@ theme_thesis <- function(style = c("map", "graphic")) {
       strip.background.x = element_rect(fill = NA),
       axis.title.x = element_text(size = 12),
       axis.title.y = element_text(size = 12),
-      axis.text.x = element_text(size = 11),
-      axis.text.y = element_text(size = 11),
+      axis.text.x = element_text(size = 10),
+      axis.text.y = element_text(size = 10),
+      legend.title = element_text(size = 10),
       panel.grid.minor = element_blank(),
       panel.background = element_rect(fill = "gray94")
     )
@@ -191,12 +198,13 @@ theme_thesis <- function(style = c("map", "graphic")) {
 # different monetary cost thresholds --------------------------------------
 
 
-text_labels_generator <- function(mcosts, lang) {
+text_labels_generator <- function(mcosts, ttimes, lang) {
   
   # create the text labels used in the maps and graphics according to the specified language
   
   mcosts <- format(mcosts, nsmall = 2)
   mcosts <- stringr::str_replace(mcosts, " +", "")
+  mcosts <- paste0("R$ ", mcosts)
   
   if (lang == "pt") {
     
@@ -238,6 +246,7 @@ text_labels_generator <- function(mcosts, lang) {
       ),
       "across_time_palma" = list(
         "legend_title" = "Custo\nmonetário",
+        "legend_values" = ifelse(mcosts == "R$ 1000.00", "Sem lim. de custo", mcosts),
         "y_axis" = "Razão de Palma",
         "x_axis" = "Tempo de viagem (min.)"
       ),
@@ -264,13 +273,176 @@ text_labels_generator <- function(mcosts, lang) {
         "y_axis" = "Índice de Theil",
         "x_axis" = "Tempo de viagem (min.)",
         "components" = list(Entregrupos = "between", Intragrupos = "within")
+      ),
+      "all_thresholds_maps" = list(
+        "legend_title" = "Empregos acessíveis\n(% do total)",
+        "times_facet_titles" = paste0(ttimes, " min."),
+        "costs_facet_titles" = ifelse(mcosts == "R$ 1000.00", "Sem lim.\nde custo", mcosts)
       )
     )
     
+  } else if (lang == "en") {
+    
+    text_labels <- list(
+      "lang" = lang,
+      "distribution_map" = list(
+        "facets_title" = ifelse(mcosts != 1000, paste0("R$ ", format(mcosts, nsmall = 2)), "Não considerado"),
+        "legend_title" = "  Empregos acessíveis (% do total)"
+      ),
+      "reduction_map" = list(
+        "facets_title" = ifelse(mcosts != 1000, paste0("R$ ", format(mcosts, nsmall = 2)), "Não considerado"),
+        "percent_reduction_legend_title" = "Redução (% da acess.\nsem limite de dinheiro)",
+        "total_reduction_legend_title" = "Redução (% do total\nde empregos)",
+        "mode_legend_title" = "Modo",
+        "mode_options" = c("BRT", "Metrô e trem")
+      ),
+      "boxplot" = list(
+        "facets_title" = ifelse(mcosts != 1000, paste0("R$ ", format(mcosts, nsmall = 2)), "Não considerado"),
+        "palma_ratio" = "Razão de Palma: ",
+        "y_axis" = "Empregos acessíveis (% do total)",
+        "x_axis" = "Decil de renda"
+      ),
+      "theil" = list(
+        "bar_labels" = ifelse(mcosts != 1000, paste0("R$ ", format(mcosts, nsmall = 2)), "Não considerado"),
+        "y_axis" = "Índice de Theil",
+        "x_axis" = "Valor limite de custo",
+        "component" = "Componente",
+        "components_names" = c("Entregrupos", "Intragrupos")
+      ),
+      "average_access" = list(
+        "facets_title" = paste0("Custo ", ifelse(mcosts <= 100, paste0("<= ", mcosts, "% sal. mín."), "não consid.")),
+        "y_axis" = "Acessibilidade média\n(% do total de empregos)",
+        "x_axis" = "Decil de renda"
+      ),
+      "across_cost_palma" = list(
+        "legend_title" = "Travel time\nthreshold (min.)",
+        "y_axis" = "Palma Ratio",
+        "x_axis" = "Monetary cost threshold (R$)"
+      ),
+      "across_time_palma" = list(
+        "legend_title" = "Monetary cost\nthreshold",
+        "legend_values" = ifelse(mcosts == "R$ 1000.00", "No cost\nlimit", mcosts),
+        "y_axis" = "Palma Ratio",
+        "x_axis" = "Travel time threshold (min.)"
+      ),
+      "across_cost_theil" = list(
+        "legend_title" = "Tempo de\nviagem (min.)",
+        "y_axis" = "Índice de Theil",
+        "x_axis" = "Custo monetário (R$)"
+      ),
+      "across_time_theil" = list(
+        "legend_title" = "Custo\nmonetário",
+        "y_axis" = "Índice de Theil",
+        "x_axis" = "Tempo de viagem (min.)"
+      ),
+      "across_cost_comps" = list(
+        "color_title" = "Tempo de\nviagem (min.)",
+        "lntp_title" = "Componente",
+        "y_axis" = "Índice de Theil",
+        "x_axis" = "Custo monetário (R$)",
+        "components" = list(Entregrupos = "between", Intragrupos = "within")
+      ),
+      "across_time_comps" = list(
+        "color_title" = "Custo\nmonetário",
+        "lntp_title" = "Componente",
+        "y_axis" = "Índice de Theil",
+        "x_axis" = "Tempo de viagem (min.)",
+        "components" = list(Entregrupos = "between", Intragrupos = "within")
+      ),
+      "all_thresholds_maps" = list(
+        "legend_title" = "Accessible jobs\n(% of total jobs)",
+        "times_facet_titles" = paste0(ttimes, " min."),
+        "costs_facet_titles" = ifelse(mcosts == "R$ 1000.00", "No cost\nlimit", mcosts)
+      )
+    )
     
   }
   
   text_labels
+  
+}
+
+
+all_thresholds_maps <- function(access_data, 
+                                ttimes, 
+                                mcosts, 
+                                bu,
+                                max_width, 
+                                dpi, 
+                                dim_unit, 
+                                text_labels, 
+                                analysis_folder) {
+  
+  # filter access_data and convert it to sf
+  
+  access_data <- access_data[
+    (bilhete_unico == bu) & (travel_time %in% ttimes) & (monetary_cost %in% mcosts)
+  ]
+  
+  # convert monetary_cost and travel_time columns to facets
+  
+  access_data[
+    , 
+    `:=`(
+      monetary_cost = factor(
+        monetary_cost, 
+        levels = mcosts, 
+        labels = text_labels$all_thresholds_maps$costs_facet_titles
+      ),
+      travel_time = factor(
+        travel_time, 
+        levels = ttimes, 
+        labels = text_labels$all_thresholds_maps$times_facet_titles
+      )
+    )
+  ]
+  
+  # convert access_data to sf
+  
+  access_data <- st_as_sf(access_data[opportunities > 0 & population > 0])
+  
+  # read rio state and municipality shapes
+  
+  rj_state   <- readr::read_rds("./data/rj_state.rds")
+  rio_border <- readr::read_rds("./data/rio_municipality.rds")
+
+  # set facets' bounding box
+  
+  xlim <- c(st_bbox(rio_border)[1], st_bbox(rio_border)[3])
+  ylim <- c(st_bbox(rio_border)[2], st_bbox(rio_border)[4])
+  
+  # calculate max accessibility and total opportunities for a pretty legend
+  
+  max_accessibility   <- max(access_data$accessibility)
+  total_opportunities <- sum(access_data$opportunities) / (length(mcosts) * length(ttimes))
+  
+  # plot settings
+  
+  p <- ggplot() +
+    geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
+    geom_sf(data = access_data, aes(fill = accessibility), color = NA) +
+    geom_sf(data = rio_border, color = "black", fill = NA, size = 0.3) +
+    facet_grid(monetary_cost ~ travel_time, switch = "y") +
+    coord_sf(xlim = xlim, ylim = ylim) +
+    scale_fill_viridis_c(
+      name = text_labels$all_thresholds_maps$legend_title,
+      option = "inferno",
+      breaks = seq(0, max_accessibility, max_accessibility / 3),
+      labels = scales::label_percent(scale = 100 / total_opportunities)
+    ) +
+    guides(fill = guide_colorbar(title.vjust = 0.75)) +
+    theme_thesis("map")
+  
+  # save plot
+  
+  ggsave(
+    paste0(analysis_folder, "/accessibility_distribution_", bu, ".png"),
+    plot   = p,
+    width  = max_width,
+    height = max_width * 1.1,
+    units  = dim_unit,
+    dpi    = dpi
+  )
   
 }
 
@@ -768,7 +940,14 @@ average_access_different_costs <- function(grid_data, travel_time, percentage_mi
 
 
 
-across_cost_palma <- function(access_data, text_labels, analysis_folder, bu, tt) {
+across_cost_palma <- function(access_data, 
+                              text_labels, 
+                              analysis_folder, 
+                              bu, 
+                              tt,
+                              max_width, 
+                              dpi, 
+                              dim_unit) {
   
   # drop large unnecessary columns and filter data
   
@@ -800,17 +979,25 @@ across_cost_palma <- function(access_data, text_labels, analysis_folder, bu, tt)
   
   ggsave(
     paste0(analysis_folder, "/palma_across_costs_", bu, ".png"),
-    plot = p,
-    width = 7,
-    height = 3,
-    units = "in"
+    plot   = p,
+    width  = max_width,
+    height = max_width * 0.5,
+    units  = dim_unit,
+    dpi    = dpi
   )
   
 }
 
 
 
-across_time_palma <- function(access_data, text_labels, analysis_folder, bu, mc) {
+across_time_palma <- function(access_data, 
+                              text_labels, 
+                              analysis_folder, 
+                              bu, 
+                              mc,
+                              max_width, 
+                              dpi, 
+                              dim_unit) {
   
   # drop large unnecessary columns and filter data
   
@@ -827,18 +1014,7 @@ across_time_palma <- function(access_data, text_labels, analysis_folder, bu, mc)
   
   access_data[, monetary_cost := as.factor(monetary_cost)]
   
-  levels(access_data$monetary_cost) <- ifelse(
-    levels(access_data$monetary_cost) == "1000",
-    "Sem restrição",
-    paste0(
-      "R$ ", 
-      stringr::str_replace(
-        format(as.numeric(levels(access_data$monetary_cost)), nsmall = 2), 
-        " +", 
-        ""
-      )
-    )
-  )
+  levels(access_data$monetary_cost) <- text_labels$across_time_palma$legend_values
   
   # plot settings
   
@@ -860,10 +1036,11 @@ across_time_palma <- function(access_data, text_labels, analysis_folder, bu, mc)
   
   ggsave(
     paste0(analysis_folder, "/palma_across_times_", bu, ".png"),
-    plot = p,
-    width = 7,
-    height = 3,
-    units = "in"
+    plot   = p,
+    width  = max_width,
+    height = max_width * 0.5,
+    units  = dim_unit,
+    dpi    = dpi
   )
   
 }

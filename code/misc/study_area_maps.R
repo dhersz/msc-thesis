@@ -6,7 +6,8 @@ source("./code/06_analyse_results.R")
 
 generate_maps <- function(grid_name = "grid_with_data_aop", 
                           router = "rio_no_inter", 
-                          res = 8) {
+                          res = 8,
+                          which = c("both", "pop_job", "transit")) {
   
   # * read and prepare data -------------------------------------------------
   
@@ -21,10 +22,6 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
       job_density = as.numeric((opportunities / 1000) / units::set_units(st_area(geometry), "km^2")),
       avg_income  = (total_income / population) / 1000
     )
-  
-  #return(grid_data)
-  
-  rapid_transit_stations <- extract_rapid_transit(router)
 
   # * maps ------------------------------------------------------------------
   
@@ -133,179 +130,230 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
   
   # * * pop and jobs spatial dist -------------------------------------------
 
-  # population
-
-  pp <- ggplot() +
-    geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
-    geom_sf(data = trimmed_grid_data, aes(fill = pop_density), color = NA) +
-    geom_sf(data = rio_border, fill = NA, color = "gray60", size = 0.3) +
-    scale_fill_gradient(
-      name = "Population\n(1000/km²)",
-      low = "#efeeec",
-      high = "firebrick3"
-    ) +
-    coord_sf(xlim = xlim, ylim = ylim) +
-    north_maps +
-    theme() +
-    guides_maps +
-    theme_maps
-
-  # average income
-
-  pi <- ggplot() +
-    geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
-    geom_sf(data = trimmed_grid_data, aes(fill = avg_income), color = NA) +
-    geom_sf(data = rio_border, fill = NA, color = "gray60", size = 0.3) +
-    scale_fill_gradient(
-      name = "Income per cap.\n(1000 R$)",
-      low = "#efeeec",
-      high = "firebrick3",
-      na.value = "#efeeec"
-    ) +
-    coord_sf(xlim = xlim, ylim = ylim) +
-    theme() +
-    guides_maps +
-    theme_maps
-
-  # jobs
-
-  pj <- ggplot() +
-    geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
-    geom_sf(data = trimmed_grid_data, aes(fill = job_density), color = NA) +
-    geom_sf(data = rio_border, fill = NA, color = "gray60", size = 0.3) +
-    scale_fill_gradient(
-      name = "Jobs\n(1000/km²)",
-      low = "#efeeec",
-      high = "firebrick3"
-    ) +
-    coord_sf(xlim = xlim, ylim = ylim) +
-    scalebar_maps +
-    theme() +
-    guides_maps +
-    theme_maps
-
-  # joined together
-
-  pf <- cowplot::plot_grid(pp, pi, pj, ncol = 1)
-
-  # save final result
-
-  filename <- paste0(study_area_folder, "/pop_avginc_job.tiff")
-
-  ggsave(
-    filename,
-    plot = pf,
-    device = "tiff",
-    width = max_width,
-    height = 22.2,
-    units = dim_unit,
-    dpi = dpi
-  )
+  if (which[1] == "both" | which[1] == "pop_job") {
+  
+    # population
+  
+    pp <- ggplot() +
+      geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
+      geom_sf(data = trimmed_grid_data, aes(fill = pop_density), color = NA) +
+      geom_sf(data = rio_border, fill = NA, color = "gray60", size = 0.3) +
+      scale_fill_gradient(
+        name = "Population density\n(1000/km²)",
+        low = "#efeeec",
+        high = "firebrick3"
+      ) +
+      coord_sf(xlim = xlim, ylim = ylim) +
+      north_maps +
+      scalebar_maps +
+      theme() +
+      guides_maps +
+      theme_maps
+  
+    # average income
+  
+    pi <- ggplot() +
+      geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
+      geom_sf(data = trimmed_grid_data, aes(fill = avg_income), color = NA) +
+      geom_sf(data = rio_border, fill = NA, color = "gray60", size = 0.3) +
+      scale_fill_gradient(
+        name = "Income per cap.\n(1000 R$)",
+        low = "#efeeec",
+        high = "firebrick3",
+        na.value = "#efeeec"
+      ) +
+      coord_sf(xlim = xlim, ylim = ylim) +
+      theme() +
+      guides_maps +
+      theme_maps
+  
+    # jobs
+  
+    pj <- ggplot() +
+      geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
+      geom_sf(data = trimmed_grid_data, aes(fill = job_density), color = NA) +
+      geom_sf(data = rio_border, fill = NA, color = "gray60", size = 0.3) +
+      scale_fill_gradient(
+        name = "Job density\n(1000/km²)",
+        low = "#efeeec",
+        high = "firebrick3"
+      ) +
+      coord_sf(xlim = xlim, ylim = ylim) +
+      theme() +
+      guides_maps +
+      theme_maps
+  
+    # add labels
+    
+    pp <- cowplot::ggdraw(pp) + cowplot::draw_plot_label("A", fontface = "bold")
+    
+    pi <- cowplot::ggdraw(pi) + cowplot::draw_plot_label("B", fontface = "bold")
+    
+    pj <- cowplot::ggdraw(pj) + cowplot::draw_plot_label("C", fontface = "bold")
+    
+    # joined together
+  
+    pf <- cowplot::plot_grid(pp, pi, pj, ncol = 1)
+  
+    # save final result
+  
+    filename <- paste0(study_area_folder, "/pop_avginc_job.tiff")
+  
+    ggsave(
+      filename,
+      plot = pf,
+      device = "tiff",
+      width = max_width,
+      height = 22.2,
+      units = dim_unit,
+      dpi = dpi
+    )
+    
+  }
 
   # * * transit distribution ------------------------------------------------
 
-  gtfs_fet_path <- paste0("./otp/graphs/", router, "/gtfs_fetranspor_fsub_ninter_nfresc_nout.zip")
-  gtfs_sup_path <- paste0("./otp/graphs/", router, "/gtfs_supervia.zip")
+  if (which[1] == "both" | which[1] == "transit") {
   
-  gtfs_fet <- gtfstools::read_gtfs(gtfs_fet_path, c("trips", "shapes", "routes"))
-  gtfs_sup <- gtfstools::read_gtfs(gtfs_sup_path, c("trips", "shapes", "routes"))
+    gtfs_fet_path <- paste0("./otp/graphs/", router, "/gtfs_fetranspor_fsub_ninter_nfresc_nout.zip")
+    gtfs_sup_path <- paste0("./otp/graphs/", router, "/gtfs_supervia.zip")
   
-  # subway shapes - pavuna and uruguai
+    gtfs_fet <- gtfstools::read_gtfs(gtfs_fet_path, c("trips", "shapes", "routes"))
+    gtfs_sup <- gtfstools::read_gtfs(gtfs_sup_path, c("trips", "shapes", "routes"))
   
-  subway_trips  <- c("1202_1188_I_1", "15353_16478_I_alt")
-  subway_shapes <- gtfstools::get_trip_geometry(
-    gtfs_fet, 
-    trip_id = subway_trips, 
-    file = "shapes", 
-    crs = st_crs(rio_border)
-  )
-  subway_shapes$mode <- "subway"
+    # subway shapes - pavuna and uruguai
   
-  # rail shapes
+    subway_trips  <- c("1202_1188_I_1", "15353_16478_I_alt")
+    subway_shapes <- gtfstools::get_trip_geometry(
+      gtfs_fet,
+      trip_id = subway_trips,
+      file = "shapes",
+      crs = st_crs(rio_border)
+    )
+    subway_shapes$mode <- "subway"
   
-  rail_routes <- gtfs_sup$routes[route_type == 2]$route_id
-  rail_trips  <- gtfs_sup$trips[route_id %chin% rail_routes & direction_id == 0]
-  rail_trips  <- rail_trips[rail_trips[, .I[1], keyby = .(trip_headsign)]$V1]
-  rail_trips  <- rail_trips[! trip_headsign %chin% c("Campo Grande", "Gramacho")]$trip_id
-  rail_shapes <- gtfstools::get_trip_geometry(
-    gtfs_sup, 
-    trip_id = rail_trips, 
-    file = "shapes", 
-    crs = st_crs(rio_border)
-  )
-  rail_shapes$mode <- "rail"
+    # rail shapes
   
-  # brt shapes
+    rail_routes <- gtfs_sup$routes[route_type == 2]$route_id
+    rail_trips  <- gtfs_sup$trips[route_id %chin% rail_routes & direction_id == 0]
+    rail_trips  <- rail_trips[rail_trips[, .I[1], keyby = .(trip_headsign)]$V1]
+    rail_trips  <- rail_trips[! trip_headsign %chin% c("Campo Grande", "Gramacho")]$trip_id
+    rail_shapes <- gtfstools::get_trip_geometry(
+      gtfs_sup,
+      trip_id = rail_trips,
+      file = "shapes",
+      crs = st_crs(rio_border)
+    )
+    rail_shapes$mode <- "rail"
   
-  brt_routes <- gtfs_fet$routes[grepl("BRT", route_short_name)]$route_id
-  brt_trips  <- gtfs_fet$trips[route_id %chin% brt_routes & direction_id == 1]
-  brt_trips  <- brt_trips[brt_trips[, .I[1], keyby = .(route_id)]$V1]$trip_id
-  brt_shapes <- gtfstools::get_trip_geometry(
-    gtfs_fet, 
-    trip_id = brt_trips, 
-    file = "shapes", 
-    crs = st_crs(rio_border)
-  )
-  brt_shapes$mode <- "brt"
+    # brt shapes
   
-  # municipal buses shapes
+    brt_routes <- gtfs_fet$routes[grepl("BRT", route_short_name)]$route_id
+    brt_trips  <- gtfs_fet$trips[route_id %chin% brt_routes & direction_id == 1]
+    brt_trips  <- brt_trips[brt_trips[, .I[1], keyby = .(route_id)]$V1]$trip_id
+    brt_shapes <- gtfstools::get_trip_geometry(
+      gtfs_fet,
+      trip_id = brt_trips,
+      file = "shapes",
+      crs = st_crs(rio_border)
+    )
+    brt_shapes$mode <- "brt"
   
-  bus_routes <- gtfs_fet$routes[route_type == 3 & !grepl("BRT", route_short_name)]$route_id
-  bus_trips  <- gtfs_fet$trips[route_id %chin% bus_routes & direction_id == 1]
-  bus_trips  <- bus_trips[bus_trips[, .I[1], keyby = .(route_id)]$V1]$trip_id
-  bus_shapes <- gtfstools::get_trip_geometry(
-    gtfs_fet, 
-    trip_id = bus_trips, 
-    file = "shapes", 
-    crs = st_crs(rio_border)
-  )
-  bus_shapes$mode <- "bus"
+    # municipal buses shapes
   
-  # bind shapes together
+    bus_routes <- gtfs_fet$routes[route_type == 3 & !grepl("BRT", route_short_name)]$route_id
+    bus_trips  <- gtfs_fet$trips[route_id %chin% bus_routes & direction_id == 1]
+    bus_trips  <- bus_trips[bus_trips[, .I[1], keyby = .(route_id)]$V1]$trip_id
+    bus_shapes <- gtfstools::get_trip_geometry(
+      gtfs_fet,
+      trip_id = bus_trips,
+      file = "shapes",
+      crs = st_crs(rio_border)
+    )
+    bus_shapes$mode <- "bus"
+    
+    # vlt shapes
+    
+    vlt_routes <- gtfs_fet$routes[grepl("VLT", route_short_name)]$route_id
+    vlt_trips  <- gtfs_fet$trips[route_id %chin% vlt_routes]$trip_id
+    vlt_shapes <- gtfstools::get_trip_geometry(
+      gtfs_fet,
+      trip_id = vlt_trips,
+      file = "shapes",
+      crs = st_crs(rio_border)
+    )
+    vlt_shapes$mode <- "vlt"
+    
+    # ferry shapes
+    
+    ferry_routes <- gtfs_fet$routes[route_type == 4]$route_id
+    ferry_trips  <- gtfs_fet$trips[route_id %chin% ferry_routes & direction_id == 1]$trip_id
+    ferry_shapes <- gtfstools::get_trip_geometry(
+      gtfs_fet,
+      trip_id = ferry_trips,
+      file = "shapes",
+      crs = st_crs(rio_border)
+    )
+    ferry_shapes$mode <- "ferry"
   
-  transit_shapes <- rbind(bus_shapes, brt_shapes, rail_shapes, subway_shapes)
-  transit_shapes$mode <- factor(
-    transit_shapes$mode,
-    labels = c("BRT", "Bus", "Rail", "Subway")
-  )
+    # bind shapes together
   
-  # plot settings
+    transit_shapes <- rbind(
+      ferry_shapes, 
+      vlt_shapes, 
+      bus_shapes, 
+      brt_shapes, 
+      rail_shapes, 
+      subway_shapes
+    )
+    transit_shapes$mode <- factor(
+      transit_shapes$mode,
+      labels = c("BRT", "Bus", "Ferry", "Rail", "Subway", "VLT")
+    )
   
-  pt <- ggplot() + 
-    geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
-    geom_sf(data = transit_shapes, aes(linetype = mode, color = mode, size = mode)) +
-    geom_sf(
-      data = subset(transit_shapes, mode != "Bus"), 
-      aes(linetype = mode, color = mode, size = mode)
-    ) +
-    geom_sf(data = rio_border, fill = NA, color = "gray60", size = 0.3) +
-    scale_linetype_manual(
-      name = "Mode",
-      values = c("solid", "solid", "twodash", "dashed")
-    ) +
-    scale_color_manual(
-      name = "Mode", 
-      values = c("firebrick3", "gray85", "royalblue4", "seagreen4")
-    ) +
-    scale_size_manual(name = "Mode", values = c(0.5, 0.3, 0.5, 0.5)) +
-    coord_sf(xlim = xlim, ylim = ylim) +
-    north_maps +
-    scalebar_maps +
-    guides_maps +
-    theme_maps
+    # plot settings
   
-  # save final result
-
-  filename <- paste0(study_area_folder, "/transit_dist.tiff")
-
-  ggsave(
-    filename,
-    plot = pt,
-    device = "tiff",
-    width = max_width,
-    height = 7.4,
-    units = dim_unit,
-    dpi = dpi
-  )
+    pt <- ggplot() +
+      geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
+      geom_sf(data = transit_shapes, aes(linetype = mode, color = mode, size = mode)) +
+      geom_sf(
+        data = subset(transit_shapes, (mode != "Bus" & mode != "VLT")),
+        aes(linetype = mode, color = mode, size = mode)
+      ) +
+      geom_sf(data = rio_border, fill = NA, color = "gray60", size = 0.3) +
+      scale_linetype_manual(
+        name = "Mode",
+        values = c("solid", "solid", "dotted", "twodash", "dashed", "solid")
+      ) +
+      scale_color_manual(
+        name = "Mode",
+        values = c("firebrick3", "gray85", "sienna3", "royalblue4", "seagreen4", "dodgerblue3")
+      ) +
+      scale_size_manual(name = "Mode", values = c(0.5, 0.3, 0.5, 0.5, 0.5, 0.5)) +
+      coord_sf(xlim = xlim, ylim = ylim) +
+      north_maps +
+      scalebar_maps +
+      guides_maps +
+      theme_maps +
+      theme(
+        legend.text = element_text(size = 9),
+        legend.margin = margin(r = 5.5, b = 5.5)
+      )
+  
+    # save final result
+    
+    filename <- paste0(study_area_folder, "/transit_dist.tiff")
+  
+    ggsave(
+      filename,
+      plot = pt,
+      device = "tiff",
+      width = max_width,
+      height = 7.4,
+      units = dim_unit,
+      dpi = dpi
+    )
+    
+  }
      
 }
