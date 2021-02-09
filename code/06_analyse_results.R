@@ -2,6 +2,7 @@ library(dplyr)
 library(sf)
 library(ggplot2)
 library(data.table)
+library(ggtext)
 
 analyse_results <- function(grid_name = "grid_with_data",
                             router = "rio",
@@ -157,7 +158,6 @@ analyse_results <- function(grid_name = "grid_with_data",
 
 theme_thesis <- function(style = c("map", "graphic")) {
   
-  
   if (style == "map") {
     
     theme(
@@ -165,8 +165,8 @@ theme_thesis <- function(style = c("map", "graphic")) {
       axis.text = element_blank(),
       axis.ticks = element_blank(), 
       panel.grid = element_blank(),
-      strip.text.x = element_text(size = 11), 
-      strip.text.y = element_text(size = 11),
+      strip.text.x = element_markdown(size = 11), 
+      strip.text.y.left = element_markdown(size = 10),
       strip.background = element_rect(fill = NA),
       panel.background = element_rect(fill = "#aadaff"),
       legend.position = "bottom", 
@@ -183,9 +183,10 @@ theme_thesis <- function(style = c("map", "graphic")) {
       strip.background.x = element_rect(fill = NA),
       axis.title.x = element_text(size = 12),
       axis.title.y = element_text(size = 12),
-      axis.text.x = element_text(size = 10),
+      axis.text.x = element_markdown(size = 10),
       axis.text.y = element_text(size = 10),
       legend.title = element_text(size = 10),
+      legend.text = element_markdown(size = 10),
       panel.grid.minor = element_blank(),
       panel.background = element_rect(fill = "gray94")
     )
@@ -277,7 +278,10 @@ text_labels_generator <- function(mcosts, ttimes, lang) {
       "all_thresholds_maps" = list(
         "legend_title" = "Empregos acessíveis\n(% do total)",
         "times_facet_titles" = paste0(ttimes, " min."),
-        "costs_facet_titles" = ifelse(mcosts == "R$ 1000.00", "Sem lim.\nde custo", mcosts)
+        "costs_facet_titles" = c(
+          paste0("R$ 0.00\n", "<img src='./data/icons/walking.png' width='20' />"),
+          mcosts[2:7]
+        )
       )
     )
     
@@ -320,8 +324,16 @@ text_labels_generator <- function(mcosts, ttimes, lang) {
         "x_axis" = "Monetary cost threshold (R$)"
       ),
       "across_time_palma" = list(
-        "legend_title" = "Monetary cost\nthreshold",
-        "legend_values" = ifelse(mcosts == "R$ 1000.00", "No cost\nlimit", mcosts),
+        "legend_title" = "Monetary cost\nthreshold (R$)",
+        "legend_values" = c(
+          paste0("0.00 ", "<img src='data/icons/walking.png' width='10'>"),
+          paste0("4.05 ","<img src='data/icons/bus.png' width='10'>+<img src='data/icons/brt.png' width='10'>"),
+          paste0("4.70 ","<img src='data/icons/train.png' width='10'>"),
+          paste0("5.00 ","<img src='data/icons/subway.png' width='10'>"),
+          paste0("7.10 ","<img src='data/icons/brt.png' width='10'>+<img src='data/icons/subway.png' width='10'>"),
+          paste0("8.75 ","(<img src='data/icons/bus.png' width='8'>+<img src='data/icons/brt.png' width='8'>)+<img src='data/icons/train.png' width='8'>"),
+          "No cost limit"
+        ),
         "y_axis" = "Palma Ratio",
         "x_axis" = "Travel time threshold (min.)"
       ),
@@ -350,9 +362,17 @@ text_labels_generator <- function(mcosts, ttimes, lang) {
         "components" = list(Entregrupos = "between", Intragrupos = "within")
       ),
       "all_thresholds_maps" = list(
-        "legend_title" = "Accessible jobs\n(% of total jobs)",
+        "legend_title" = "Empregos acessíveis\n(% do total)",
         "times_facet_titles" = paste0(ttimes, " min."),
-        "costs_facet_titles" = ifelse(mcosts == "R$ 1000.00", "No cost\nlimit", mcosts)
+        "costs_facet_titles" = c(
+          paste0("<img src='data/icons/walking.png' width='10'>", "<br>R$ 0.00"),
+          paste0("<img src='data/icons/bus.png' width='10'>+<img src='data/icons/brt.png' width='10'>", "<br>R$ 4.05"),
+          paste0("<img src='data/icons/train.png' width='10'>", "<br>R$ 4.70"),
+          paste0("<img src='data/icons/subway.png' width='10'>", "<br>R$ 5.00"),
+          paste0("<img src='data/icons/brt.png' width='10'>+<img src='data/icons/subway.png' width='10'>", "<br>R$ 7.10"),
+          paste0("(<img src='data/icons/bus.png' width='8'>+<img src='data/icons/brt.png' width='8'>)+<img src='data/icons/train.png' width='8'>", "<br>R$ 8.75"),
+          "No cost<br>limit"
+        )
       )
     )
     
@@ -964,6 +984,20 @@ across_cost_palma <- function(access_data,
   
   access_data[, travel_time := as.factor(travel_time)]
   
+  # specify x axis breaks and labels
+  
+  breaks <- c(0, 4.05, 4.7, 5, 7.10, 8.75, 10, 15)
+  labels <- c(
+    "0", 
+    "<span style='font-size:8pt'>4.05</span>", 
+    "", 
+    "5", 
+    "<span style='font-size:8pt'>7.1</span>", 
+    "<span style='font-size:8pt'>8.75</span>", 
+    "10", 
+    "15"
+  )
+  
   # plot settings
   
   p <- ggplot(access_data) + 
@@ -974,6 +1008,10 @@ across_cost_palma <- function(access_data,
       x     = text_labels$across_cost_palma$x_axis, 
       y     = text_labels$across_cost_palma$y_axis,
       color = text_labels$across_cost_palma$legend_title
+    ) +
+    scale_x_continuous(
+      breaks = breaks,
+      labels = labels
     ) +
     theme_thesis("graphic")
   
@@ -1016,6 +1054,10 @@ across_time_palma <- function(access_data,
   
   levels(access_data$monetary_cost) <- text_labels$across_time_palma$legend_values
   
+  # specify x axis breaks
+  
+  breaks <- c(0, 30, 60, 90, 120)
+  
   # plot settings
   
   p <- ggplot(access_data) + 
@@ -1031,6 +1073,9 @@ across_time_palma <- function(access_data,
       x     = text_labels$across_time_palma$x_axis, 
       y     = text_labels$across_time_palma$y_axis,
       color = text_labels$across_time_palma$legend_title
+    ) +
+    scale_x_continuous(
+      breaks = breaks
     ) +
     theme_thesis("graphic")
   
