@@ -1,3 +1,12 @@
+$if(csl-refs)$
+\newlength{\cslhangindent}
+\setlength{\cslhangindent}{1.5em}
+\newenvironment{CSLReferences}%
+  {$if(csl-hanging-indent)$\setlength{\parindent}{0pt}%
+  \everypar{\setlength{\hangindent}{\cslhangindent}}\ignorespaces$endif$}%
+  {\par}
+$endif$
+
 $if(english)$
   \documentclass[english,$doc_type$,numbers]{coppe}
 $else$
@@ -76,12 +85,6 @@ $endif$
 
   $body$
 
-  \backmatter
-  \bibliographystyle{coppe-unsrt}
-  \bibliography{example}
-
-  %\appendix
-  %\chapter{Algumas Demonstra{\c c}\~oes}
 \end{document}
 %% 
 %%
