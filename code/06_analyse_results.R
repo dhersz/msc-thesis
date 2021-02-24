@@ -995,7 +995,7 @@ across_cost_palma <- function(access_data,
     "<span style='font-size:8pt'>7.1</span>", 
     "<span style='font-size:8pt'>8.75</span>", 
     "10", 
-    "15"
+    "No cost limit"
   )
   
   # plot settings
