@@ -1,11 +1,13 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020) (preloaded format=pdflatex 2021.2.24)  24 FEB 2021 13:00
+This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020) (preloaded format=pdflatex 2021.2.24)  24 FEB 2021 18:54
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
 **thesis.tex
 (./thesis.tex
 LaTeX2e <2020-10-01> patch level 4
-L3 programming layer <2021-02-18> (./coppe.cls
+L3 programming layer <2021-02-18>
+\cslhangindent=\skip47
+(./coppe.cls
 Document Class: coppe 2020/03/02\ v3.0\ COPPE Dissertations and Thesis
 (/home/dhersz/.TinyTeX/texmf-dist/tex/latex/base/book.cls
 Document Class: book 2020/04/10 v1.4m Standard LaTeX document class
@@ -21,13 +23,13 @@ File: bk12.clo 2020/04/10 v1.4m Standard LaTeX file (size option)
 \c@subparagraph=\count185
 \c@figure=\count186
 \c@table=\count187
-\abovecaptionskip=\skip47
-\belowcaptionskip=\skip48
+\abovecaptionskip=\skip48
+\belowcaptionskip=\skip49
 \bibindent=\dimen138
 ) (/home/dhersz/.TinyTeX/texmf-dist/tex/latex/natbib/natbib.sty
 Package: natbib 2010/09/13 8.31b (PWD, AO)
-\bibhang=\skip49
-\bibsep=\skip50
+\bibhang=\skip50
+\bibsep=\skip51
 LaTeX Info: Redefining \cite on input line 694.
 \c@NAT@ctr=\count188
 ) (/home/dhersz/.TinyTeX/texmf-dist/tex/latex/hyphenat/hyphenat.sty
@@ -66,8 +68,8 @@ Package: array 2020/10/01 v2.5c Tabular extension package (FMi)
 \ar@mcellbox=\box47
 \extrarowheight=\dimen142
 \NC@list=\toks16
-\extratabsurround=\skip51
-\backup@length=\skip52
+\extratabsurround=\skip52
+\backup@length=\skip53
 \ar@cellbox=\box48
 )
 \TX@col@width=\dimen143
@@ -79,11 +81,11 @@ Package: array 2020/10/01 v2.5c Tabular extension package (FMi)
 \TX@ftn=\toks17
 ) (/home/dhersz/.TinyTeX/texmf-dist/tex/latex/eqparbox/eqparbox.sty
 Package: eqparbox 2017/09/03 v4.1 Create equal-widthed boxes
-\eqp@tempdima=\skip53
-\eqp@tempdimb=\skip54
+\eqp@tempdima=\skip54
+\eqp@tempdimb=\skip55
 \eqp@tabular@box=\box49
 \eqp@list@box=\box50
-\eqp@list@indent=\skip55
+\eqp@list@indent=\skip56
 (/home/dhersz/.TinyTeX/texmf-dist/tex/latex/environ/environ.sty
 Package: environ 2014/05/04 v0.3 A new way to define environments
 (/home/dhersz/.TinyTeX/texmf-dist/tex/latex/trimspaces/trimspaces.sty
@@ -146,10 +148,10 @@ Package babel Info: Making " an active character on input line 143.
 \@examiner=\count196
 \c@keywords=\count197
 \bibindent=\dimen157
-\recuolongquote=\skip56
+\recuolongquote=\skip57
 ) (/home/dhersz/.TinyTeX/texmf-dist/tex/latex/amsmath/amsmath.sty
 Package: amsmath 2020/09/23 v2.17i AMS math features
-\@mathmargin=\skip57
+\@mathmargin=\skip58
 For additional information on amsmath, use the `?' option.
 (/home/dhersz/.TinyTeX/texmf-dist/tex/latex/amsmath/amstext.sty
 Package: amstext 2000/06/29 v2.01 AMS text
@@ -195,8 +197,8 @@ LaTeX Font Info:    Redeclaring font encoding OMS on input line 744.
 \totwidth@=\dimen165
 \lineht@=\dimen166
 \@envbody=\toks23
-\multlinegap=\skip58
-\multlinetaggap=\skip59
+\multlinegap=\skip59
+\multlinetaggap=\skip60
 \mathdisplay@stack=\toks24
 LaTeX Info: Redefining \[ on input line 2923.
 LaTeX Info: Redefining \] on input line 2924.
@@ -315,13 +317,13 @@ Package: uniquecounter 2019/12/15 v1.4 Provide unlimited unique counter (HO)
 Package uniquecounter Info: New unique counter `rerunfilecheck' on input line 2
 86.
 )
-\Hy@SectionHShift=\skip60
+\Hy@SectionHShift=\skip61
 ) (/home/dhersz/.TinyTeX/texmf-dist/tex/latex/tools/longtable.sty
 Package: longtable 2020/01/07 v4.13 Multi-page Table package (DPC)
-\LTleft=\skip61
-\LTright=\skip62
-\LTpre=\skip63
-\LTpost=\skip64
+\LTleft=\skip62
+\LTright=\skip63
+\LTpre=\skip64
+\LTpost=\skip65
 \LTchunksize=\count286
 \LTcapwidth=\dimen171
 \LT@head=\box53
@@ -368,27 +370,27 @@ File: l3backend-pdftex.def 2021-02-18 L3 backend support: PDF output (pdfTeX)
 ) (./thesis.aux)
 \openout1 = `thesis.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 15.
-LaTeX Font Info:    ... okay on input line 15.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 15.
-LaTeX Font Info:    ... okay on input line 15.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 15.
-LaTeX Font Info:    ... okay on input line 15.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 15.
-LaTeX Font Info:    ... okay on input line 15.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 15.
-LaTeX Font Info:    ... okay on input line 15.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 15.
-LaTeX Font Info:    ... okay on input line 15.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 15.
-LaTeX Font Info:    ... okay on input line 15.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 15.
-LaTeX Font Info:    ... okay on input line 15.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 15.
-LaTeX Font Info:    ... okay on input line 15.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 20.
+LaTeX Font Info:    ... okay on input line 20.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 20.
+LaTeX Font Info:    ... okay on input line 20.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 20.
+LaTeX Font Info:    ... okay on input line 20.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 20.
+LaTeX Font Info:    ... okay on input line 20.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 20.
+LaTeX Font Info:    ... okay on input line 20.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 20.
+LaTeX Font Info:    ... okay on input line 20.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 20.
+LaTeX Font Info:    ... okay on input line 20.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 20.
+LaTeX Font Info:    ... okay on input line 20.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 20.
+LaTeX Font Info:    ... okay on input line 20.
 Package lastpage Info: Please have a look at the pageslts package at
 (lastpage)             https://www.ctan.org/pkg/pageslts
-(lastpage)             ! on input line 15.
+(lastpage)             ! on input line 20.
 (/home/dhersz/.TinyTeX/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
 Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
 Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
@@ -432,7 +434,7 @@ e
 * \@reversemarginfalse
 * (1in=72.27pt=25.4mm, 1cm=28.453pt)
 
-Package hyperref Info: Link coloring OFF on input line 15.
+Package hyperref Info: Link coloring OFF on input line 20.
 (/home/dhersz/.TinyTeX/texmf-dist/tex/latex/hyperref/nameref.sty
 Package: nameref 2021-04-02 v2.47 Cross-referencing by name of section
 (/home/dhersz/.TinyTeX/texmf-dist/tex/latex/refcount/refcount.sty
@@ -443,32 +445,32 @@ Package: gettitlestring 2019/12/15 v1.6 Cleanup title references (HO)
 )
 \c@section@level=\count296
 )
-LaTeX Info: Redefining \ref on input line 15.
-LaTeX Info: Redefining \pageref on input line 15.
-LaTeX Info: Redefining \nameref on input line 15.
+LaTeX Info: Redefining \ref on input line 20.
+LaTeX Info: Redefining \pageref on input line 20.
+LaTeX Info: Redefining \nameref on input line 20.
 (./thesis.out) (./thesis.out)
 \@outlinefile=\write5
 \openout5 = `thesis.out'.
 
-Package hyperref Info: Option `breaklinks' set `true' on input line 37.
-Package hyperref Info: Option `raiselinks' set `true' on input line 37.
-Package hyperref Info: Option `pageanchor' set `true' on input line 37.
+Package hyperref Info: Option `breaklinks' set `true' on input line 42.
+Package hyperref Info: Option `raiselinks' set `true' on input line 42.
+Package hyperref Info: Option `pageanchor' set `true' on input line 42.
 <coppe-logo.pdf, id=20, 177.463pt x 76.285pt>
 File: coppe-logo.pdf Graphic file (type pdf)
 <use coppe-logo.pdf>
-Package pdftex.def Info: coppe-logo.pdf  used on input line 37.
+Package pdftex.def Info: coppe-logo.pdf  used on input line 42.
 (pdftex.def)             Requested size: 177.46255pt x 76.2848pt.
 
-Underfull \hbox (badness 7777) in paragraph at lines 37--37
+Underfull \hbox (badness 7777) in paragraph at lines 42--42
 []\T1/cmr/m/n/12 Dissertação de Mestrado apresentada ao
  []
 
-LaTeX Font Info:    Trying to load font information for U+msa on input line 37.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 42.
 
 (/home/dhersz/.TinyTeX/texmf-dist/tex/latex/amsfonts/umsa.fd
 File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 37.
+LaTeX Font Info:    Trying to load font information for U+msb on input line 42.
 
 (/home/dhersz/.TinyTeX/texmf-dist/tex/latex/amsfonts/umsb.fd
 File: umsb.fd 2013/01/14 v3.01 AMS symbols B
@@ -477,12 +479,12 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 
 {/home/dhersz/.TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdftex.map} <./coppe-l
 ogo.pdf>]
-Underfull \hbox (badness 3907) in paragraph at lines 38--38
+Underfull \hbox (badness 3907) in paragraph at lines 43--43
 \T1/cmr/m/n/12 DISSERTAÇÃO SUB-ME-TIDA []AO CORPO DOCENTE DO INSTITUTO
  []
 
 
-Underfull \hbox (badness 3907) in paragraph at lines 38--38
+Underfull \hbox (badness 3907) in paragraph at lines 43--43
 \T1/cmr/m/n/12 ALBERTO LUIZ COIMBRA DE PÓS-GRADUAÇÃO E PESQUISA DE
  []
 
@@ -490,10 +492,10 @@ Underfull \hbox (badness 3907) in paragraph at lines 38--38
 
 ]
 
-LaTeX Warning: Reference `bib:begin' on page iii undefined on input line 38.
+LaTeX Warning: Reference `bib:begin' on page iii undefined on input line 43.
 
 
-LaTeX Warning: Reference `bib:end' on page iii undefined on input line 38.
+LaTeX Warning: Reference `bib:end' on page iii undefined on input line 43.
 
 [3
 
@@ -530,11 +532,21 @@ Cap\'{\i }tulo 1.
 [1
 
 
-]
+] [2]
 No file thesis.bbl.
+LaTeX Font Info:    Trying to load font information for T1+cmtt on input line 9
+0.
+(/home/dhersz/.TinyTeX/texmf-dist/tex/latex/base/t1cmtt.fd
+File: t1cmtt.fd 2019/12/16 v2.5j Standard LaTeX font definitions
+)
+Underfull \hbox (badness 1024) in paragraph at lines 95--97
+\T1/cmr/m/n/12 Ap-pro-a-ches.'' \T1/cmr/m/it/12 Trans-por-ta-tion \T1/cmr/m/n/1
+2 43 (3): 473--90. []$\T1/cmtt/m/n/12 https : / / doi . org / 10 . 1007 /
+ []
+
 
 AED: lastpage setting LastPage
-[2
+[3
 
 ] (./thesis.aux)
 
@@ -544,23 +556,24 @@ Package rerunfilecheck Info: File `thesis.out' has not changed.
 (rerunfilecheck)             Checksum: A656EABE72C86CD5DADA18E27C740670;453.
  ) 
 Here is how much of TeX's memory you used:
- 10999 strings out of 480951
- 156418 string characters out of 5906915
- 491388 words of memory out of 5000000
- 28006 multiletter control sequences out of 15000+600000
- 411845 words of font info for 50 fonts, out of 8000000 for 9000
+ 11030 strings out of 480951
+ 157222 string characters out of 5906915
+ 496393 words of memory out of 5000000
+ 28025 multiletter control sequences out of 15000+600000
+ 412158 words of font info for 51 fonts, out of 8000000 for 9000
  16 hyphenation exceptions out of 8191
- 83i,11n,88p,223b,364s stack positions out of 5000i,500n,10000p,200000b,80000s
- </home/dhersz/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx2488.600pk>
- </home/dhersz/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecti1200.600pk> <
-/home/dhersz/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1200.600pk> </h
-ome/dhersz/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1200.600pk></home
-/dhersz/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></home/dh
-ersz/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb>
-Output written on thesis.pdf (12 pages, 123242 bytes).
+ 83i,11n,88p,1352b,364s stack positions out of 5000i,500n,10000p,200000b,80000s
+ </home/dhersz/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ectt1200.600pk>
+ </home/dhersz/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx2488.600pk> <
+/home/dhersz/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecti1200.600pk> </h
+ome/dhersz/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1200.600pk> </hom
+e/dhersz/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1200.600pk></home/d
+hersz/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></home/dher
+sz/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb>
+Output written on thesis.pdf (13 pages, 148899 bytes).
 PDF statistics:
- 269 PDF objects out of 1000 (max. 8388607)
- 100 compressed objects within 1 object stream
- 21 named destinations out of 1000 (max. 500000)
+ 363 PDF objects out of 1000 (max. 8388607)
+ 131 compressed objects within 2 object streams
+ 29 named destinations out of 1000 (max. 500000)
  38 words of extra memory for PDF output out of 10000 (max. 10000000)
 
