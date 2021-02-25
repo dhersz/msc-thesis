@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020) (preloaded format=pdflatex 2021.2.24)  24 FEB 2021 18:54
+This is pdfTeX, Version 3.14159265-2.6-1.40.21 (TeX Live 2020) (preloaded format=pdflatex 2021.2.24)  25 FEB 2021 19:25
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -455,7 +455,7 @@ LaTeX Info: Redefining \nameref on input line 20.
 Package hyperref Info: Option `breaklinks' set `true' on input line 42.
 Package hyperref Info: Option `raiselinks' set `true' on input line 42.
 Package hyperref Info: Option `pageanchor' set `true' on input line 42.
-<coppe-logo.pdf, id=20, 177.463pt x 76.285pt>
+<coppe-logo.pdf, id=12, 177.463pt x 76.285pt>
 File: coppe-logo.pdf Graphic file (type pdf)
 <use coppe-logo.pdf>
 Package pdftex.def Info: coppe-logo.pdf  used on input line 42.
@@ -511,21 +511,9 @@ LaTeX Warning: Reference `bib:end' on page iii undefined on input line 43.
 \tf@toc=\write6
 \openout6 = `thesis.toc'.
 
-[8
-
-] (./thesis.lof)
-\tf@lof=\write7
-\openout7 = `thesis.lof'.
-
-[9
-
-] (./thesis.lot)
-\tf@lot=\write8
-\openout8 = `thesis.lot'.
-
 No file thesis.los.
 No file thesis.lab.
-[10
+[8
 
 ]
 Cap\'{\i }tulo 1.
@@ -534,12 +522,12 @@ Cap\'{\i }tulo 1.
 
 ] [2]
 No file thesis.bbl.
-LaTeX Font Info:    Trying to load font information for T1+cmtt on input line 9
-0.
+LaTeX Font Info:    Trying to load font information for T1+cmtt on input line 8
+8.
 (/home/dhersz/.TinyTeX/texmf-dist/tex/latex/base/t1cmtt.fd
 File: t1cmtt.fd 2019/12/16 v2.5j Standard LaTeX font definitions
 )
-Underfull \hbox (badness 1024) in paragraph at lines 95--97
+Underfull \hbox (badness 1024) in paragraph at lines 96--98
 \T1/cmr/m/n/12 Ap-pro-a-ches.'' \T1/cmr/m/it/12 Trans-por-ta-tion \T1/cmr/m/n/1
 2 43 (3): 473--90. []$\T1/cmtt/m/n/12 https : / / doi . org / 10 . 1007 /
  []
@@ -553,13 +541,13 @@ AED: lastpage setting LastPage
 LaTeX Warning: There were undefined references.
 
 Package rerunfilecheck Info: File `thesis.out' has not changed.
-(rerunfilecheck)             Checksum: A656EABE72C86CD5DADA18E27C740670;453.
+(rerunfilecheck)             Checksum: B2659A14681A9AA18D8DE44B518519CA;193.
  ) 
 Here is how much of TeX's memory you used:
- 11030 strings out of 480951
- 157222 string characters out of 5906915
- 496393 words of memory out of 5000000
- 28025 multiletter control sequences out of 15000+600000
+ 11016 strings out of 480951
+ 157137 string characters out of 5906915
+ 496367 words of memory out of 5000000
+ 28018 multiletter control sequences out of 15000+600000
  412158 words of font info for 51 fonts, out of 8000000 for 9000
  16 hyphenation exceptions out of 8191
  83i,11n,88p,1352b,364s stack positions out of 5000i,500n,10000p,200000b,80000s
@@ -570,10 +558,10 @@ ome/dhersz/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1200.600pk> </hom
 e/dhersz/.TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1200.600pk></home/d
 hersz/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></home/dher
 sz/.TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb>
-Output written on thesis.pdf (13 pages, 148899 bytes).
+Output written on thesis.pdf (11 pages, 146726 bytes).
 PDF statistics:
- 363 PDF objects out of 1000 (max. 8388607)
- 131 compressed objects within 2 object streams
- 29 named destinations out of 1000 (max. 500000)
- 38 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 351 PDF objects out of 1000 (max. 8388607)
+ 130 compressed objects within 2 object streams
+ 28 named destinations out of 1000 (max. 500000)
+ 22 words of extra memory for PDF output out of 10000 (max. 10000000)
 

@@ -30,8 +30,8 @@ examiner:
 - title: Prof.
   name: Nome Completo do Terceiro Examinador
   degree: Ph.D
-listoftables: true
-listoffigures: true
+listoftables: false
+listoffigures: false
 dedication: |
   A alguém cujo valor é digno desta dedicatória.
 thanks:
