@@ -12,4 +12,4 @@ Encoding: UTF-8
 RnwWeave: Sweave
 LaTeX: pdfLaTeX
 
-SpellingDictionary: pt_BR
+SpellingDictionary: pt_PT

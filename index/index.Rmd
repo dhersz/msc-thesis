@@ -33,7 +33,15 @@ examiner:
 listoftables: false
 listoffigures: false
 dedication: |
-  A alguém cujo valor é digno desta dedicatória.
+  "O suburbano quando chega atrasado \
+  O patrão mal-humorado \
+  Diz que mora logo ali \
+  Mas é porque não anda nesse trem lotado \
+  Com o peito amargurado \
+  Baldeando por aí \
+  Imagine quem vem lá de Japeri \
+  Imagine quem vem lá de Japeri" \
+  (Guará e Jorginho das Rosas, 1984)
 thanks:
 - title: Agradecimentos
   text:  |
