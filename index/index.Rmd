@@ -56,9 +56,9 @@ bibliography: bib/references.bib
 biblio-style: "coppe-unsrt"
 link-citations: true
 output: 
-   coppedown::thesis_pdf: default
-#  coppedown::thesis_word: 
-#    reference_docx: template_docx.docx
+  coppedown::thesis_pdf: default
+  #coppedown::thesis_word: 
+  #  reference_docx: template_docx.docx
 
 #header-includes:
 #- \usepackage{tikz}
