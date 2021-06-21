@@ -314,101 +314,7 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
 
   if (which[1] == "all" | which[1] == "transit") {
   
-    gtfs_fet_path <- paste0("./otp/graphs/", router, "/gtfs_fetranspor_fsub_ninter_nfresc_nout.zip")
-    gtfs_sup_path <- paste0("./otp/graphs/", router, "/gtfs_supervia.zip")
-  
-    gtfs_fet <- gtfstools::read_gtfs(gtfs_fet_path, c("trips", "shapes", "routes"))
-    gtfs_sup <- gtfstools::read_gtfs(gtfs_sup_path, c("trips", "shapes", "routes"))
-  
-    # subway shapes - pavuna and uruguai
-  
-    subway_trips  <- c("1202_1188_I_1", "15353_16478_I_alt")
-    subway_shapes <- gtfstools::get_trip_geometry(
-      gtfs_fet,
-      trip_id = subway_trips,
-      file = "shapes",
-      crs = st_crs(rio_border)
-    )
-    subway_shapes$mode <- "subway"
-  
-    # rail shapes
-  
-    rail_routes <- gtfs_sup$routes[route_type == 2]$route_id
-    rail_trips  <- gtfs_sup$trips[route_id %chin% rail_routes & direction_id == 0]
-    rail_trips  <- rail_trips[rail_trips[, .I[1], keyby = .(trip_headsign)]$V1]
-    rail_trips  <- rail_trips[! trip_headsign %chin% c("Campo Grande", "Gramacho")]$trip_id
-    rail_shapes <- gtfstools::get_trip_geometry(
-      gtfs_sup,
-      trip_id = rail_trips,
-      file = "shapes",
-      crs = st_crs(rio_border)
-    )
-    rail_shapes$mode <- "rail"
-  
-    # brt shapes
-  
-    brt_routes <- gtfs_fet$routes[grepl("BRT", route_short_name)]$route_id
-    brt_trips  <- gtfs_fet$trips[route_id %chin% brt_routes & direction_id == 1]
-    brt_trips  <- brt_trips[brt_trips[, .I[1], keyby = .(route_id)]$V1]$trip_id
-    brt_shapes <- gtfstools::get_trip_geometry(
-      gtfs_fet,
-      trip_id = brt_trips,
-      file = "shapes",
-      crs = st_crs(rio_border)
-    )
-    brt_shapes$mode <- "brt"
-  
-    # municipal buses shapes
-  
-    bus_routes <- gtfs_fet$routes[route_type == 3 & !grepl("BRT", route_short_name)]$route_id
-    bus_trips  <- gtfs_fet$trips[route_id %chin% bus_routes & direction_id == 1]
-    bus_trips  <- bus_trips[bus_trips[, .I[1], keyby = .(route_id)]$V1]$trip_id
-    bus_shapes <- gtfstools::get_trip_geometry(
-      gtfs_fet,
-      trip_id = bus_trips,
-      file = "shapes",
-      crs = st_crs(rio_border)
-    )
-    bus_shapes$mode <- "bus"
-    
-    # vlt shapes
-    
-    vlt_routes <- gtfs_fet$routes[grepl("VLT", route_short_name)]$route_id
-    vlt_trips  <- gtfs_fet$trips[route_id %chin% vlt_routes]$trip_id
-    vlt_shapes <- gtfstools::get_trip_geometry(
-      gtfs_fet,
-      trip_id = vlt_trips,
-      file = "shapes",
-      crs = st_crs(rio_border)
-    )
-    vlt_shapes$mode <- "vlt"
-    
-    # ferry shapes
-    
-    ferry_routes <- gtfs_fet$routes[route_type == 4]$route_id
-    ferry_trips  <- gtfs_fet$trips[route_id %chin% ferry_routes & direction_id == 1]$trip_id
-    ferry_shapes <- gtfstools::get_trip_geometry(
-      gtfs_fet,
-      trip_id = ferry_trips,
-      file = "shapes",
-      crs = st_crs(rio_border)
-    )
-    ferry_shapes$mode <- "ferry"
-  
-    # bind shapes together
-  
-    transit_shapes <- rbind(
-      ferry_shapes, 
-      vlt_shapes, 
-      bus_shapes, 
-      brt_shapes, 
-      rail_shapes, 
-      subway_shapes
-    )
-    transit_shapes$mode <- factor(
-      transit_shapes$mode,
-      labels = c("BRT", "Bus", "Ferry", "Rail", "Subway", "VLT")
-    )
+    transit_shapes <- generate_transit_shapes(router)
   
     # plot settings
   
@@ -455,4 +361,106 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
     
   }
      
+}
+
+generate_transit_shapes <- function(router = "rio_no_inter") {
+  
+  gtfs_fet_path <- paste0("./otp/graphs/", router, "/gtfs_fetranspor_fsub_ninter_nfresc_nout.zip")
+  gtfs_sup_path <- paste0("./otp/graphs/", router, "/gtfs_supervia.zip")
+  
+  gtfs_fet <- gtfstools::read_gtfs(gtfs_fet_path, c("trips", "shapes", "routes"))
+  gtfs_sup <- gtfstools::read_gtfs(gtfs_sup_path, c("trips", "shapes", "routes"))
+  
+  # subway shapes - pavuna and uruguai
+  
+  subway_trips  <- c("1202_1188_I_1", "15353_16478_I_alt")
+  subway_shapes <- gtfstools::get_trip_geometry(
+    gtfs_fet,
+    trip_id = subway_trips,
+    file = "shapes",
+    crs = st_crs(rio_border)
+  )
+  subway_shapes$mode <- "subway"
+  
+  # rail shapes
+  
+  rail_routes <- gtfs_sup$routes[route_type == 2]$route_id
+  rail_trips  <- gtfs_sup$trips[route_id %chin% rail_routes & direction_id == 0]
+  rail_trips  <- rail_trips[rail_trips[, .I[1], keyby = .(trip_headsign)]$V1]
+  rail_trips  <- rail_trips[! trip_headsign %chin% c("Campo Grande", "Gramacho")]$trip_id
+  rail_shapes <- gtfstools::get_trip_geometry(
+    gtfs_sup,
+    trip_id = rail_trips,
+    file = "shapes",
+    crs = st_crs(rio_border)
+  )
+  rail_shapes$mode <- "rail"
+  
+  # brt shapes
+  
+  brt_routes <- gtfs_fet$routes[grepl("BRT", route_short_name)]$route_id
+  brt_trips  <- gtfs_fet$trips[route_id %chin% brt_routes & direction_id == 1]
+  brt_trips  <- brt_trips[brt_trips[, .I[1], keyby = .(route_id)]$V1]$trip_id
+  brt_shapes <- gtfstools::get_trip_geometry(
+    gtfs_fet,
+    trip_id = brt_trips,
+    file = "shapes",
+    crs = st_crs(rio_border)
+  )
+  brt_shapes$mode <- "brt"
+  
+  # municipal buses shapes
+  
+  bus_routes <- gtfs_fet$routes[route_type == 3 & !grepl("BRT", route_short_name)]$route_id
+  bus_trips  <- gtfs_fet$trips[route_id %chin% bus_routes & direction_id == 1]
+  bus_trips  <- bus_trips[bus_trips[, .I[1], keyby = .(route_id)]$V1]$trip_id
+  bus_shapes <- gtfstools::get_trip_geometry(
+    gtfs_fet,
+    trip_id = bus_trips,
+    file = "shapes",
+    crs = st_crs(rio_border)
+  )
+  bus_shapes$mode <- "bus"
+  
+  # vlt shapes
+  
+  vlt_routes <- gtfs_fet$routes[grepl("VLT", route_short_name)]$route_id
+  vlt_trips  <- gtfs_fet$trips[route_id %chin% vlt_routes]$trip_id
+  vlt_shapes <- gtfstools::get_trip_geometry(
+    gtfs_fet,
+    trip_id = vlt_trips,
+    file = "shapes",
+    crs = st_crs(rio_border)
+  )
+  vlt_shapes$mode <- "vlt"
+  
+  # ferry shapes
+  
+  ferry_routes <- gtfs_fet$routes[route_type == 4]$route_id
+  ferry_trips  <- gtfs_fet$trips[route_id %chin% ferry_routes & direction_id == 1]$trip_id
+  ferry_shapes <- gtfstools::get_trip_geometry(
+    gtfs_fet,
+    trip_id = ferry_trips,
+    file = "shapes",
+    crs = st_crs(rio_border)
+  )
+  ferry_shapes$mode <- "ferry"
+  
+  # bind shapes together
+  
+  transit_shapes <- rbind(
+    ferry_shapes, 
+    vlt_shapes, 
+    bus_shapes, 
+    brt_shapes, 
+    rail_shapes, 
+    subway_shapes
+  )
+  transit_shapes$mode <- factor(
+    transit_shapes$mode,
+    labels = c("BRT", "Bus", "Ferry", "Rail", "Subway", "VLT")
+  )
+  
+  return(transit_shapes)
+  
 }
