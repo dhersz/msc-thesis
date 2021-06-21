@@ -11,7 +11,7 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
   
   # * read and prepare data -------------------------------------------------
   
-  router_folder     <- paste0("./data/", router, "_res_", res)
+  router_folder <- paste0("./data/", router, "_res_", res)
   
   study_area_folder <- paste0(router_folder, "/study_area")
   if (!dir.exists(study_area_folder)) dir.create(study_area_folder)
@@ -22,6 +22,9 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
       job_density = as.numeric((opportunities / 1000) / units::set_units(st_area(geometry), "km^2")),
       avg_income  = (total_income / population) / 1000
     )
+  
+  if (which[1] %in% c("all", "pop_job", "transit"))
+      transit_shapes <- generate_transit_shapes(router)
 
   # * maps ------------------------------------------------------------------
   
@@ -313,8 +316,6 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
   # * * transit distribution ------------------------------------------------
 
   if (which[1] == "all" | which[1] == "transit") {
-  
-    transit_shapes <- generate_transit_shapes(router)
   
     # plot settings
   
