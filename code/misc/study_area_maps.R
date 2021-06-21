@@ -7,7 +7,7 @@ source("./code/06_analyse_results.R")
 generate_maps <- function(grid_name = "grid_with_data_aop", 
                           router = "rio_no_inter", 
                           res = 8,
-                          which = c("both", "pop_job", "transit")) {
+                          which = c("all", "pqs", "aps", "pop_job", "transit")) {
   
   # * read and prepare data -------------------------------------------------
   
@@ -36,6 +36,7 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
   
   rj_state   <- readr::read_rds("./data/rj_state.rds")
   rio_border <- readr::read_rds("./data/rio_municipality.rds")
+  parques <- readr::read_rds("./data/parques_naturais.rds")
   
   # expanded border to manually extend plots' bounding box
   
@@ -44,7 +45,8 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
     st_buffer(3000) %>% 
     st_transform(st_crs(rio_border))
   
-  # object to ensure scale bar is attached to them bottom (but no too much) of plots
+  # object to ensure scale bar is attached to the bottom (but no too much) of 
+  # plots
   
   less_expanded_rio_border <- rio_border %>% 
     st_transform(5880) %>% 
@@ -127,10 +129,107 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
   
   xlim <- c(st_bbox(rio_border)[1], st_bbox(rio_border)[3])
   ylim <- c(st_bbox(expanded_rio_border)[2], st_bbox(rio_border)[4])
+
+  # * * parques naturais ----------------------------------------------------
+
+  if (which[1] == "all" | which[1] == "pqs") {
+    
+    parques_trimmed <- sf::st_intersection(
+      sf::st_transform(parques, 5880),
+      sf::st_transform(rio_border, 5880)
+    )
+    parques_trimmed <- sf::st_transform(parques_trimmed, 4674)
+    
+    parques_trimmed$parques_naturais <- "Parques Naturais"
+    
+    # parques_trimmed$label <- data.table::fifelse(
+    #   parques_trimmed$nome %in% c("Parque Nacional da Tijuca", "Parque Estadual da Pedra Branca"),
+    #   parques_trimmed$nome,
+    #   ""
+    # )
+    
+    pq <- ggplot() +
+      geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
+      geom_sf(
+        data = parques_trimmed, 
+        aes(fill = parques_naturais), 
+        color = NA,
+        size = 0.3
+      ) +
+      geom_sf(data = rio_border, fill = NA, color = "gray60", size = 0.3) +
+      # geom_sf_text(data = parques_trimmed, aes(label = label), size = 3) +
+      scale_fill_manual(values = "darkolivegreen3") +
+      coord_sf(xlim = xlim, ylim = ylim) +
+      north_maps +
+      scalebar_maps +
+      theme_maps + 
+      theme(
+        legend.title = element_blank()
+      )
+    
+    # save final result
+    
+    filename <- paste0(study_area_folder, "/pqs.tiff")
+    
+    ggsave(
+      filename,
+      plot = pq,
+      device = "tiff",
+      width = max_width,
+      height = 7.4,
+      units = dim_unit,
+      dpi = dpi
+    )
+    
+  }
+  
+  # * * areas de planejamento (APs, planning areas) --------------------------
+
+  if (which[1] == "all" | which[1] == "aps") {
+    
+    rio_aps <- readr::read_rds("./data/rio_aps.rds")
+    rio_aps$ap_code <- paste0("AP", rio_aps$CODAPNUM)
+    
+    parques_trimmed <- sf::st_intersection(
+      sf::st_transform(parques, 5880),
+      sf::st_transform(rio_aps, 5880)
+    )
+    parques_trimmed <- sf::st_transform(parques_trimmed, 4674)
+    
+    pa <- ggplot() +
+      geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
+      geom_sf(
+        data = parques_trimmed, 
+        fill = "gray85", 
+        color = NA,
+        size = 0.3
+      ) +
+      geom_sf(data = rio_aps, fill = NA, color = "gray60", size = 0.3) +
+      geom_sf_text(data = rio_aps, aes(label = ap_code)) +
+      coord_sf(xlim = xlim, ylim = ylim) +
+      north_maps +
+      scalebar_maps +
+      theme_maps
+    
+    # save final result
+    
+    filename <- paste0(study_area_folder, "/aps.tiff")
+    
+    ggsave(
+      filename,
+      plot = pa,
+      device = "tiff",
+      width = max_width,
+      height = 7.4,
+      units = dim_unit,
+      dpi = dpi
+    )
+    
+  }
   
   # * * pop and jobs spatial dist -------------------------------------------
 
-  if (which[1] == "both" | which[1] == "pop_job") {
+  if (which[1] == "all" | which[1] == "pop_job") {
   
     # population
   
@@ -213,7 +312,7 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
 
   # * * transit distribution ------------------------------------------------
 
-  if (which[1] == "both" | which[1] == "transit") {
+  if (which[1] == "all" | which[1] == "transit") {
   
     gtfs_fet_path <- paste0("./otp/graphs/", router, "/gtfs_fetranspor_fsub_ninter_nfresc_nout.zip")
     gtfs_sup_path <- paste0("./otp/graphs/", router, "/gtfs_supervia.zip")
