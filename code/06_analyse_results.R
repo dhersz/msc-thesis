@@ -4,11 +4,11 @@ library(ggplot2)
 library(data.table)
 library(ggtext)
 
-analyse_results <- function(grid_name = "grid_with_data",
-                            router = "rio",
+analyse_results <- function(grid_name = "grid_with_data_aop",
+                            router = "rio_no_inter",
                             n_quantiles = 10,
-                            res = 7,
-                            lang = "pt",
+                            res = 8,
+                            lang = "en",
                             n_cores = 4) {
   
   # * read and prepare data -------------------------------------------------
@@ -362,7 +362,7 @@ text_labels_generator <- function(mcosts, ttimes, lang) {
         "components" = list(Entregrupos = "between", Intragrupos = "within")
       ),
       "all_thresholds_maps" = list(
-        "legend_title" = "Empregos acessíveis\n(% do total)",
+        "legend_title" = "Accessible jobs\n(% of total)",
         "times_facet_titles" = paste0(ttimes, " min."),
         "costs_facet_titles" = c(
           paste0("<img src='data/icons/walking.png' width='10'>", "<br>R$ 0.00"),

@@ -23,9 +23,6 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
       avg_income  = (total_income / population) / 1000
     )
   
-  if (which[1] %in% c("all", "pop_job", "transit"))
-      transit_shapes <- generate_transit_shapes(router)
-
   # * maps ------------------------------------------------------------------
   
   # dimensions and resolution
@@ -41,15 +38,30 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
   rio_border <- readr::read_rds("./data/rio_municipality.rds")
   parques <- readr::read_rds("./data/parques_naturais.rds")
   
+  # transit shapes, to be used on transit and pop_job maps
+  
+  if (which[1] %in% c("all", "pop_job", "transit"))
+      transit_shapes <- generate_transit_shapes(
+        router, 
+        crs = st_crs(rio_border)
+      )
+  
   # expanded border to manually extend plots' bounding box
+  # 'more_expanded_rio_border' is used in the first facet of pop_jobs
   
   expanded_rio_border <- rio_border %>% 
     st_transform(5880) %>% 
     st_buffer(3000) %>% 
     st_transform(st_crs(rio_border))
   
+  more_expanded_rio_border <- rio_border %>% 
+    st_transform(5880) %>% 
+    st_buffer(9000) %>% 
+    st_transform(st_crs(rio_border))
+  
   # object to ensure scale bar is attached to the bottom (but no too much) of 
   # plots
+  # scalebar_pop_job is used only on pop_job
   
   less_expanded_rio_border <- rio_border %>% 
     st_transform(5880) %>% 
@@ -60,6 +72,16 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
   scalebar_data_bbox <- st_bbox(scalebar_data)
   scalebar_data_bbox["ymin"] <- st_bbox(less_expanded_rio_border)["ymin"]
   attr(st_geometry(scalebar_data), "bbox") <- scalebar_data_bbox
+  
+  abit_more_expanded_rio_border <- rio_border %>% 
+    st_transform(5880) %>% 
+    st_buffer(7500) %>% 
+    st_transform(st_crs(rio_border))
+  
+  scalebar_popjob_data <- rio_border
+  scalebar_popjob_data_bbox <- st_bbox(scalebar_popjob_data)
+  scalebar_popjob_data_bbox["ymin"] <- st_bbox(abit_more_expanded_rio_border)["ymin"]
+  attr(st_geometry(scalebar_popjob_data), "bbox") <- scalebar_popjob_data_bbox
   
   # object to ensure north bar is attached to the top-left of the plot
   
@@ -98,10 +120,22 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
     plot.margin = grid::unit(c(0, 0, 0, 0), "mm")
   )
   
-  # default scale bar
+  # scale bars
   
   scalebar_maps <- ggsn::scalebar(
     data = scalebar_data, 
+    dist = 10, 
+    dist_unit = "km",
+    location = "bottomleft", 
+    transform = TRUE, 
+    model = "WGS84",
+    border.size = 0.3, 
+    st.size = 3,
+    st.dist = 0.03
+  )
+  
+  scalebar_popjob <- ggsn::scalebar(
+    data = scalebar_popjob_data, 
     dist = 10, 
     dist_unit = "km",
     location = "bottomleft", 
@@ -132,6 +166,7 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
   
   xlim <- c(st_bbox(rio_border)[1], st_bbox(rio_border)[3])
   ylim <- c(st_bbox(expanded_rio_border)[2], st_bbox(rio_border)[4])
+  ylim_lower <- c(st_bbox(more_expanded_rio_border)[2], st_bbox(rio_border)[4])
 
   # * * parques naturais ----------------------------------------------------
 
@@ -233,7 +268,7 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
   # * * pop and jobs spatial dist -------------------------------------------
 
   if (which[1] == "all" | which[1] == "pop_job") {
-  
+    
     # population
   
     pp <- ggplot() +
@@ -245,12 +280,29 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
         low = "#efeeec",
         high = "firebrick3"
       ) +
-      coord_sf(xlim = xlim, ylim = ylim) +
+      geom_sf(
+        data = subset(transit_shapes, mode %in% c("BRT", "Rail", "Subway")),
+        aes(linetype = mode),
+        color = "gray50",
+        size = 0.5
+      ) +
+      scale_linetype_manual(
+        name = "Transit\ncorridor",
+        values = c("solid", "twodash", "dashed")
+      ) +
+      coord_sf(xlim = xlim, ylim = ylim_lower) +
       north_maps +
-      scalebar_maps +
-      theme() +
-      guides_maps +
-      theme_maps
+      scalebar_popjob +
+      guides(
+        fill = guide_colorbar(title.position = "left", title.vjust = 1, order = 1),
+        linetype = guide_legend(title.position = "left", title.vjust = 1, order = 2)
+      ) +
+      theme_maps +
+      theme(
+        legend.box.just = "right",
+        legend.spacing.y = unit(0, "pt"),
+        legend.text = element_text(margin = margin(t = 2))
+      )
   
     # average income
   
@@ -264,9 +316,22 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
         high = "firebrick3",
         na.value = "#efeeec"
       ) +
+      geom_sf(
+        data = subset(transit_shapes, mode %in% c("BRT", "Rail", "Subway")),
+        aes(linetype = mode),
+        color = "gray50",
+        size = 0.5
+      ) +
+      scale_linetype_manual(
+        name = "Transit corridor",
+        values = c("solid", "twodash", "dashed")
+      ) +
       coord_sf(xlim = xlim, ylim = ylim) +
       theme() +
-      guides_maps +
+      guides(
+        fill = guide_colorbar(title.position = "left", title.vjust = 1),
+        linetype = "none"
+      ) +
       theme_maps
   
     # jobs
@@ -280,9 +345,22 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
         low = "#efeeec",
         high = "firebrick3"
       ) +
+      geom_sf(
+        data = subset(transit_shapes, mode %in% c("BRT", "Rail", "Subway")),
+        aes(linetype = mode),
+        color = "gray50",
+        size = 0.5
+      ) +
+      scale_linetype_manual(
+        name = "Transit corridor",
+        values = c("solid", "twodash", "dashed")
+      ) +
       coord_sf(xlim = xlim, ylim = ylim) +
       theme() +
-      guides_maps +
+      guides(
+        fill = guide_colorbar(title.position = "left", title.vjust = 1),
+        linetype = "none"
+      ) +
       theme_maps
   
     # add labels
@@ -295,7 +373,7 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
     
     # joined together
   
-    pf <- cowplot::plot_grid(pp, pi, pj, ncol = 1)
+    pf <- cowplot::plot_grid(pp, pi, pj, ncol = 1, rel_heights = c(1.145, 1, 1))
   
     # save final result
   
@@ -306,7 +384,7 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
       plot = pf,
       device = "tiff",
       width = max_width,
-      height = 22.2,
+      height = 23.2,
       units = dim_unit,
       dpi = dpi
     )
@@ -364,7 +442,7 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
      
 }
 
-generate_transit_shapes <- function(router = "rio_no_inter") {
+generate_transit_shapes <- function(router = "rio_no_inter", crs) {
   
   gtfs_fet_path <- paste0("./otp/graphs/", router, "/gtfs_fetranspor_fsub_ninter_nfresc_nout.zip")
   gtfs_sup_path <- paste0("./otp/graphs/", router, "/gtfs_supervia.zip")
@@ -379,7 +457,7 @@ generate_transit_shapes <- function(router = "rio_no_inter") {
     gtfs_fet,
     trip_id = subway_trips,
     file = "shapes",
-    crs = st_crs(rio_border)
+    crs = crs
   )
   subway_shapes$mode <- "subway"
   
@@ -393,7 +471,7 @@ generate_transit_shapes <- function(router = "rio_no_inter") {
     gtfs_sup,
     trip_id = rail_trips,
     file = "shapes",
-    crs = st_crs(rio_border)
+    crs = crs
   )
   rail_shapes$mode <- "rail"
   
@@ -406,7 +484,7 @@ generate_transit_shapes <- function(router = "rio_no_inter") {
     gtfs_fet,
     trip_id = brt_trips,
     file = "shapes",
-    crs = st_crs(rio_border)
+    crs = crs
   )
   brt_shapes$mode <- "brt"
   
@@ -419,7 +497,7 @@ generate_transit_shapes <- function(router = "rio_no_inter") {
     gtfs_fet,
     trip_id = bus_trips,
     file = "shapes",
-    crs = st_crs(rio_border)
+    crs = crs
   )
   bus_shapes$mode <- "bus"
   
@@ -431,7 +509,7 @@ generate_transit_shapes <- function(router = "rio_no_inter") {
     gtfs_fet,
     trip_id = vlt_trips,
     file = "shapes",
-    crs = st_crs(rio_border)
+    crs = crs
   )
   vlt_shapes$mode <- "vlt"
   
@@ -443,7 +521,7 @@ generate_transit_shapes <- function(router = "rio_no_inter") {
     gtfs_fet,
     trip_id = ferry_trips,
     file = "shapes",
-    crs = st_crs(rio_border)
+    crs = crs
   )
   ferry_shapes$mode <- "ferry"
   
