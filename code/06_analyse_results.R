@@ -133,25 +133,6 @@ analyse_results <- function(grid_name = "grid_with_data_aop",
   # across_time_comps(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
   
   all_thresholds_maps(copy(accessibility_data), ttimes, mcosts, bu = "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
-
-  
-  # * efects of bilhete unico analysis --------------------------------------
-
-  
-  # create visualisations comparing accessibility at a specific combination of time travel and cost thresholds
-  
-  percentage_minimum_wage <- c(20, 30, 40)
-  
-  for (i in seq_along(ttimes)) {
-    
-    #text_labels <- labels_cases_bu(travel_time[i], percentage_minimum_wage, lang)
-   
-    # maps_cases_bu(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
-    # maps_increase_cases_bu(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
-    # boxplot_increase_cases_bu(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
-    # theil_cases_bu(grid_data, travel_time[i], percentage_minimum_wage, text_labels, res)
-     
-  }
   
 }
 
@@ -196,9 +177,6 @@ theme_thesis <- function(style = c("map", "graphic")) {
 }
 
 
-# different monetary cost thresholds --------------------------------------
-
-
 text_labels_generator <- function(mcosts, ttimes, lang) {
   
   # create the text labels used in the maps and graphics according to the specified language
@@ -214,13 +192,6 @@ text_labels_generator <- function(mcosts, ttimes, lang) {
       "distribution_map" = list(
         "facets_title" = ifelse(mcosts != 1000, paste0("R$ ", format(mcosts, nsmall = 2)), "Não considerado"),
         "legend_title" = "  Empregos acessíveis (% do total)"
-      ),
-      "reduction_map" = list(
-        "facets_title" = ifelse(mcosts != 1000, paste0("R$ ", format(mcosts, nsmall = 2)), "Não considerado"),
-        "percent_reduction_legend_title" = "Redução (% da acess.\nsem limite de dinheiro)",
-        "total_reduction_legend_title" = "Redução (% do total\nde empregos)",
-        "mode_legend_title" = "Modo",
-        "mode_options" = c("BRT", "Metrô e trem")
       ),
       "boxplot" = list(
         "facets_title" = ifelse(mcosts != 1000, paste0("R$ ", format(mcosts, nsmall = 2)), "Não considerado"),
@@ -292,13 +263,6 @@ text_labels_generator <- function(mcosts, ttimes, lang) {
       "distribution_map" = list(
         "facets_title" = ifelse(mcosts != 1000, paste0("R$ ", format(mcosts, nsmall = 2)), "Não considerado"),
         "legend_title" = "  Empregos acessíveis (% do total)"
-      ),
-      "reduction_map" = list(
-        "facets_title" = ifelse(mcosts != 1000, paste0("R$ ", format(mcosts, nsmall = 2)), "Não considerado"),
-        "percent_reduction_legend_title" = "Redução (% da acess.\nsem limite de dinheiro)",
-        "total_reduction_legend_title" = "Redução (% do total\nde empregos)",
-        "mode_legend_title" = "Modo",
-        "mode_options" = c("BRT", "Metrô e trem")
       ),
       "boxplot" = list(
         "facets_title" = ifelse(mcosts != 1000, paste0("R$ ", format(mcosts, nsmall = 2)), "Não considerado"),
@@ -383,88 +347,7 @@ text_labels_generator <- function(mcosts, ttimes, lang) {
 }
 
 
-all_thresholds_maps <- function(access_data, 
-                                ttimes, 
-                                mcosts, 
-                                bu,
-                                max_width, 
-                                dpi, 
-                                dim_unit, 
-                                text_labels, 
-                                analysis_folder) {
-  
-  # filter access_data and convert it to sf
-  
-  access_data <- access_data[
-    (bilhete_unico == bu) & (travel_time %in% ttimes) & (monetary_cost %in% mcosts)
-  ]
-  
-  # convert monetary_cost and travel_time columns to facets
-  
-  access_data[
-    , 
-    `:=`(
-      monetary_cost = factor(
-        monetary_cost, 
-        levels = mcosts, 
-        labels = text_labels$all_thresholds_maps$costs_facet_titles
-      ),
-      travel_time = factor(
-        travel_time, 
-        levels = ttimes, 
-        labels = text_labels$all_thresholds_maps$times_facet_titles
-      )
-    )
-  ]
-  
-  # convert access_data to sf
-  
-  access_data <- st_as_sf(access_data[opportunities > 0 & population > 0])
-  
-  # read rio state and municipality shapes
-  
-  rj_state   <- readr::read_rds("./data/rj_state.rds")
-  rio_border <- readr::read_rds("./data/rio_municipality.rds")
-
-  # set facets' bounding box
-  
-  xlim <- c(st_bbox(rio_border)[1], st_bbox(rio_border)[3])
-  ylim <- c(st_bbox(rio_border)[2], st_bbox(rio_border)[4])
-  
-  # calculate max accessibility and total opportunities for a pretty legend
-  
-  max_accessibility   <- max(access_data$accessibility)
-  total_opportunities <- sum(access_data$opportunities) / (length(mcosts) * length(ttimes))
-  
-  # plot settings
-  
-  p <- ggplot() +
-    geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
-    geom_sf(data = access_data, aes(fill = accessibility), color = NA) +
-    geom_sf(data = rio_border, color = "black", fill = NA, size = 0.3) +
-    facet_grid(monetary_cost ~ travel_time, switch = "y") +
-    coord_sf(xlim = xlim, ylim = ylim) +
-    scale_fill_viridis_c(
-      name = text_labels$all_thresholds_maps$legend_title,
-      option = "inferno",
-      breaks = seq(0, max_accessibility, max_accessibility / 3),
-      labels = scales::label_percent(scale = 100 / total_opportunities)
-    ) +
-    guides(fill = guide_colorbar(title.vjust = 0.75)) +
-    theme_thesis("map")
-  
-  # save plot
-  
-  ggsave(
-    paste0(analysis_folder, "/accessibility_distribution_", bu, ".png"),
-    plot   = p,
-    width  = max_width,
-    height = max_width * 1.1,
-    units  = dim_unit,
-    dpi    = dpi
-  )
-  
-}
+# ANPET -------------------------------------------------------------------
 
 
 distribution_map <- function(accessibility_data, 
@@ -548,176 +431,6 @@ distribution_map <- function(accessibility_data,
 }
 
 
-reduction_map <- function(accessibility_data, 
-                          tt, 
-                          mcosts, 
-                          text_labels, 
-                          analysis_folder) {
- 
-  # read rio state and municipality shapes
-  
-  rj_state   <- readr::read_rds("./data/rj_state.rds")
-  rio_border <- readr::read_rds("./data/rio_municipality.rds")
-  
-  # rapid_transit_info <- extract_rapid_transit("plotting") %>% 
-  #   purrr::map(function(i) mutate(i, Mode = factor(Mode, levels = unique(Mode), 
-  #                                 labels = text_labels$reduction_maps$mode_options)))
-  
-  # calculate the accessibility difference between the cases with and the one
-  # without a cost threshold. then filter out the case without a cost threshold
-  
-  comparison_case <- accessibility_data[monetary_cost == 1000]
-  
-  accessibility_data <- accessibility_data[monetary_cost != 1000
-   ][comparison_case,  on = "id", nc_accessibility := i.accessibility
-     ][, `:=`(total_reduction = nc_accessibility - accessibility,
-              percent_reduction = (nc_accessibility - accessibility) / nc_accessibility)]
-  
-  # convert min_wage_percent column to factor
-  
-  accessibility_data[, monetary_cost := factor(monetary_cost, 
-                                               levels = mcosts, 
-                                               labels = text_labels$reduction_map$facets_title)]
-  
-  # create sf objects
-  
-  expanded_rio_border <- rio_border %>% 
-    st_transform(5880) %>% 
-    st_buffer(3000) %>% 
-    st_transform(st_crs(rio_border))
-  
-  accessibility_data <- st_as_sf(accessibility_data[opportunities > 0 & population > 0])
-  
-  # create function with plot settings
-
-  plot_reduction <- function(type = c("percent", "total")) {
-    
-    # use different denominator for accessibility legend labels depending on 
-    # the type of reduction
-    
-    if (type == "percent") denominator <- 1
-    else denominator <- sum(accessibility_data$opportunities) / (length(mcosts) - 1)
-    
-    # use following objects to conditionally access objects depending on type
-    
-    reduction_type <- paste0(type, "_reduction")
-    access_legend_title <- paste0(reduction_type, "_legend_title")
-    
-    # plot settings
-    
-    xlim <- c(st_bbox(rio_border)[1], st_bbox(rio_border)[3])
-    ylim <- c(st_bbox(expanded_rio_border)[2], st_bbox(rio_border)[4])
-    
-    p <- ggplot() +
-      geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
-      geom_sf(
-        data = accessibility_data, 
-        aes_string(fill = reduction_type), 
-        color = NA
-      ) +
-      geom_sf(data = rio_border, color = "gray50", fill = NA, size = 0.3) +
-      facet_wrap(~ monetary_cost, ncol = 2) +
-      # geom_sf(
-      #   data = rapid_transit_info[["lines"]], 
-      #   aes(shape = Mode),
-      #   color = "gray30", 
-      #   show.legend = "line"
-      # ) +
-      # geom_sf(
-      #   data = rapid_transit_info[["stations"]], 
-      #   aes(shape = Mode),
-      #   color = "gray30", 
-      #   show.legend = "point"
-      # ) +
-      ggsn::scalebar(
-        data = rio_border, 
-        dist = 10, 
-        dist_unit = "km",
-        location = "bottomright", 
-        transform = TRUE, 
-        model = "WGS84",
-        height = 0.03, 
-        border.size = 0.4, 
-        st.dist = 0.05, 
-        st.size = 3
-      ) +
-      coord_sf(xlim = xlim, ylim = ylim) +
-      # scale_color_manual(
-      #   name = text_labels$reduction_maps$mode_legend_title,
-      #   values = c("royalblue3", "gray30")
-      # ) +
-      scale_fill_gradient(
-        name = text_labels$reduction_map[[access_legend_title]],
-        low = "#efeeec", 
-        high = "red",
-        labels = scales::label_percent(scale = 100 / denominator)
-      ) +
-      guides(
-        shape = guide_legend(order = 1), 
-        fill = guide_colorbar(order = 2)
-      ) +
-      theme_thesis("map") +
-      theme(
-        legend.position = "bottom", 
-        legend.box = "vertical",
-        legend.box.just = "left", 
-      )
-    
-    p <- lemon::reposition_legend(
-      p,
-      position = "bottom left",
-      panel = "panel-2-2",
-      plot = FALSE
-    )
-    
-    # save plot
-    
-    ggsave(paste0(analysis_folder, "/", reduction_type, "_map_tt_", tt, ".png"),
-           plot = p,
-           width = 9,
-           height = 5.8)
-    
-  }
-  
-  plot_reduction("percent")
-  plot_reduction("total")
-  
-}
-
-
-reduction_hist <- function(accessibility_data, 
-                           tt, 
-                           mcosts, 
-                           text_labels, 
-                           analysis_folder) {
-  
-  # calculate the accessibility difference between the cases with and the one
-  # without a cost threshold. then filter out the case without a cost threshold
-  
-  comparison_case <- accessibility_data[monetary_cost == 1000]
-  
-  accessibility_data <- accessibility_data[monetary_cost < 1000 & (population > 0 | opportunities > 0)
-                                           ][comparison_case,  on = "id", nc_accessibility := i.accessibility
-                                             ][, `:=`(total_reduction = nc_accessibility - accessibility,
-                                                      percent_reduction = (nc_accessibility - accessibility) / nc_accessibility)]
-  
-  # convert min_wage_percent column to factor
-  
-  accessibility_data[, monetary_cost := factor(monetary_cost, 
-                                               levels = mcosts, 
-                                               labels = text_labels$reduction_map$facets_title)]
-  
-  # plot settings
-  
-  p <- ggplot(accessibility_data, aes(x = percent_reduction)) +
-    geom_histogram(binwidth = 0.01, boundary = 0) +
-    facet_wrap(~ monetary_cost, ncol = 2)
-  
-  print(p)
-  
-}
-
-
 distribution_boxplot <- function(accessibility_data, 
                                  tt, 
                                  mcosts, 
@@ -787,6 +500,7 @@ distribution_boxplot <- function(accessibility_data,
          units = "in")
   
 }
+
 
 distribution_theil <- function(access_data, 
                                tt, 
@@ -877,7 +591,13 @@ distribution_theil <- function(access_data,
   
 }
 
-average_access_different_costs <- function(grid_data, travel_time, percentage_minimum_wage, n_quantiles, text_labels, res) {
+
+average_access_different_costs <- function(grid_data, 
+                                           travel_time, 
+                                           percentage_minimum_wage, 
+                                           n_quantiles, 
+                                           text_labels, 
+                                           res) {
   
   # read and prepare data
   
@@ -958,6 +678,92 @@ average_access_different_costs <- function(grid_data, travel_time, percentage_mi
   
 }
 
+
+# WSTLUR and thesis -------------------------------------------------------
+
+
+all_thresholds_maps <- function(access_data, 
+                                ttimes, 
+                                mcosts, 
+                                bu,
+                                max_width, 
+                                dpi, 
+                                dim_unit, 
+                                text_labels, 
+                                analysis_folder) {
+  
+  # filter access_data and convert it to sf
+  
+  access_data <- access_data[
+    (bilhete_unico == bu) & (travel_time %in% ttimes) & (monetary_cost %in% mcosts)
+  ]
+  
+  # convert monetary_cost and travel_time columns to facets
+  
+  access_data[
+    , 
+    `:=`(
+      monetary_cost = factor(
+        monetary_cost, 
+        levels = mcosts, 
+        labels = text_labels$all_thresholds_maps$costs_facet_titles
+      ),
+      travel_time = factor(
+        travel_time, 
+        levels = ttimes, 
+        labels = text_labels$all_thresholds_maps$times_facet_titles
+      )
+    )
+  ]
+  
+  # convert access_data to sf
+  
+  access_data <- st_as_sf(access_data[opportunities > 0 & population > 0])
+  
+  # read rio state and municipality shapes
+  
+  rj_state   <- readr::read_rds("./data/rj_state.rds")
+  rio_border <- readr::read_rds("./data/rio_municipality.rds")
+
+  # set facets' bounding box
+  
+  xlim <- c(st_bbox(rio_border)[1], st_bbox(rio_border)[3])
+  ylim <- c(st_bbox(rio_border)[2], st_bbox(rio_border)[4])
+  
+  # calculate max accessibility and total opportunities for a pretty legend
+  
+  max_accessibility   <- max(access_data$accessibility)
+  total_opportunities <- sum(access_data$opportunities) / (length(mcosts) * length(ttimes))
+  
+  # plot settings
+  
+  p <- ggplot() +
+    geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
+    geom_sf(data = access_data, aes(fill = accessibility), color = NA) +
+    geom_sf(data = rio_border, color = "black", fill = NA, size = 0.3) +
+    facet_grid(monetary_cost ~ travel_time, switch = "y") +
+    coord_sf(xlim = xlim, ylim = ylim) +
+    scale_fill_viridis_c(
+      name = text_labels$all_thresholds_maps$legend_title,
+      option = "inferno",
+      breaks = seq(0, max_accessibility, max_accessibility / 3),
+      labels = scales::label_percent(scale = 100 / total_opportunities)
+    ) +
+    guides(fill = guide_colorbar(title.vjust = 0.75)) +
+    theme_thesis("map")
+  
+  # save plot
+  
+  ggsave(
+    paste0(analysis_folder, "/accessibility_distribution_", bu, ".png"),
+    plot   = p,
+    width  = max_width,
+    height = max_width * 1.1,
+    units  = dim_unit,
+    dpi    = dpi
+  )
+  
+}
 
 
 across_cost_palma <- function(access_data, 
@@ -1348,148 +1154,6 @@ across_time_comps <- function(access_data, text_labels, analysis_folder, bu, mc)
 
 
 
-calculate_distance_to_transit <- function(grid_data, router, n_cores) {
-  
-  # specify destinations (stations and cbd)
-  
-  cbd <- grid_data[grid_data$opportunities == max(grid_data$opportunities),] %>% 
-    select(id, geometry) %>% 
-    mutate(id = "cbd_") %>% 
-    st_transform(5880) %>% 
-    st_centroid() %>% 
-    st_transform(4674)
-  
-  stations <- extract_rapid_transit(router) %>% 
-    mutate(id = paste0(mode, "_", stop_name)) %>% 
-    select(id, geometry)
-  
-  dests <- rbind(cbd, stations)
-  
-  # specify origins (all cells)
-  
-  origs <- grid_data %>% 
-    st_transform(5880) %>% 
-    st_centroid() %>% 
-    st_transform(4674) %>% 
-    select(id, geometry)
-  
-  # calculate distance using r5r travel_time_matrix
-  
-  network_path <- paste0("./r5/graphs/", router)
-  r5r_core     <- r5r::setup_r5(network_path)
-  
-  walk_speed <- 3.6
-  
-  ttm <- r5r::travel_time_matrix(
-    r5r_core,
-    origins = origs,
-    destinations = dests,
-    mode = "WALK",
-    departure_datetime = as.POSIXct("08-01-2020 08:00:00", format = "%d-%m-%Y %H:%M:%S"),
-    time_window = 1,
-    percentiles = 50,
-    max_walk_dist = Inf,
-    max_trip_duration = 2000,
-    walk_speed = walk_speed,
-    n_threads = n_cores,
-    verbose = FALSE
-  )
-  
-  ttm[, distance_km := (travel_time / 60) * walk_speed]
-  ttm[, dest := stringr::str_extract(toId, "^[a-z]+")]
-  ttm <- ttm[, .(smallest_dist = min(distance_km)), keyby = .(fromId, dest)]
-  ttm <- dcast(ttm, fromId ~ dest, value.var = "smallest_dist")
-  
-  dests <- names(ttm)[! grepl("fromId", names(ttm))]
-  setnames(ttm, old = dests, new = paste0("dist_to_", dests))
-  
-  return(ttm)
-  
-}
-
-
-
-extract_rapid_transit <- function(router) {
-  
-  # create folders and files paths
-  
-  temp_folder   <- tempdir()
-  sp_folder     <- paste0(temp_folder, "/supervia")
-  ft_folder     <- paste0(temp_folder, "/fetranspor")
-  router_folder <- paste0("./otp/graphs/", router)
-  
-  filenames <- list.files(router_folder)
-  
-  ft_file <- filenames[grep("fetranspor", filenames)]
-  ft_file <- paste0(router_folder, "/", ft_file)
-  
-  sp_file <- filenames[grep("supervia", filenames)]
-  sp_file <- paste0(router_folder, "/", sp_file)
-  
-  # extract required gtfs files to temp_folder
-  
-  unzip(
-    ft_file, 
-    files = c("routes.txt", "stops.txt", "trips.txt", "stop_times.txt"), 
-    exdir = ft_folder
-  )
-  
-  unzip(
-    sp_file, 
-    files = c("routes.txt", "stops.txt", "trips.txt", "stop_times.txt"), 
-    exdir = sp_folder
-  )
-  
-  # read supervia stations and create a sf with their stations
-  
-  sp_routes_dt <- fread(paste0(sp_folder, "/routes.txt"))
-  sp_routes    <- sp_routes_dt[grepl("^Ramal", route_long_name)]$route_id
-  sp_stations  <- routes_to_sf(sp_folder, sp_routes, "rail", 4674)
-  
-  # same with subway and BRT
-  
-  ft_routes_dt <- fread(paste0(ft_folder, "/routes.txt"))
-  
-  sbw_routes   <- ft_routes_dt[route_short_name %chin% c("L1/L4", "L2")]$route_id
-  sbw_stations <- routes_to_sf(ft_folder, sbw_routes, "subway", 4674)
-  
-  brt_routes   <- ft_routes_dt[grepl("^BRT", route_short_name)]$route_id
-  brt_stations <- routes_to_sf(ft_folder, brt_routes, "brt", 4674)
-  
-  # clean up - remove temp folders and create list with stations
-  
-  unlink(sp_folder, recursive = TRUE)
-  unlink(ft_folder, recursive = TRUE)
-  
-  stations <- rbind(sp_stations, sbw_stations, brt_stations)
-  
-  return(stations)
-  
-}
-
-routes_to_sf <- function(folder, routes, mode, crs) {
-  
-  trips_dt  <- fread(paste0(folder, "/trips.txt"))
-  trips_dt  <- trips_dt[route_id %in% routes]
-  
-  req_trips <- trips_dt$trip_id
-  
-  stop_times_dt <- fread(paste0(folder, "/stop_times.txt"))
-  stop_times_dt <- stop_times_dt[trip_id %chin% req_trips]
-  
-  req_stops <- unique(stop_times_dt$stop_id)
-  
-  stops_dt <- fread(paste0(folder, "/stops.txt"))
-  stops_dt <- stops_dt[stop_id %in% req_stops]
-  
-  stops_sf <- sfheaders::sf_point(stops_dt, x = "stop_lon", y = "stop_lat")
-  stops_sf <- st_set_crs(stops_sf, crs)
-  stops_sf <- cbind(stops_sf, stop_name = stops_dt$stop_name, mode = mode)
-  
-  return(stops_sf)
-  
-}
-
 palma_ratio <- function(data, variable = "accessibility") {
   
   richest_10 <- data[income_quantile == 10,
@@ -1571,58 +1235,5 @@ theil_index <- function(access_data) {
   index <- sum(access_data$theil_share)
   
   index
-  
-}
-
-##### DEPRECATED
-
-theil_info_old <- function(accessibility_data, variable = "accessibility") {
-  
-  # change the desired variable column name to "variable" in order to allow calculations for any variable
-  
-  accessibility_data <- accessibility_data %>% 
-    rename(variable = any_of(variable)) %>%
-    mutate(total_variable = variable * population)
-  
-  # calculate the between-group component
-  # group by quantile, calculate its share of the component and save it in a list
-  
-  between_group_data <- accessibility_data %>% 
-    group_by(income_quantile) %>% 
-    summarise(
-      population = sum(population),
-      total_variable = sum(total_variable),
-      .groups = "drop"
-    ) %>% 
-    mutate(theil_share = (total_variable / sum(total_variable)) * log((total_variable / sum(total_variable)) / (population / sum(population))))
-  
-  unique_quantiles <- between_group_data$income_quantile
-  n <- length(unique_quantiles)
-  
-  between_group <- list(component = rep("between", n), income_quantile = unique_quantiles, share = between_group_data$theil_share)
-  
-  # calculate the within-group component
-  # it is the weighted average of each group's own theil index, where accessibility is the weight
-  
-  within_group_share <- vector("double", length = n)
-  
-  for (i in seq_along(unique_quantiles)) {
-    
-    filtered_data <- accessibility_data %>% 
-      filter(income_quantile == unique_quantiles[i])
-    
-    within_group_share[i] <- theil_index(filtered_data) * sum(filtered_data$total_variable)
-    
-  }
-  
-  within_group_share <- within_group_share / sum(accessibility_data$total_variable)
-  
-  within_group <- list(component = rep("within", n), income_quantile = unique_quantiles, share = within_group_share)
-  
-  # bind between- and within-group components lists together in a dataframe
-  
-  info <- bind_rows(within_group, between_group)
-  
-  info
   
 }
