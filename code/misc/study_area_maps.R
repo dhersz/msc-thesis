@@ -7,7 +7,8 @@ source("./code/06_analyse_results.R")
 generate_maps <- function(grid_name = "grid_with_data_aop", 
                           router = "rio_no_inter", 
                           res = 8,
-                          which = c("all", "pqs", "aps", "pop_job", "transit")) {
+                          which = c("all", "aps", "pop_job", "transit"),
+                          lang = c("en", "pt")) {
   
   # * read and prepare data -------------------------------------------------
   
@@ -23,6 +24,9 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
       avg_income  = (total_income / population) / 1000
     )
   
+  lang <- lang[1]
+  labels <- generate_labels(lang)
+  
   # * maps ------------------------------------------------------------------
   
   # dimensions and resolution
@@ -37,6 +41,7 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
   rj_state   <- readr::read_rds("./data/rj_state.rds")
   rio_border <- readr::read_rds("./data/rio_municipality.rds")
   parques <- readr::read_rds("./data/parques_naturais.rds")
+  rio_aps <- readr::read_rds("./data/rio_aps.rds")
   
   # transit shapes, to be used on transit and pop_job maps
   
@@ -168,65 +173,9 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
   ylim <- c(st_bbox(expanded_rio_border)[2], st_bbox(rio_border)[4])
   ylim_lower <- c(st_bbox(more_expanded_rio_border)[2], st_bbox(rio_border)[4])
 
-  # * * parques naturais ----------------------------------------------------
-
-  if (which[1] == "all" | which[1] == "pqs") {
-    
-    parques_trimmed <- sf::st_intersection(
-      sf::st_transform(parques, 5880),
-      sf::st_transform(rio_border, 5880)
-    )
-    parques_trimmed <- sf::st_transform(parques_trimmed, 4674)
-    
-    parques_trimmed$parques_naturais <- "Parques Naturais"
-    
-    # parques_trimmed$label <- data.table::fifelse(
-    #   parques_trimmed$nome %in% c("Parque Nacional da Tijuca", "Parque Estadual da Pedra Branca"),
-    #   parques_trimmed$nome,
-    #   ""
-    # )
-    
-    pq <- ggplot() +
-      geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
-      geom_sf(
-        data = parques_trimmed, 
-        aes(fill = parques_naturais), 
-        color = NA,
-        size = 0.3
-      ) +
-      geom_sf(data = rio_border, fill = NA, color = "gray60", size = 0.3) +
-      # geom_sf_text(data = parques_trimmed, aes(label = label), size = 3) +
-      scale_fill_manual(values = "darkolivegreen3") +
-      coord_sf(xlim = xlim, ylim = ylim) +
-      north_maps +
-      scalebar_maps +
-      theme_maps + 
-      theme(
-        legend.title = element_blank()
-      )
-    
-    # save final result
-    
-    filename <- paste0(study_area_folder, "/pqs.tiff")
-    
-    ggsave(
-      filename,
-      plot = pq,
-      device = "tiff",
-      width = max_width,
-      height = 7.4,
-      units = dim_unit,
-      dpi = dpi
-    )
-    
-  }
-  
   # * * areas de planejamento (APs, planning areas) --------------------------
 
   if (which[1] == "all" | which[1] == "aps") {
-    
-    rio_aps <- readr::read_rds("./data/rio_aps.rds")
-    rio_aps$ap_code <- paste0("AP", rio_aps$CODAPNUM)
     
     parques_trimmed <- sf::st_intersection(
       sf::st_transform(parques, 5880),
@@ -237,21 +186,36 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
     pa <- ggplot() +
       geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
       geom_sf(
-        data = parques_trimmed, 
-        fill = "gray85", 
+        data = parques_trimmed,
+        aes(fill = "Parques"),
         color = NA,
         size = 0.3
       ) +
-      geom_sf(data = rio_aps, fill = NA, color = "gray60", size = 0.3) +
+      geom_sf(data = rio_aps, aes(color = "APs"), fill = NA, size = 0.3) +
       geom_sf_text(data = rio_aps, aes(label = ap_code)) +
       coord_sf(xlim = xlim, ylim = ylim) +
       north_maps +
       scalebar_maps +
-      theme_maps
+      theme_maps +
+      scale_color_manual(
+        name = "",
+        values = c("APs" = "gray60"), 
+        labels = labels$aps$aps
+      ) +
+      scale_fill_manual(
+        name = "",
+        values = c("Parques" = "gray85"),
+        labels = labels$aps$parks
+      ) +
+      guides(
+        fill = guide_legend(override.aes = list(color = "#efeeec")),
+        color = guide_legend(override.aes = list(fill = "#efeeec"))
+      ) +
+      theme(legend.spacing.y = unit(0, "pt"))
     
     # save final result
     
-    filename <- paste0(study_area_folder, "/aps.tiff")
+    filename <- paste0(study_area_folder, "/", lang, "/aps.tiff")
     
     ggsave(
       filename,
@@ -269,34 +233,90 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
 
   if (which[1] == "all" | which[1] == "pop_job") {
     
+    # geometries that will be used on all three "facets"
+    # if lang == "en" the plots are geared towards the paper, and the
+    # conditional geom shows the transit distribution
+    # if lang == "pt" the plots are geared towards the thesis, and the
+    # conditional goem shows the planning areas
+    # the rio_border is also included here because the transit layer should be
+    # on top of it, but the ap layer should be below it
+    
+    if (lang == "en") {
+      
+      conditional_geom <- list(
+        geom_sf(data = rio_border, fill = NA, color = "gray60", size = 0.3),
+        geom_sf(
+          data = subset(transit_shapes, mode %in% c("BRT", "Rail", "Subway")),
+          aes(linetype = mode),
+          color = "gray50",
+          size = 0.5
+        ),
+        scale_linetype_manual(
+          name = "Transit\ncorridor",
+          values = c("solid", "twodash", "dashed")
+        )
+      )
+      
+      conditional_guide <- list(
+        guides(
+          fill = guide_colorbar(
+            title.position = "left", 
+            title.vjust = 1, 
+            order = 1
+          ),
+          linetype = guide_legend(
+            title.position = "left", 
+            title.vjust = 1, 
+            order = 2
+          )
+        )
+      )
+      
+    } else if (lang == "pt") {
+      
+      conditional_geom <- list(
+        geom_sf(data = rio_aps, aes(color = "APs"), fill = NA, size = 0.3),
+        geom_sf(data = rio_border, fill = NA, color = "gray60", size = 0.3),
+        scale_color_manual(
+          name = "",
+          values = c("APs" = "gray65"), 
+          labels = "Áreas de planejamento"
+        )
+      )
+      
+      conditional_guide <- list(
+        guides(
+          color = guide_legend(
+            title.position = "left",
+            title.vjust = 1, 
+            order = 1,
+            override.aes = list(fill = "#efeeec")
+          ),
+          fill = guide_colorbar(
+            title.position = "left", 
+            title.vjust = 1, 
+            order = 2
+          )
+        )
+      )
+      
+    }
+    
     # population
   
     pp <- ggplot() +
       geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
       geom_sf(data = trimmed_grid_data, aes(fill = pop_density), color = NA) +
-      geom_sf(data = rio_border, fill = NA, color = "gray60", size = 0.3) +
       scale_fill_gradient(
-        name = "Population density\n(1000/km²)",
+        name = labels$pop_job$pop_density,
         low = "#efeeec",
         high = "firebrick3"
       ) +
-      geom_sf(
-        data = subset(transit_shapes, mode %in% c("BRT", "Rail", "Subway")),
-        aes(linetype = mode),
-        color = "gray50",
-        size = 0.5
-      ) +
-      scale_linetype_manual(
-        name = "Transit\ncorridor",
-        values = c("solid", "twodash", "dashed")
-      ) +
+      conditional_geom +
+      conditional_guide +
       coord_sf(xlim = xlim, ylim = ylim_lower) +
       north_maps +
       scalebar_popjob +
-      guides(
-        fill = guide_colorbar(title.position = "left", title.vjust = 1, order = 1),
-        linetype = guide_legend(title.position = "left", title.vjust = 1, order = 2)
-      ) +
       theme_maps +
       theme(
         legend.box.just = "right",
@@ -310,27 +330,20 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
       geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
       geom_sf(data = trimmed_grid_data, aes(fill = avg_income), color = NA) +
       geom_sf(data = rio_border, fill = NA, color = "gray60", size = 0.3) +
+      conditional_geom +
       scale_fill_gradient(
-        name = "Income per cap.\n(1000 R$)",
+        name = labels$pop_job$income_per_cap,
         low = "#efeeec",
         high = "firebrick3",
         na.value = "#efeeec"
       ) +
-      geom_sf(
-        data = subset(transit_shapes, mode %in% c("BRT", "Rail", "Subway")),
-        aes(linetype = mode),
-        color = "gray50",
-        size = 0.5
-      ) +
-      scale_linetype_manual(
-        name = "Transit corridor",
-        values = c("solid", "twodash", "dashed")
-      ) +
+      conditional_geom +
       coord_sf(xlim = xlim, ylim = ylim) +
       theme() +
       guides(
         fill = guide_colorbar(title.position = "left", title.vjust = 1),
-        linetype = "none"
+        linetype = "none",
+        color = "none"
       ) +
       theme_maps
   
@@ -341,25 +354,17 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
       geom_sf(data = trimmed_grid_data, aes(fill = job_density), color = NA) +
       geom_sf(data = rio_border, fill = NA, color = "gray60", size = 0.3) +
       scale_fill_gradient(
-        name = "Job density\n(1000/km²)",
+        name = labels$pop_job$job_density,
         low = "#efeeec",
         high = "firebrick3"
       ) +
-      geom_sf(
-        data = subset(transit_shapes, mode %in% c("BRT", "Rail", "Subway")),
-        aes(linetype = mode),
-        color = "gray50",
-        size = 0.5
-      ) +
-      scale_linetype_manual(
-        name = "Transit corridor",
-        values = c("solid", "twodash", "dashed")
-      ) +
+      conditional_geom +
       coord_sf(xlim = xlim, ylim = ylim) +
       theme() +
       guides(
         fill = guide_colorbar(title.position = "left", title.vjust = 1),
-        linetype = "none"
+        linetype = "none",
+        color = "none"
       ) +
       theme_maps
   
@@ -377,7 +382,7 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
   
     # save final result
   
-    filename <- paste0(study_area_folder, "/pop_avginc_job.tiff")
+    filename <- paste0(study_area_folder, "/", lang, "/pop_avginc_job.tiff")
   
     ggsave(
       filename,
@@ -406,14 +411,20 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
       ) +
       geom_sf(data = rio_border, fill = NA, color = "gray60", size = 0.3) +
       scale_linetype_manual(
-        name = "Mode",
-        values = c("solid", "solid", "dotted", "twodash", "dashed", "solid")
+        name = labels$transit$legend_title,
+        values = c("solid", "solid", "dotted", "twodash", "dashed", "solid"),
+        labels = labels$transit$legend_lable
       ) +
       scale_color_manual(
-        name = "Mode",
-        values = c("firebrick3", "gray85", "sienna3", "royalblue4", "seagreen4", "dodgerblue3")
+        name = labels$transit$legend_title,
+        values = c("firebrick3", "gray85", "sienna3", "royalblue4", "seagreen4", "dodgerblue3"),
+        labels = labels$transit$legend_lable
       ) +
-      scale_size_manual(name = "Mode", values = c(0.5, 0.3, 0.5, 0.5, 0.5, 0.5)) +
+      scale_size_manual(
+        name = labels$transit$legend_title, 
+        values = c(0.5, 0.3, 0.5, 0.5, 0.5, 0.5),
+        labels = labels$transit$legend_lable
+      ) +
       coord_sf(xlim = xlim, ylim = ylim) +
       north_maps +
       scalebar_maps +
@@ -426,7 +437,7 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
   
     # save final result
     
-    filename <- paste0(study_area_folder, "/transit_dist.tiff")
+    filename <- paste0(study_area_folder, "/", lang, "/transit_dist.tiff")
   
     ggsave(
       filename,
@@ -541,5 +552,49 @@ generate_transit_shapes <- function(router = "rio_no_inter", crs) {
   )
   
   return(transit_shapes)
+  
+}
+
+
+
+generate_labels <- function(lang) {
+  
+  if (lang == "pt") {
+    
+    list(
+      aps = list(
+        parks = "Parques naturais",
+        aps = "Áreas de planejamento"
+      ),
+      pop_job = list(
+        pop_density = "Dens. populacional\n(1000/km²)",
+        income_per_cap = "Renda per cap.\n(1000 R$)",
+        job_density = "Dens. de empregos\n(1000/km²)"
+      ),
+      transit = list(
+        legend_title = "Modo",
+        legend_lable = c("BRT", "Ônibus", "Barca", "Trem", "Metrô", "VLT")
+      )
+    )
+    
+  } else if (lang == "en") {
+    
+    list(
+      aps = list(
+        parks = "Natural parks",
+        aps = "Planning areas"
+      ),
+      pop_job = list(
+        pop_density = "Population density\n(1000/km²)",
+        income_per_cap = "Income per cap.\n(1000 R$)",
+        job_density = "Job density\n(1000/km²)"
+      ),
+      transit = list(
+        legend_title = "Mode",
+        legend_lable = c("BRT", "Bus", "Ferry", "Rail", "Subway", "VLT")
+      )
+    )
+    
+  }
   
 }
