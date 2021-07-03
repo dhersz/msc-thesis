@@ -8,8 +8,7 @@ analyse_results <- function(grid_name = "grid_with_data_aop",
                             router = "rio_no_inter",
                             n_quantiles = 10,
                             res = 8,
-                            lang = "en",
-                            n_cores = 4) {
+                            lang = "en") {
   
   # * read and prepare data -------------------------------------------------
   
@@ -20,32 +19,10 @@ analyse_results <- function(grid_name = "grid_with_data_aop",
   accessibility_path <- paste0(accessibility_folder, "/median_accessibility.rds")
   accessibility_data <- readr::read_rds(accessibility_path)
   
-  # read grid_data and calculate distance to closest rail/subway/brt station and 
-  # to cbd
-  
-  grid_data <- readr::read_rds(paste0(router_folder, "/", grid_name, ".rds"))
-  
-  distance_to_transit_path <- paste0(router_folder, "/distance_to_transit.rds")
-  
-  if (! file.exists(distance_to_transit_path)) {
-    
-    distance_to_transit <- calculate_distance_to_transit(
-      grid_data,
-      router,
-      n_cores
-    )
-    
-    readr::write_rds(distance_to_transit, distance_to_transit_path)
-    
-  } else {
-    
-    distance_to_transit <- readr::read_rds(distance_to_transit_path)
-    
-  }
-  
-  grid_data <- setDT(grid_data)[, avg_income := total_income / population]
-  grid_data <- distance_to_transit[grid_data, on = c(fromId = "id")]
-  grid_data[, `:=`(id = fromId, fromId = NULL)]
+  grid_data <- setDT(
+    readr::read_rds(paste0(router_folder, "/", grid_name, ".rds"))
+  )
+  grid_data[, avg_income := total_income / population]
   
   # classify hexagons according to their residents' avg income per capita quantile.
   # not sure why, but the values returned by wtd.quantile() seem to have some 
@@ -90,8 +67,8 @@ analyse_results <- function(grid_name = "grid_with_data_aop",
   max_width <- 13 
   dim_unit <- "cm"
   
-  
-  # * different costs analysis ----------------------------------------------
+
+  # ANPET analysis ----------------------------------------------------------
 
   
   analysis_folder <- paste0(router_folder, "/analysis")
@@ -119,20 +96,30 @@ analyse_results <- function(grid_name = "grid_with_data_aop",
   })
   
 
-  # * all costs/times analysis ----------------------------------------------
-  
+  # WSTLUR/thesis analysis --------------------------------------------------
+
   
   analysis_folder <- paste0(router_folder, "/analysis/", lang)
   
-  across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes, max_width, dpi, dim_unit)
-  # across_cost_theil(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
-  # across_cost_comps(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes)
-  
-  across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts, max_width, dpi, dim_unit)
-  # across_time_theil(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
-  # across_time_comps(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts)
-  
-  all_thresholds_maps(copy(accessibility_data), ttimes, mcosts, bu = "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
+  if (lang == "en") {
+    
+    across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes, max_width, dpi, dim_unit)
+    across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts, max_width, dpi, dim_unit)
+    all_thresholds_maps(copy(accessibility_data), ttimes, mcosts, bu = "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
+    
+  } else if (lang == "pt") {
+    
+    # across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes, max_width, dpi, dim_unit)
+    # across_cost_theil(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes, max_width, dpi, dim_unit)
+    across_cost_comps(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes, max_width, dpi, dim_unit)
+    
+    # across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts, max_width, dpi, dim_unit)
+    # across_time_theil(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts, max_width, dpi, dim_unit)
+    across_time_comps(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts, max_width, dpi, dim_unit)
+    
+    # all_thresholds_maps(copy(accessibility_data), ttimes, mcosts, bu = "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
+    
+  }
   
 }
 
@@ -212,46 +199,107 @@ text_labels_generator <- function(mcosts, ttimes, lang) {
         "x_axis" = "Decil de renda"
       ),
       "across_cost_palma" = list(
-        "legend_title" = "Tempo de\nviagem (min.)",
+        "legend_title" = "Limite de tempo\nde viagem (min.)",
         "y_axis" = "Razão de Palma",
-        "x_axis" = "Custo monetário (R$)"
+        "x_axis" = "Limite de custo monetário (R$)",
+        "x_labels" = c(
+          "0",
+          "<span style='font-size:8pt'>4,05</span>",
+          "",
+          "5",
+          "<span style='font-size:8pt'>7,1</span>",
+          "<span style='font-size:8pt'>8,75</span>",
+          "10",
+          "Sem restrição"
+        )
       ),
       "across_time_palma" = list(
-        "legend_title" = "Custo\nmonetário",
-        "legend_values" = ifelse(mcosts == "R$ 1000.00", "Sem lim. de custo", mcosts),
+        "legend_title" = "Limite de custo\nmonetário (R$)",
+        "legend_values" = c(
+          paste0("0,00 ", "<img src='data/icons/walking.png' width='10'>"),
+          paste0("4,05 ", "<img src='data/icons/bus.png' width='10'>+<img src='data/icons/brt.png' width='10'>"),
+          paste0("4,70 ", "<img src='data/icons/train.png' width='10'>"),
+          paste0("5,00 ", "<img src='data/icons/subway.png' width='10'>"),
+          paste0("7,10 ", "<img src='data/icons/brt.png' width='10'>+<img src='data/icons/subway.png' width='10'>"),
+          paste0("8,75 ", "(<img src='data/icons/bus.png' width='8'>+<img src='data/icons/brt.png' width='8'>)+<img src='data/icons/train.png' width='8'>"),
+          "Sem restrição"
+        ),
         "y_axis" = "Razão de Palma",
-        "x_axis" = "Tempo de viagem (min.)"
+        "x_axis" = "Limite de tempo de viagem (min.)"
       ),
       "across_cost_theil" = list(
-        "legend_title" = "Tempo de\nviagem (min.)",
+        "legend_title" = "Limite de tempo\nde viagem (min.)",
         "y_axis" = "Índice de Theil",
-        "x_axis" = "Custo monetário (R$)"
+        "x_axis" = "Limite de custo monetário (R$)",
+        "x_labels" = c(
+          "0",
+          "<span style='font-size:8pt'>4,05</span>",
+          "",
+          "5",
+          "<span style='font-size:8pt'>7,1</span>",
+          "<span style='font-size:8pt'>8,75</span>",
+          "10",
+          "Sem restrição"
+        )
       ),
       "across_time_theil" = list(
-        "legend_title" = "Custo\nmonetário",
+        "legend_title" = "Limite de custo\nmonetário (R$)",
+        "legend_values" = c(
+          paste0("0,00 ", "<img src='data/icons/walking.png' width='10'>"),
+          paste0("4,05 ", "<img src='data/icons/bus.png' width='10'>+<img src='data/icons/brt.png' width='10'>"),
+          paste0("4,70 ", "<img src='data/icons/train.png' width='10'>"),
+          paste0("5,00 ", "<img src='data/icons/subway.png' width='10'>"),
+          paste0("7,10 ", "<img src='data/icons/brt.png' width='10'>+<img src='data/icons/subway.png' width='10'>"),
+          paste0("8,75 ", "(<img src='data/icons/bus.png' width='8'>+<img src='data/icons/brt.png' width='8'>)+<img src='data/icons/train.png' width='8'>"),
+          "Sem restrição"
+        ),
         "y_axis" = "Índice de Theil",
-        "x_axis" = "Tempo de viagem (min.)"
+        "x_axis" = "Limite de tempo de viagem (min.)"
       ),
       "across_cost_comps" = list(
-        "color_title" = "Tempo de\nviagem (min.)",
+        "color_title" = "Limite de tempo\nde viagem (min.)",
         "lntp_title" = "Componente",
         "y_axis" = "Índice de Theil",
-        "x_axis" = "Custo monetário (R$)",
+        "x_axis" = "Limite de custo monetário (R$)",
+        "x_labels" = c(
+          "0",
+          "<span style='font-size:8pt'>4,05</span>",
+          "",
+          "5",
+          "<span style='font-size:8pt'>7,1</span>",
+          "<span style='font-size:8pt'>8,75</span>",
+          "10",
+          "<span style='font-size:8pt'>Sem restrição</span>"
+        ),
         "components" = list(Entregrupos = "between", Intragrupos = "within")
       ),
       "across_time_comps" = list(
-        "color_title" = "Custo\nmonetário",
+        "color_title" = "Limite de custo\nmonetário (R$)",
         "lntp_title" = "Componente",
+        "legend_values" = c(
+          paste0("0,00 ", "<img src='data/icons/walking.png' width='10'>"),
+          paste0("4,05 ", "<img src='data/icons/bus.png' width='10'>+<img src='data/icons/brt.png' width='10'>"),
+          paste0("4,70 ", "<img src='data/icons/train.png' width='10'>"),
+          paste0("5,00 ", "<img src='data/icons/subway.png' width='10'>"),
+          paste0("7,10 ", "<img src='data/icons/brt.png' width='10'>+<img src='data/icons/subway.png' width='10'>"),
+          paste0("8,75 ", "(<img src='data/icons/bus.png' width='8'>+<img src='data/icons/brt.png' width='8'>)+<img src='data/icons/train.png' width='8'>"),
+          "Sem restrição"
+        ),
         "y_axis" = "Índice de Theil",
-        "x_axis" = "Tempo de viagem (min.)",
+        "x_axis" = "Limite de tempo de viagem (min.)",
         "components" = list(Entregrupos = "between", Intragrupos = "within")
       ),
       "all_thresholds_maps" = list(
         "legend_title" = "Empregos acessíveis\n(% do total)",
         "times_facet_titles" = paste0(ttimes, " min."),
         "costs_facet_titles" = c(
-          paste0("R$ 0.00\n", "<img src='./data/icons/walking.png' width='20' />"),
-          mcosts[2:7]
+          paste0("<img src='data/icons/walking.png' width='10'>", "<br>R$ 0,00"),
+          paste0("<img src='data/icons/bus.png' width='10'>+<img src='data/icons/brt.png' width='10'>", "<br>R$ 4,05"),
+          paste0("<img src='data/icons/train.png' width='10'>", "<br>R$ 4,70"),
+          paste0("<img src='data/icons/subway.png' width='10'>", "<br>R$ 5,00"),
+          paste0("<img src='data/icons/brt.png' width='10'>+<img src='data/icons/subway.png' width='10'>", "<br>R$ 7,10"),
+          paste0("(<img src='data/icons/bus.png' width='8'>+<img src='data/icons/brt.png' width='8'>)+<img src='data/icons/train.png' width='8'>", "<br>R$ 8,75"),
+          "Sem<br>restrição"
         )
       )
     )
@@ -285,7 +333,17 @@ text_labels_generator <- function(mcosts, ttimes, lang) {
       "across_cost_palma" = list(
         "legend_title" = "Travel time\nthreshold (min.)",
         "y_axis" = "Palma Ratio",
-        "x_axis" = "Monetary cost threshold (R$)"
+        "x_axis" = "Monetary cost threshold (R$)",
+        "x_labels" = c(
+          "0",
+          "<span style='font-size:8pt'>4.05</span>",
+          "",
+          "5",
+          "<span style='font-size:8pt'>7.1</span>",
+          "<span style='font-size:8pt'>8.75</span>",
+          "10",
+          "No limit"
+        )
       ),
       "across_time_palma" = list(
         "legend_title" = "Monetary cost\nthreshold (R$)",
@@ -304,7 +362,17 @@ text_labels_generator <- function(mcosts, ttimes, lang) {
       "across_cost_theil" = list(
         "legend_title" = "Tempo de\nviagem (min.)",
         "y_axis" = "Índice de Theil",
-        "x_axis" = "Custo monetário (R$)"
+        "x_axis" = "Custo monetário (R$)",
+        "x_labels" = c(
+          "0",
+          "<span style='font-size:8pt'>4.05</span>",
+          "",
+          "5",
+          "<span style='font-size:8pt'>7.1</span>",
+          "<span style='font-size:8pt'>8.75</span>",
+          "10",
+          "No limit"
+        )
       ),
       "across_time_theil" = list(
         "legend_title" = "Custo\nmonetário",
@@ -316,6 +384,16 @@ text_labels_generator <- function(mcosts, ttimes, lang) {
         "lntp_title" = "Componente",
         "y_axis" = "Índice de Theil",
         "x_axis" = "Custo monetário (R$)",
+        "x_labels" = c(
+          "0",
+          "<span style='font-size:8pt'>4.05</span>",
+          "",
+          "5",
+          "<span style='font-size:8pt'>7.1</span>",
+          "<span style='font-size:8pt'>8.75</span>",
+          "10",
+          "No limit"
+        ),
         "components" = list(Entregrupos = "between", Intragrupos = "within")
       ),
       "across_time_comps" = list(
@@ -793,16 +871,7 @@ across_cost_palma <- function(access_data,
   # specify x axis breaks and labels
   
   breaks <- c(0, 4.05, 4.7, 5, 7.10, 8.75, 10, 15)
-  labels <- c(
-    "0", 
-    "<span style='font-size:8pt'>4.05</span>", 
-    "", 
-    "5", 
-    "<span style='font-size:8pt'>7.1</span>", 
-    "<span style='font-size:8pt'>8.75</span>", 
-    "10", 
-    "No cost limit"
-  )
+  labels <- text_labels$across_cost_palma$x_labels
   
   # plot settings
   
@@ -898,7 +967,14 @@ across_time_palma <- function(access_data,
 
 
 
-across_cost_theil <- function(access_data, text_labels, analysis_folder, bu, tt) {
+across_cost_theil <- function(access_data, 
+                              text_labels, 
+                              analysis_folder, 
+                              bu, 
+                              tt,
+                              max_width, 
+                              dpi, 
+                              dim_unit) {
   
   # drop large unnecessary columns and filter data
   
@@ -915,6 +991,11 @@ across_cost_theil <- function(access_data, text_labels, analysis_folder, bu, tt)
   
   access_data[, travel_time := as.factor(travel_time)]
   
+  # specify x axis breaks and labels
+  
+  breaks <- c(0, 4.05, 4.7, 5, 7.10, 8.75, 10, 15)
+  labels <- text_labels$across_cost_theil$x_labels
+  
   # plot settings
   
   p <- ggplot(access_data) + 
@@ -926,20 +1007,32 @@ across_cost_theil <- function(access_data, text_labels, analysis_folder, bu, tt)
       y     = text_labels$across_cost_theil$y_axis,
       color = text_labels$across_cost_theil$legend_title
     ) +
+    scale_x_continuous(
+      breaks = breaks,
+      labels = labels
+    ) +
     theme_thesis("graphic")
   
   ggsave(
     paste0(analysis_folder, "/theil_across_costs_", bu, ".png"),
-    plot = p,
-    width = 7,
-    height = 3,
-    units = "in"
+    plot   = p,
+    width  = max_width,
+    height = max_width * 0.5,
+    units  = dim_unit,
+    dpi    = dpi
   )
   
 }
 
 
-across_time_theil <- function(access_data, text_labels, analysis_folder, bu, mc) {
+across_time_theil <- function(access_data, 
+                              text_labels, 
+                              analysis_folder, 
+                              bu, 
+                              mc,
+                              max_width, 
+                              dpi, 
+                              dim_unit) {
   
   # drop large unnecessary columns and filter data
   
@@ -969,6 +1062,10 @@ across_time_theil <- function(access_data, text_labels, analysis_folder, bu, mc)
     )
   )
   
+  # specify x axis breaks
+  
+  breaks <- c(0, 30, 60, 90, 120)
+  
   # plot settings
   
   p <- ggplot(access_data) + 
@@ -985,20 +1082,31 @@ across_time_theil <- function(access_data, text_labels, analysis_folder, bu, mc)
       y     = text_labels$across_time_theil$y_axis,
       color = text_labels$across_time_theil$legend_title
     ) +
+    scale_x_continuous(
+      breaks = breaks
+    ) +
     theme_thesis("graphic")
   
   ggsave(
     paste0(analysis_folder, "/theil_across_times_", bu, ".png"),
-    plot = p,
-    width = 7,
-    height = 3,
-    units = "in"
+    plot   = p,
+    width  = max_width,
+    height = max_width * 0.5,
+    units  = dim_unit,
+    dpi    = dpi
   )
   
 }
 
 
-across_cost_comps <- function(access_data, text_labels, analysis_folder, bu, tt) {
+across_cost_comps <- function(access_data, 
+                              text_labels, 
+                              analysis_folder, 
+                              bu, 
+                              tt,
+                              max_width, 
+                              dpi, 
+                              dim_unit) {
   
   # drop large unnecessary columns and filter data
   
@@ -1035,6 +1143,11 @@ across_cost_comps <- function(access_data, text_labels, analysis_folder, bu, tt)
   
   levels(access_data$component) <- text_labels$across_cost_comps$components
   
+  # specify x axis breaks and labels
+  
+  breaks <- c(0, 4.05, 4.7, 5, 7.10, 8.75, 10, 15)
+  labels <- text_labels$across_cost_comps$x_labels
+  
   # plot settings
   
   p <- ggplot(access_data) + 
@@ -1053,20 +1166,32 @@ across_cost_comps <- function(access_data, text_labels, analysis_folder, bu, tt)
       color    = text_labels$across_cost_comps$color_title,
       linetype = text_labels$across_cost_comps$lntp_title
     ) +
+    scale_x_continuous(
+      breaks = breaks,
+      labels = labels
+    ) +
     theme_thesis("graphic")
   
   ggsave(
     paste0(analysis_folder, "/comps_across_costs_", bu, ".png"),
-    plot = p,
-    width = 7,
-    height = 3,
-    units = "in"
+    plot   = p,
+    width  = max_width,
+    height = max_width * 0.65,
+    units  = dim_unit,
+    dpi    = dpi
   )
-  
+
 }
 
 
-across_time_comps <- function(access_data, text_labels, analysis_folder, bu, mc) {
+across_time_comps <- function(access_data, 
+                              text_labels, 
+                              analysis_folder, 
+                              bu, 
+                              mc,
+                              max_width, 
+                              dpi, 
+                              dim_unit) {
   
   # drop large unnecessary columns and filter data
   
@@ -1118,6 +1243,10 @@ across_time_comps <- function(access_data, text_labels, analysis_folder, bu, mc)
   
   levels(access_data$component) <- text_labels$across_cost_comps$components
   
+  # specify x axis breaks
+  
+  breaks <- c(0, 30, 60, 90, 120)
+  
   # plot settings
   
   p <- ggplot(access_data) + 
@@ -1136,14 +1265,18 @@ across_time_comps <- function(access_data, text_labels, analysis_folder, bu, mc)
       color    = text_labels$across_time_comps$color_title,
       linetype = text_labels$across_time_comps$lntp_title
     ) +
+    scale_x_continuous(
+      breaks = breaks
+    )  +
     theme_thesis("graphic")
   
   ggsave(
     paste0(analysis_folder, "/comps_across_times_", bu, ".png"),
-    plot = p,
-    width = 7,
-    height = 4,
-    units = "in"
+    plot   = p,
+    width  = max_width,
+    height = max_width * 0.75,
+    units  = dim_unit,
+    dpi    = dpi
   )
   
 }
