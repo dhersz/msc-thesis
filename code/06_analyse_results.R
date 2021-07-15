@@ -259,7 +259,7 @@ text_labels_generator <- function(mcosts, ttimes, lang) {
       "across_cost_comps" = list(
         "color_title" = "Limite de tempo\nde viagem (min.)",
         "lntp_title" = "Componente",
-        "y_axis" = "Índice de Theil",
+        "y_axis" = "Componente entregrupos\ndo Índice de Theil",
         "x_axis" = "Limite de custo monetário (R$)",
         "x_labels" = c(
           "0",
@@ -285,7 +285,7 @@ text_labels_generator <- function(mcosts, ttimes, lang) {
           paste0("8,75 ", "(<img src='data/icons/bus.png' width='8'>+<img src='data/icons/brt.png' width='8'>)+<img src='data/icons/train.png' width='8'>"),
           "Sem restrição"
         ),
-        "y_axis" = "Índice de Theil",
+        "y_axis" = "Componente entregrupos\ndo Índice de Theil",
         "x_axis" = "Limite de tempo de viagem (min.)",
         "components" = list(Entregrupos = "between", Intragrupos = "within")
       ),
@@ -1142,6 +1142,10 @@ across_cost_comps <- function(access_data,
   access_data[, component := as.factor(component)]
   
   levels(access_data$component) <- text_labels$across_cost_comps$components
+ 
+  # keeping only between-group component
+  
+  access_data <- access_data[component == "Entregrupos"]
   
   # specify x axis breaks and labels
   
@@ -1156,15 +1160,15 @@ across_cost_comps <- function(access_data,
         monetary_cost, 
         share, 
         group = interaction(component, travel_time), 
-        color = travel_time,
-        linetype = component
+        color = travel_time
+        #, linetype = component
       )
     ) +
     labs(
       x        = text_labels$across_cost_comps$x_axis, 
       y        = text_labels$across_cost_comps$y_axis,
-      color    = text_labels$across_cost_comps$color_title,
-      linetype = text_labels$across_cost_comps$lntp_title
+      color    = text_labels$across_cost_comps$color_title
+      #, linetype = text_labels$across_cost_comps$lntp_title
     ) +
     scale_x_continuous(
       breaks = breaks,
@@ -1176,7 +1180,7 @@ across_cost_comps <- function(access_data,
     paste0(analysis_folder, "/comps_across_costs_", bu, ".png"),
     plot   = p,
     width  = max_width,
-    height = max_width * 0.65,
+    height = max_width * 0.5,
     units  = dim_unit,
     dpi    = dpi
   )
@@ -1243,6 +1247,10 @@ across_time_comps <- function(access_data,
   
   levels(access_data$component) <- text_labels$across_cost_comps$components
   
+  # keeping only between-group component
+  
+  access_data <- access_data[component == "Entregrupos"]
+  
   # specify x axis breaks
   
   breaks <- c(0, 30, 60, 90, 120)
@@ -1255,15 +1263,15 @@ across_time_comps <- function(access_data,
         travel_time, 
         share, 
         group = interaction(component, monetary_cost), 
-        color = monetary_cost,
-        linetype = component
+        color = monetary_cost
+        #, linetype = component
       )
     ) +
     labs(
       x        = text_labels$across_time_comps$x_axis, 
       y        = text_labels$across_time_comps$y_axis,
-      color    = text_labels$across_time_comps$color_title,
-      linetype = text_labels$across_time_comps$lntp_title
+      color    = text_labels$across_time_comps$color_title
+      #, linetype = text_labels$across_time_comps$lntp_title
     ) +
     scale_x_continuous(
       breaks = breaks
@@ -1274,7 +1282,7 @@ across_time_comps <- function(access_data,
     paste0(analysis_folder, "/comps_across_times_", bu, ".png"),
     plot   = p,
     width  = max_width,
-    height = max_width * 0.75,
+    height = max_width * 0.5,
     units  = dim_unit,
     dpi    = dpi
   )
