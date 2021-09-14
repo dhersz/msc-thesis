@@ -109,7 +109,7 @@ analyse_results <- function(grid_name = "grid_with_data_aop",
     
   } else if (lang == "pt") {
     
-    across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes, max_width, dpi, dim_unit)
+    # across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes, max_width, dpi, dim_unit)
     # across_cost_theil(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes, max_width, dpi, dim_unit)
     # across_cost_comps(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes, max_width, dpi, dim_unit)
     
@@ -892,11 +892,48 @@ couple_thresholds_maps <- function(access_data,
     st_buffer(3000) %>% 
     st_transform(st_crs(rio_border))
   
+  less_expanded_rio_border <- rio_border %>% 
+    st_transform(5880) %>% 
+    st_buffer(1500) %>% 
+    st_transform(st_crs(rio_border))
+  
   # set bounding boxes
   
   xlim <- c(st_bbox(rio_border)[1], st_bbox(rio_border)[3])
-  ylim <- c(st_bbox(rio_border)[2], st_bbox(rio_border)[4])
-  ylim_lower <- c(st_bbox(expanded_rio_border)[2], st_bbox(rio_border)[4])
+  ylim <- c(st_bbox(expanded_rio_border)[2], st_bbox(rio_border)[4])
+  
+  # scalebar
+  
+  scalebar_data <- rio_border
+  scalebar_data_bbox <- st_bbox(scalebar_data)
+  scalebar_data_bbox["ymin"] <- st_bbox(less_expanded_rio_border)["ymin"]
+  attr(st_geometry(scalebar_data), "bbox") <- scalebar_data_bbox
+  
+  scalebar <- ggsn::scalebar(
+    data = scalebar_data, 
+    dist = 10, 
+    dist_unit = "km",
+    location = "bottomleft", 
+    transform = TRUE, 
+    model = "WGS84",
+    border.size = 0.3, 
+    st.size = 3,
+    st.dist = 0.03
+  )
+  
+  # north
+  
+  north_data <- rio_border
+  north_data_bbox <- st_bbox(north_data)
+  north_data_bbox["xmin"] <- st_bbox(expanded_rio_border)["xmin"]
+  attr(st_geometry(north_data), "bbox") <- north_data_bbox
+  
+  north <- ggsn::north(
+    data = north_data,
+    location = "topleft",
+    scale = 0.15,
+    symbol = 4
+  )
   
   # plot settings
   
@@ -912,10 +949,12 @@ couple_thresholds_maps <- function(access_data,
     scale_fill_viridis_c(
       name = text_labels$all_thresholds_maps$legend_title,
       option = "inferno",
-      limits = c(0, total_opportunities * 0.98),
+      limits = c(0, total_opportunities),
       breaks = breaks,
       labels = labels
     ) +
+    scalebar +
+    north +
     guides(fill = guide_colorbar(title.vjust = 0.75)) +
     theme_thesis("map") +
     theme(legend.position = "none")
@@ -928,11 +967,11 @@ couple_thresholds_maps <- function(access_data,
       color = NA
     ) +
     geom_sf(data = rio_border, color = "black", fill = NA) +
-    coord_sf(xlim, ylim_lower) +
+    coord_sf(xlim, ylim) +
     scale_fill_viridis_c(
       name = text_labels$all_thresholds_maps$legend_title,
       option = "inferno",
-      limits = c(0, total_opportunities * 0.98),
+      limits = c(0, total_opportunities),
       breaks = breaks,
       labels = labels
     ) +
@@ -957,7 +996,7 @@ couple_thresholds_maps <- function(access_data,
   
   # joined together
   
-  pf <- cowplot::plot_grid(ptop, pbot, ncol = 1, rel_heights = c(1, 1.09))
+  pf <- cowplot::plot_grid(ptop, pbot, ncol = 1)
   
   # save plot
   
@@ -965,7 +1004,7 @@ couple_thresholds_maps <- function(access_data,
     paste0(analysis_folder, "/selected_access_distribution_", bu, ".png"),
     plot   = pf,
     width  = max_width,
-    height = max_width * 1.1,
+    height = max_width * 1.14,
     units  = dim_unit,
     dpi    = dpi
   )
