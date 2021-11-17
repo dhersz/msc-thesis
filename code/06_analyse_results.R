@@ -104,8 +104,8 @@ analyse_results <- function(grid_name = "grid_with_data_aop",
   if (lang == "en") {
     
     across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes, max_width, dpi, dim_unit)
-    across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts, max_width, dpi, dim_unit)
-    all_thresholds_maps(copy(accessibility_data), ttimes, mcosts, bu = "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
+    # across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts, max_width, dpi, dim_unit)
+    # all_thresholds_maps(copy(accessibility_data), ttimes, mcosts, bu = "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
     
   } else if (lang == "pt") {
     
@@ -125,7 +125,7 @@ analyse_results <- function(grid_name = "grid_with_data_aop",
     
     # all_thresholds_maps(copy(accessibility_data), ttimes, mcosts, bu = "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
     # couple_thresholds_maps(copy(accessibility_data), ttimes, mcosts, "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
-    one_threshold_map(copy(accessibility_data), ttimes, mcosts, "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
+    # one_threshold_map(copy(accessibility_data), ttimes, mcosts, "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
     
   }
   
@@ -1185,6 +1185,7 @@ across_cost_palma <- function(access_data,
       y     = text_labels$across_cost_palma$y_axis,
       color = text_labels$across_cost_palma$legend_title
     ) +
+    scale_color_brewer(palette = "Paired") +
     scale_x_continuous(
       breaks = breaks,
       labels = labels
@@ -1250,6 +1251,7 @@ across_time_palma <- function(access_data,
       y     = text_labels$across_time_palma$y_axis,
       color = text_labels$across_time_palma$legend_title
     ) +
+    scale_color_brewer(palette = "Paired") +
     scale_x_continuous(
       breaks = breaks
     ) +
