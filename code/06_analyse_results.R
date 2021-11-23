@@ -55,7 +55,7 @@ analyse_results <- function(grid_name = "grid_with_data_aop",
                           income_quantile = i.income_quantile, 
                           geometry = i.geometry)]
   
-  ttimes <- c(30, 60, 90, 120)
+  ttimes <- c(30, 60, 90)
   mcosts <- c(0, 4.05, 4.7, 5, 7.1, 8.75, 1000)
   
   text_labels <- text_labels_generator(mcosts, ttimes, lang)
@@ -103,9 +103,18 @@ analyse_results <- function(grid_name = "grid_with_data_aop",
   
   if (lang == "en") {
     
-    across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes, max_width, dpi, dim_unit)
+    # across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes, max_width, dpi, dim_unit)
     # across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts, max_width, dpi, dim_unit)
-    # all_thresholds_maps(copy(accessibility_data), ttimes, mcosts, bu = "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
+    
+    accessibility_data <- accessibility_data[
+      (bilhete_unico == "with") &
+        (travel_time %in% ttimes) &
+        (monetary_cost %in% mcosts)
+    ]
+    
+    all_thresholds_maps(copy(accessibility_data), ttimes, mcosts, bu = "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
+    couple_thresholds_maps(copy(accessibility_data), ttimes, mcosts, "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
+    one_threshold_map(copy(accessibility_data), ttimes, mcosts, "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
     
   } else if (lang == "pt") {
     
@@ -778,8 +787,6 @@ all_thresholds_maps <- function(access_data,
                                 text_labels, 
                                 analysis_folder) {
   
-  # filter access_data and convert it to sf
-  
   access_data <- access_data[
     (bilhete_unico == bu) & (travel_time %in% ttimes) & (monetary_cost %in% mcosts)
   ]
@@ -801,11 +808,7 @@ all_thresholds_maps <- function(access_data,
       )
     )
   ]
-  
-  # convert access_data to sf
-  
-  access_data <- st_as_sf(access_data[opportunities > 0 & population > 0])
-  
+
   # read rio state and municipality shapes
   
   rj_state   <- readr::read_rds("./data/rj_state.rds")
@@ -820,6 +823,10 @@ all_thresholds_maps <- function(access_data,
   
   max_accessibility   <- max(access_data$accessibility)
   total_opportunities <- sum(access_data$opportunities) / (length(mcosts) * length(ttimes))
+  
+  # convert access_data to sf
+  
+  access_data <- st_as_sf(access_data[opportunities > 0 & population > 0])
   
   # plot settings
   
@@ -844,7 +851,7 @@ all_thresholds_maps <- function(access_data,
     paste0(analysis_folder, "/accessibility_distribution_", bu, ".png"),
     plot   = p,
     width  = max_width,
-    height = max_width * 1.1,
+    height = max_width * 1.35,
     units  = dim_unit,
     dpi    = dpi
   )
@@ -863,23 +870,20 @@ couple_thresholds_maps <- function(access_data,
                                    text_labels,
                                    analysis_folder) {
   
+  access_data <- access_data[
+    (bilhete_unico == bu) & (travel_time %in% ttimes) & (monetary_cost %in% mcosts)
+  ]
+  
   # calculate max accessibility and total opportunities for a pretty legend
-  # use unfiltered data to preserve the same legend of 'all_thresholds_maps'
   
   max_accessibility   <- max(access_data$accessibility)
   total_opportunities <- sum(access_data$opportunities) / (length(mcosts) * length(ttimes))
-  
-  breaks <- setdiff(
-    seq(0, total_opportunities * 0.98, total_opportunities * 0.98 / 3),
-    0
-  )
-  labels <- paste0(round(breaks / total_opportunities * 100, digits = 0), "%")
   
   # filter access_data to keep only two facets of 'all_thresholds_maps'
   
   access_data <- access_data[
     (bilhete_unico == bu) &
-      (travel_time == 120) &
+      (travel_time == max(ttimes)) &
       (monetary_cost %in% c(4.70, 5))
   ]
   access_data <- access_data[opportunities > 0 & population > 0]
@@ -951,9 +955,9 @@ couple_thresholds_maps <- function(access_data,
     scale_fill_viridis_c(
       name = text_labels$all_thresholds_maps$legend_title,
       option = "inferno",
-      limits = c(0, total_opportunities),
-      breaks = breaks,
-      labels = labels
+      limits = c(0, max_accessibility),
+      breaks = seq(0, max_accessibility, max_accessibility / 3),
+      labels = scales::label_percent(scale = 100 / total_opportunities)
     ) +
     scalebar +
     north +
@@ -973,9 +977,9 @@ couple_thresholds_maps <- function(access_data,
     scale_fill_viridis_c(
       name = text_labels$all_thresholds_maps$legend_title,
       option = "inferno",
-      limits = c(0, total_opportunities),
-      breaks = breaks,
-      labels = labels
+      limits = c(0, max_accessibility),
+      breaks = seq(0, max_accessibility, max_accessibility / 3),
+      labels = scales::label_percent(scale = 100 / total_opportunities)
     ) +
     guides(fill = guide_colorbar(title.vjust = 0.75)) +
     theme_thesis("map") +
@@ -1025,23 +1029,20 @@ one_threshold_map <- function(access_data,
                               text_labels,
                               analysis_folder) {
   
+  access_data <- access_data[
+    (bilhete_unico == bu) & (travel_time %in% ttimes) & (monetary_cost %in% mcosts)
+  ]
+  
   # calculate max accessibility and total opportunities for a pretty legend
-  # use unfiltered data to preserve the same legend of 'all_thresholds_maps'
   
   max_accessibility   <- max(access_data$accessibility)
   total_opportunities <- sum(access_data$opportunities) / (length(mcosts) * length(ttimes))
-  
-  breaks <- setdiff(
-    seq(0, total_opportunities * 0.98, total_opportunities * 0.98 / 3),
-    0
-  )
-  labels <- paste0(round(breaks / total_opportunities * 100, digits = 0), "%")
   
   # filter access_data to keep one facet of 'all_thresholds_maps'
   
   access_data <- access_data[
     (bilhete_unico == bu) &
-      (travel_time == 120) &
+      (travel_time == max(ttimes)) &
       (monetary_cost == 4.05)
   ]
   access_data <- access_data[opportunities > 0 & population > 0]
@@ -1113,9 +1114,9 @@ one_threshold_map <- function(access_data,
     scale_fill_viridis_c(
       name = text_labels$all_thresholds_maps$legend_title,
       option = "inferno",
-      limits = c(0, total_opportunities),
-      breaks = breaks,
-      labels = labels
+      limits = c(0, max_accessibility),
+      breaks = seq(0, max_accessibility, max_accessibility / 3),
+      labels = scales::label_percent(scale = 100 / total_opportunities)
     ) +
     scalebar +
     north +
