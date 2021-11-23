@@ -103,8 +103,10 @@ analyse_results <- function(grid_name = "grid_with_data_aop",
   
   if (lang == "en") {
     
-    # across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes, max_width, dpi, dim_unit)
-    # across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts, max_width, dpi, dim_unit)
+    accessibility_data <- accessibility_data[travel_time <= max(ttimes)]
+    
+    across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes, max_width, dpi, dim_unit)
+    across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts, max_width, dpi, dim_unit)
     
     accessibility_data <- accessibility_data[
       (bilhete_unico == "with") &
@@ -112,9 +114,9 @@ analyse_results <- function(grid_name = "grid_with_data_aop",
         (monetary_cost %in% mcosts)
     ]
     
-    all_thresholds_maps(copy(accessibility_data), ttimes, mcosts, bu = "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
-    couple_thresholds_maps(copy(accessibility_data), ttimes, mcosts, "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
-    one_threshold_map(copy(accessibility_data), ttimes, mcosts, "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
+    # all_thresholds_maps(copy(accessibility_data), ttimes, mcosts, bu = "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
+    # couple_thresholds_maps(copy(accessibility_data), ttimes, mcosts, "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
+    # one_threshold_map(copy(accessibility_data), ttimes, mcosts, "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
     
   } else if (lang == "pt") {
     
