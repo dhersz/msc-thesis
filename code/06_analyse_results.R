@@ -106,7 +106,7 @@ analyse_results <- function(grid_name = "grid_with_data_aop",
     accessibility_data <- accessibility_data[travel_time <= max(ttimes)]
     
     across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes, max_width, dpi, dim_unit)
-    across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts, max_width, dpi, dim_unit)
+    # across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts, max_width, dpi, dim_unit)
     
     accessibility_data <- accessibility_data[
       (bilhete_unico == "with") &
@@ -1160,7 +1160,7 @@ across_cost_palma <- function(access_data,
   # drop large unnecessary columns and filter data
   
   access_data[, geometry := NULL]
-  access_data <- access_data[population > 0][monetary_cost != 1000][bilhete_unico == bu][travel_time %in% tt]
+  access_data <- access_data[population > 0][monetary_cost != 1000][bilhete_unico == bu][travel_time %in% ttimes]
   
   # calculate the ratio in each case
   
@@ -1177,11 +1177,33 @@ across_cost_palma <- function(access_data,
   breaks <- c(0, 4.05, 4.7, 5, 7.10, 8.75, 10, 15)
   labels <- text_labels$across_cost_palma$x_labels
   
+  # annotations to guide readers in text
+  
+  annon <- setDT(tribble(
+    ~id, ~x,   ~y,
+    1,   2,    3.088639,
+    2,   4.05, 3.133548,
+    3,   4.3,  2.727681,
+    4,   5.4,  3.55156,
+    5,   4.05, 1.864614,
+    6,   4.3,  1.492472,
+    7,   5.4,  1.492472,
+    8,   7.1,  1.885735,
+    9,   8.75, 1.885735
+  ))
+  
   # plot settings
   
   p <- ggplot(access_data) + 
     geom_step(
       aes(monetary_cost, palma_ratio, group = travel_time, color = travel_time)
+    ) +
+    geom_label(
+      data = annon,
+      aes(label = id, x = x, y = y),
+      fill = NA, 
+      size = 2.5,
+      label.padding = unit(1, "pt")
     ) +
     labs(
       x     = text_labels$across_cost_palma$x_axis, 
