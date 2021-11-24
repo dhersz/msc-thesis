@@ -356,7 +356,9 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
       scale_fill_gradient(
         name = labels$pop_job$job_density,
         low = "#efeeec",
-        high = "firebrick3"
+        high = "firebrick3",
+        trans = "pseudo_log",
+        breaks = c(0, 10, 20, 60)
       ) +
       conditional_geom +
       coord_sf(xlim = xlim, ylim = ylim) +
@@ -382,12 +384,11 @@ generate_maps <- function(grid_name = "grid_with_data_aop",
   
     # save final result
   
-    filename <- paste0(study_area_folder, "/", lang, "/pop_avginc_job.tiff")
+    filename <- paste0(study_area_folder, "/", lang, "/pop_avginc_job.png")
   
     ggsave(
       filename,
       plot = pf,
-      device = "tiff",
       width = max_width,
       height = 23.2,
       units = dim_unit,
