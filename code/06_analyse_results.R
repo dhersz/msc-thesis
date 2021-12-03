@@ -106,7 +106,7 @@ analyse_results <- function(grid_name = "grid_with_data_aop",
     accessibility_data <- accessibility_data[travel_time <= max(ttimes)]
     
     # across_cost_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", tt = ttimes, max_width, dpi, dim_unit)
-    across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts, max_width, dpi, dim_unit)
+    # across_time_palma(copy(accessibility_data), text_labels, analysis_folder, bu = "with", mc = mcosts, max_width, dpi, dim_unit)
     
     accessibility_data <- accessibility_data[
       (bilhete_unico == "with") &
@@ -114,9 +114,9 @@ analyse_results <- function(grid_name = "grid_with_data_aop",
         (monetary_cost %in% mcosts)
     ]
     
-    # all_thresholds_maps(copy(accessibility_data), ttimes, mcosts, bu = "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
-    # couple_thresholds_maps(copy(accessibility_data), ttimes, mcosts, "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
-    # one_threshold_map(copy(accessibility_data), ttimes, mcosts, "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
+    all_thresholds_maps(copy(accessibility_data), ttimes, mcosts, bu = "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
+    # two_costs_thresholds_maps(copy(accessibility_data), ttimes, mcosts, "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
+    # two_times_thresholds_maps(copy(accessibility_data), ttimes, mcosts, "with", max_width, dpi, dim_unit, text_labels, analysis_folder)
     
   } else if (lang == "pt") {
     
@@ -830,12 +830,37 @@ all_thresholds_maps <- function(access_data,
   
   access_data <- st_as_sf(access_data[opportunities > 0 & population > 0])
   
+  # dataframe with labels for some facets
+  
+  annon <- data.frame(
+    label = c("A", "B", "C"),
+    monetary_cost = factor(
+      c(4.7, 4.7, 5), 
+      levels = mcosts, 
+      labels = text_labels$all_thresholds_maps$costs_facet_titles
+    ),
+    travel_time = factor(
+      c(60, 90, 90), 
+      levels = ttimes, 
+      labels = text_labels$all_thresholds_maps$times_facet_titles
+    )
+  )
+  
   # plot settings
   
   p <- ggplot() +
     geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
     geom_sf(data = access_data, aes(fill = accessibility), color = NA) +
     geom_sf(data = rio_border, color = "black", fill = NA, size = 0.3) +
+    geom_label(
+      data = annon,
+      aes(label = label, x = sum(xlim) / 2, y = sum(ylim/2)),
+      nudge_x = -0.3,
+      nudge_y = 0.125,
+      fill = NA,
+      size = 2.5,
+      label.padding = unit(5, "pt")
+    ) +
     facet_grid(monetary_cost ~ travel_time, switch = "y") +
     coord_sf(xlim = xlim, ylim = ylim) +
     scale_fill_viridis_c(
@@ -862,15 +887,15 @@ all_thresholds_maps <- function(access_data,
 
 
 
-couple_thresholds_maps <- function(access_data,
-                                   ttimes,
-                                   mcosts,
-                                   bu,
-                                   max_width,
-                                   dpi,
-                                   dim_unit,
-                                   text_labels,
-                                   analysis_folder) {
+two_costs_thresholds_maps <- function(access_data,
+                                      ttimes,
+                                      mcosts,
+                                      bu,
+                                      max_width,
+                                      dpi,
+                                      dim_unit,
+                                      text_labels,
+                                      analysis_folder) {
   
   access_data <- access_data[
     (bilhete_unico == bu) & (travel_time %in% ttimes) & (monetary_cost %in% mcosts)
@@ -1009,7 +1034,166 @@ couple_thresholds_maps <- function(access_data,
   # save plot
   
   ggsave(
-    paste0(analysis_folder, "/selected_access_distribution_", bu, ".png"),
+    paste0(analysis_folder, "/two_costs_access_distribution_", bu, ".png"),
+    plot   = pf,
+    width  = max_width,
+    height = max_width * 1.14,
+    units  = dim_unit,
+    dpi    = dpi
+  )
+  
+}
+
+
+
+two_times_thresholds_maps <- function(access_data,
+                                      ttimes,
+                                      mcosts,
+                                      bu,
+                                      max_width,
+                                      dpi,
+                                      dim_unit,
+                                      text_labels,
+                                      analysis_folder) {
+  
+  access_data <- access_data[
+    (bilhete_unico == bu) & (travel_time %in% ttimes) & (monetary_cost %in% mcosts)
+  ]
+  
+  # calculate max accessibility and total opportunities for a pretty legend
+  
+  max_accessibility   <- max(access_data$accessibility)
+  total_opportunities <- sum(access_data$opportunities) / (length(mcosts) * length(ttimes))
+  
+  # filter access_data to keep only two facets of 'all_thresholds_maps'
+  
+  access_data <- access_data[
+    (bilhete_unico == bu) &
+      (travel_time %in% c(60, 90)) &
+      (monetary_cost == 4.7)
+  ]
+  access_data <- access_data[opportunities > 0 & population > 0]
+  
+  # read rio state and municipality shapes
+  
+  rj_state   <- readr::read_rds("./data/rj_state.rds")
+  rio_border <- readr::read_rds("./data/rio_municipality.rds")
+  
+  expanded_rio_border <- rio_border %>% 
+    st_transform(5880) %>% 
+    st_buffer(3000) %>% 
+    st_transform(st_crs(rio_border))
+  
+  less_expanded_rio_border <- rio_border %>% 
+    st_transform(5880) %>% 
+    st_buffer(1500) %>% 
+    st_transform(st_crs(rio_border))
+  
+  # set bounding boxes
+  
+  xlim <- c(st_bbox(rio_border)[1], st_bbox(rio_border)[3])
+  ylim <- c(st_bbox(expanded_rio_border)[2], st_bbox(rio_border)[4])
+  
+  # scalebar
+  
+  scalebar_data <- rio_border
+  scalebar_data_bbox <- st_bbox(scalebar_data)
+  scalebar_data_bbox["ymin"] <- st_bbox(less_expanded_rio_border)["ymin"]
+  attr(st_geometry(scalebar_data), "bbox") <- scalebar_data_bbox
+  
+  scalebar <- ggsn::scalebar(
+    data = scalebar_data, 
+    dist = 10, 
+    dist_unit = "km",
+    location = "bottomleft", 
+    transform = TRUE, 
+    model = "WGS84",
+    border.size = 0.3, 
+    st.size = 3,
+    st.dist = 0.03
+  )
+  
+  # north
+  
+  north_data <- rio_border
+  north_data_bbox <- st_bbox(north_data)
+  north_data_bbox["xmin"] <- st_bbox(expanded_rio_border)["xmin"]
+  attr(st_geometry(north_data), "bbox") <- north_data_bbox
+  
+  north <- ggsn::north(
+    data = north_data,
+    location = "topleft",
+    scale = 0.15,
+    symbol = 4
+  )
+  
+  # plot settings
+  
+  ptop <- ggplot() +
+    geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
+    geom_sf(
+      data = st_as_sf(access_data[travel_time == 60]),
+      aes(fill = accessibility),
+      color = NA
+    ) +
+    geom_sf(data = rio_border, color = "black", fill = NA) +
+    coord_sf(xlim, ylim) +
+    scale_fill_viridis_c(
+      name = text_labels$all_thresholds_maps$legend_title,
+      option = "inferno",
+      limits = c(0, max_accessibility),
+      breaks = seq(0, max_accessibility, max_accessibility / 3),
+      labels = scales::label_percent(scale = 100 / total_opportunities)
+    ) +
+    scalebar +
+    north +
+    guides(fill = guide_colorbar(title.vjust = 0.75)) +
+    theme_thesis("map") +
+    theme(legend.position = "none")
+  
+  pbot <- ggplot() +
+    geom_sf(data = rj_state, color = NA, fill = "#efeeec") +
+    geom_sf(
+      data = st_as_sf(access_data[travel_time == 90]),
+      aes(fill = accessibility),
+      color = NA
+    ) +
+    geom_sf(data = rio_border, color = "black", fill = NA) +
+    coord_sf(xlim, ylim) +
+    scale_fill_viridis_c(
+      name = text_labels$all_thresholds_maps$legend_title,
+      option = "inferno",
+      limits = c(0, max_accessibility),
+      breaks = seq(0, max_accessibility, max_accessibility / 3),
+      labels = scales::label_percent(scale = 100 / total_opportunities)
+    ) +
+    guides(fill = guide_colorbar(title.vjust = 0.75)) +
+    theme_thesis("map") +
+    theme(
+      legend.position = c(0.99, 0),
+      legend.direction = "horizontal",
+      legend.justification = c(1, 0),
+      legend.background = element_rect(fill = "#aadaff"),
+      legend.title = element_text(size = 10, hjust = 1),
+      legend.text = element_text(size = 10)
+    )
+  
+  # add labels
+  
+  ptop <- cowplot::ggdraw(ptop) +
+    cowplot::draw_plot_label("A", fontface = "bold")
+  
+  pbot <- cowplot::ggdraw(pbot) +
+    cowplot::draw_plot_label("B", fontface = "bold")
+  
+  # joined together
+  
+  pf <- cowplot::plot_grid(ptop, pbot, ncol = 1)
+  
+  # save plot
+  
+  ggsave(
+    paste0(analysis_folder, "/two_times_access_distribution_", bu, ".png"),
     plot   = pf,
     width  = max_width,
     height = max_width * 1.14,
